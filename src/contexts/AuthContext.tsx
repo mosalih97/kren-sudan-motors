@@ -26,8 +26,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
 
   useEffect(() => {
+    let isInitialLoad = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -35,17 +38,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle auth events
-        if (event === 'SIGNED_IN') {
+        // Handle auth events - only show toast for actual sign in/out actions, not initial load
+        if (event === 'SIGNED_IN' && !isInitialLoad && !hasShownWelcome) {
           toast({
             title: "تم تسجيل الدخول بنجاح",
             description: "مرحباً بك في منصة الكرين",
           });
+          setHasShownWelcome(true);
         } else if (event === 'SIGNED_OUT') {
           toast({
             title: "تم تسجيل الخروج",
             description: "نراك قريباً",
           });
+          setHasShownWelcome(false);
         }
       }
     );
@@ -55,10 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      isInitialLoad = false;
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [hasShownWelcome]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
