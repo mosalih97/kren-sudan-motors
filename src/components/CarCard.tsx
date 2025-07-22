@@ -111,10 +111,7 @@ export function CarCard({
             variant="default" 
             size="sm" 
             className="flex-1"
-            onClick={() => {
-              console.log("CarCard: Navigating to ad ID:", id);
-              navigate(`/ads/${id}`);
-            }}
+            onClick={() => navigate(`/ads/${id}`)}
           >
             عرض التفاصيل
           </Button>

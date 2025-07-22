@@ -34,11 +34,9 @@ const AdDetails = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    if (id) {
-      console.log("AdDetails ID received:", id); // Debug log
+    if (id && isValidUUID(id)) {
       fetchAdDetails();
     } else {
-      console.log("No ID found in URL"); // Debug log
       navigate("/cars");
     }
   }, [id, navigate]);
@@ -53,8 +51,7 @@ const AdDetails = () => {
     setLoading(true);
     try {
       // Validate UUID format first
-      if (!id || !isValidUUID(id)) {
-        console.error("Invalid UUID format:", id);
+      if (!isValidUUID(id)) {
         toast({
           title: "رابط غير صحيح",
           description: "الرابط المُستخدم غير صحيح",
