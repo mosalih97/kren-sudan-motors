@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, Shield, Star, ArrowLeft, Zap, Target, Award } from "lucide-react";
+import { Link } from "react-router-dom";
 
 // بيانات تجريبية للسيارات
 const featuredCars = [
@@ -96,14 +97,18 @@ const Index = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-                <Button variant="accent" size="xl" className="min-w-[200px]">
-                  <Target className="h-5 w-5 ml-2" />
-                  تصفح السيارات
-                </Button>
-                <Button variant="outline" size="xl" className="min-w-[200px] bg-white/10 border-white/30 text-white hover:bg-white/20">
-                  <Zap className="h-5 w-5 ml-2" />
-                  بيع سيارتك الآن
-                </Button>
+                <Link to="/cars">
+                  <Button variant="accent" size="xl" className="min-w-[200px]">
+                    <Target className="h-5 w-5 ml-2" />
+                    تصفح السيارات
+                  </Button>
+                </Link>
+                <Link to="/add-ad">
+                  <Button variant="outline" size="xl" className="min-w-[200px] bg-white/10 border-white/30 text-white hover:bg-white/20">
+                    <Zap className="h-5 w-5 ml-2" />
+                    بيع سيارتك الآن
+                  </Button>
+                </Link>
               </div>
 
               {/* إحصائيات سريعة */}
@@ -258,10 +263,12 @@ const Index = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="accent" size="xl" className="min-w-[200px]">
-                <Zap className="h-5 w-5 ml-2" />
-                ابدأ البيع الآن
-              </Button>
+              <Link to="/add-ad">
+                <Button variant="accent" size="xl" className="min-w-[200px]">
+                  <Zap className="h-5 w-5 ml-2" />
+                  ابدأ البيع الآن
+                </Button>
+              </Link>
               <Button variant="outline" size="xl" className="min-w-[200px] bg-white/10 border-white/30 text-white hover:bg-white/20">
                 تعرف على المزايا
               </Button>
