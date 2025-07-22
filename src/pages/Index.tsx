@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
 import { CarCard } from "@/components/CarCard";
@@ -6,71 +7,37 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, Shield, Star, ArrowLeft, Zap, Target, Award } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
-// بيانات تجريبية للسيارات
-const featuredCars = [
-  {
-    id: "1",
-    title: "تويوتا كامري 2022 - فل أوبشن",
-    price: 45000000,
-    location: "الخرطوم",
-    year: 2022,
-    mileage: "15,000 كم",
-    fuelType: "بنزين",
-    transmission: "أوتوماتيك",
-    image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop",
-    isPremium: true,
-    isFeatured: true,
-    viewCount: 1250,
-    creditsRequired: 1
-  },
-  {
-    id: "2", 
-    title: "نيسان التيما 2021 - نظيفة جداً",
-    price: 38000000,
-    location: "بحري",
-    year: 2021,
-    mileage: "22,000 كم",
-    fuelType: "بنزين",
-    transmission: "أوتوماتيك",
-    image: "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=400&h=300&fit=crop",
-    isFeatured: true,
-    isNew: true,
-    viewCount: 890,
-    creditsRequired: 1
-  },
-  {
-    id: "3",
-    title: "هوندا أكورد 2020 - حالة ممتازة",
-    price: 35000000,
-    location: "أم درمان",
-    year: 2020,
-    mileage: "28,000 كم", 
-    fuelType: "بنزين",
-    transmission: "أوتوماتيك",
-    image: "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=400&h=300&fit=crop",
-    isPremium: true,
-    viewCount: 654,
-    creditsRequired: 1
-  },
-  {
-    id: "4",
-    title: "هيونداي إلنترا 2023 - جديدة",
-    price: 42000000,
-    location: "الخرطوم",
-    year: 2023,
-    mileage: "5,000 كم",
-    fuelType: "بنزين", 
-    transmission: "أوتوماتيك",
-    image: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=400&h=300&fit=crop",
-    isNew: true,
-    isFeatured: true,
-    viewCount: 2100,
-    creditsRequired: 1
-  }
-];
 
 const Index = () => {
+  const [featuredCars, setFeaturedCars] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedCars();
+  }, []);
+
+  const fetchFeaturedCars = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("status", "active")
+        .or("is_featured.eq.true,is_premium.eq.true")
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      if (error) throw error;
+      setFeaturedCars(data || []);
+    } catch (error) {
+      console.error("Error fetching featured cars:", error);
+      // استخدام البيانات التجريبية في حالة الخطأ
+      setFeaturedCars([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -167,16 +134,52 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {featuredCars.map((car) => (
-              <CarCard key={car.id} {...car} />
-            ))}
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="card-gradient border-0 shadow-lg">
+                  <div className="h-48 bg-muted animate-pulse rounded-t-lg"></div>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="h-4 bg-muted animate-pulse rounded"></div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : featuredCars.length > 0 ? (
+              featuredCars.map((car) => (
+                <CarCard 
+                  key={car.id} 
+                  id={car.id}
+                  title={car.title}
+                  price={car.price}
+                  location={car.city}
+                  year={car.year}
+                  mileage={car.mileage}
+                  fuelType={car.fuel_type}
+                  transmission={car.transmission}
+                  image={car.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
+                  isPremium={car.is_premium}
+                  isFeatured={car.is_featured}
+                  isNew={car.condition === "جديدة"}
+                  viewCount={car.view_count}
+                  creditsRequired={1}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">لا توجد سيارات مميزة حالياً</p>
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-8">
-            <Button variant="default" size="lg">
-              عرض المزيد من السيارات
-              <ArrowLeft className="h-5 w-5 mr-2" />
-            </Button>
+            <Link to="/cars">
+              <Button variant="default" size="lg">
+                عرض المزيد من السيارات
+                <ArrowLeft className="h-5 w-5 mr-2" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
