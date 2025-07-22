@@ -123,12 +123,6 @@ export function CarCard({
           </Button>
         </div>
 
-        {/* عدد الكريديت المطلوب */}
-        {creditsRequired > 0 && (
-          <div className="text-xs text-center text-muted-foreground bg-muted rounded-lg py-2">
-            مطلوب {creditsRequired} كريديت لعرض رقم الهاتف
-          </div>
-        )}
       </CardContent>
     </Card>
   );
