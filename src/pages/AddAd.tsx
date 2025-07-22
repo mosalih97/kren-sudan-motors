@@ -64,10 +64,51 @@ const AddAd = () => {
   }, [navigate]);
 
   const handleImageAdd = () => {
-    const imageUrl = prompt("أدخل رابط الصورة:");
-    if (imageUrl) {
-      setImages([...images, imageUrl]);
-    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && user) {
+        setLoading(true);
+        try {
+          const uploadPromises = Array.from(files).map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { data, error } = await supabase.storage
+              .from('car-images')
+              .upload(fileName, file);
+            
+            if (error) throw error;
+            
+            const { data: { publicUrl } } = supabase.storage
+              .from('car-images')
+              .getPublicUrl(fileName);
+            
+            return publicUrl;
+          });
+          
+          const uploadedUrls = await Promise.all(uploadPromises);
+          setImages([...images, ...uploadedUrls]);
+          toast({
+            title: "تم تحميل الصور بنجاح",
+            description: `تم تحميل ${uploadedUrls.length} صورة`,
+          });
+        } catch (error) {
+          console.error('Error uploading images:', error);
+          toast({
+            title: "خطأ في تحميل الصور",
+            description: "حدث خطأ أثناء تحميل الصور",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    input.click();
   };
 
   const handleImageRemove = (index: number) => {
@@ -357,7 +398,7 @@ const AddAd = () => {
                     >
                       <div className="flex flex-col items-center gap-2">
                         <Upload className="h-6 w-6" />
-                        <span>إضافة صورة (رابط)</span>
+                        <span>اختر صور من المعرض</span>
                       </div>
                     </Button>
 
