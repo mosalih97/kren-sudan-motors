@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_interactions: {
+        Row: {
+          ad_id: string
+          created_at: string | null
+          id: string
+          interaction_type: string
+          points_spent: number | null
+          user_id: string
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string | null
+          id?: string
+          interaction_type: string
+          points_spent?: number | null
+          user_id: string
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string | null
+          id?: string
+          interaction_type?: string
+          points_spent?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ads: {
         Row: {
           brand: string
@@ -233,9 +260,14 @@ export type Database = {
           created_at: string
           credits: number | null
           display_name: string | null
+          frozen_points: number | null
           id: string
           is_premium: boolean | null
+          last_monthly_reset: string | null
+          membership_type: string | null
+          monthly_ads_count: number | null
           phone: string | null
+          points: number | null
           premium_expires_at: string | null
           updated_at: string
           user_id: string
@@ -246,9 +278,14 @@ export type Database = {
           created_at?: string
           credits?: number | null
           display_name?: string | null
+          frozen_points?: number | null
           id?: string
           is_premium?: boolean | null
+          last_monthly_reset?: string | null
+          membership_type?: string | null
+          monthly_ads_count?: number | null
           phone?: string | null
+          points?: number | null
           premium_expires_at?: string | null
           updated_at?: string
           user_id: string
@@ -259,9 +296,14 @@ export type Database = {
           created_at?: string
           credits?: number | null
           display_name?: string | null
+          frozen_points?: number | null
           id?: string
           is_premium?: boolean | null
+          last_monthly_reset?: string | null
+          membership_type?: string | null
+          monthly_ads_count?: number | null
           phone?: string | null
+          points?: number | null
           premium_expires_at?: string | null
           updated_at?: string
           user_id?: string
@@ -273,7 +315,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      deduct_points: {
+        Args: { user_id_param: string; points_to_deduct: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
