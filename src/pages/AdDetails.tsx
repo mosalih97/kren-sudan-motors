@@ -35,13 +35,35 @@ const AdDetails = () => {
 
   useEffect(() => {
     if (id) {
+      console.log("AdDetails ID received:", id); // Debug log
       fetchAdDetails();
+    } else {
+      console.log("No ID found in URL"); // Debug log
+      navigate("/cars");
     }
-  }, [id]);
+  }, [id, navigate]);
+
+  // Function to validate UUID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
 
   const fetchAdDetails = async () => {
     setLoading(true);
     try {
+      // Validate UUID format first
+      if (!id || !isValidUUID(id)) {
+        console.error("Invalid UUID format:", id);
+        toast({
+          title: "رابط غير صحيح",
+          description: "الرابط المُستخدم غير صحيح",
+          variant: "destructive"
+        });
+        navigate("/cars");
+        return;
+      }
+
       // Fetch ad details
       const { data: adData, error: adError } = await supabase
         .from("ads")
