@@ -147,7 +147,7 @@ const AddAd = () => {
 
       toast({
         title: "تم نشر الإعلان بنجاح",
-        description: "سيتم مراجعة إعلانك وسيظهر في القائمة قريباً"
+        description: "تم نشر إعلانك وهو الآن متاح للعرض"
       });
 
       navigate("/profile");
