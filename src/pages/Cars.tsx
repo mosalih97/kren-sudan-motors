@@ -96,7 +96,7 @@ const Cars = () => {
           </div>
           
           <div className="max-w-6xl mx-auto">
-            <SearchFilters onSearch={fetchCars} />
+            <SearchFilters />
           </div>
         </div>
       </section>
