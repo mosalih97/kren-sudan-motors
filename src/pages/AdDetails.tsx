@@ -1,0 +1,398 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { 
+  ArrowRight, 
+  Phone, 
+  MessageCircle, 
+  Heart, 
+  Share2, 
+  MapPin, 
+  Calendar, 
+  Fuel, 
+  Settings, 
+  Eye,
+  Car,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+
+const AdDetails = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [ad, setAd] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    if (id) {
+      fetchAdDetails();
+    }
+  }, [id]);
+
+  const fetchAdDetails = async () => {
+    setLoading(true);
+    try {
+      // Fetch ad details
+      const { data: adData, error: adError } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("id", id)
+        .eq("status", "active")
+        .single();
+
+      if (adError) throw adError;
+
+      if (!adData) {
+        toast({
+          title: "الإعلان غير موجود",
+          description: "الإعلان المطلوب غير متاح أو تم حذفه",
+          variant: "destructive"
+        });
+        navigate("/cars");
+        return;
+      }
+
+      setAd(adData);
+
+      // Fetch seller profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", adData.user_id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+      } else {
+        setProfile(profileData);
+      }
+
+      // Increment view count
+      await supabase
+        .from("ads")
+        .update({ view_count: (adData.view_count || 0) + 1 })
+        .eq("id", id);
+
+    } catch (error) {
+      console.error("Error fetching ad details:", error);
+      toast({
+        title: "خطأ في التحميل",
+        description: "حدث خطأ أثناء تحميل تفاصيل الإعلان",
+        variant: "destructive"
+      });
+      navigate("/cars");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (ad?.images?.length > 1) {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? ad.images.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const handleNextImage = () => {
+    if (ad?.images?.length > 1) {
+      setCurrentImageIndex((prev) => 
+        prev === ad.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: ad.title,
+          text: `${ad.title} - ${ad.price.toLocaleString('ar-SD')} جنيه`,
+          url: window.location.href
+        });
+      } catch (error) {
+        console.error("Error sharing:", error);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "تم النسخ",
+        description: "تم نسخ رابط الإعلان إلى الحافظة"
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">جاري التحميل...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ad) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <Card className="card-gradient border-0 shadow-lg">
+            <CardContent className="p-12 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto text-warning mb-4" />
+              <h3 className="text-xl font-bold mb-2">الإعلان غير موجود</h3>
+              <p className="text-muted-foreground mb-4">
+                الإعلان المطلوب غير متاح أو تم حذفه
+              </p>
+              <Button onClick={() => navigate("/cars")}>
+                العودة للسيارات
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const images = ad.images && ad.images.length > 0 
+    ? ad.images 
+    : ["https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800&h=600&fit=crop"];
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <div className="container mx-auto px-4 py-6">
+        {/* Back Button */}
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate(-1)}
+          className="mb-6 hover:bg-muted"
+        >
+          <ArrowRight className="h-4 w-4 ml-2" />
+          العودة
+        </Button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Images and Description */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Image Gallery */}
+            <Card className="card-gradient border-0 shadow-lg overflow-hidden">
+              <div className="relative h-96 bg-muted">
+                <img
+                  src={images[currentImageIndex]}
+                  alt={ad.title}
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Image Navigation */}
+                {images.length > 1 && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                      onClick={handlePrevImage}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                      onClick={handleNextImage}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Image Indicators */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                      {images.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-smooth ${
+                            index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Badges */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  {ad.is_premium && <Badge variant="premium">مميز</Badge>}
+                  {ad.is_featured && <Badge variant="featured">مُوصى</Badge>}
+                  {ad.condition === "جديدة" && <Badge variant="new">جديد</Badge>}
+                </div>
+              </div>
+            </Card>
+
+            {/* Description */}
+            <Card className="card-gradient border-0 shadow-lg">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4 text-foreground">الوصف</h2>
+                {ad.description ? (
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {ad.description}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground italic">
+                    لم يتم إضافة وصف لهذا الإعلان
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Details and Actions */}
+          <div className="space-y-6">
+            {/* Main Details */}
+            <Card className="card-gradient border-0 shadow-lg">
+              <CardContent className="p-6 space-y-6">
+                {/* Title and Price */}
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground mb-2">
+                    {ad.title}
+                  </h1>
+                  <div className="text-3xl font-bold primary-gradient bg-clip-text text-transparent">
+                    {ad.price.toLocaleString('ar-SD')} جنيه
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Car Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Car className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">العلامة:</span>
+                    <span className="font-medium">{ad.brand}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Car className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">الموديل:</span>
+                    <span className="font-medium">{ad.model}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">السنة:</span>
+                    <span className="font-medium">{ad.year}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Settings className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">النقل:</span>
+                    <span className="font-medium">{ad.transmission}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Fuel className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">الوقود:</span>
+                    <span className="font-medium">{ad.fuel_type}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Eye className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">المشاهدات:</span>
+                    <span className="font-medium">{ad.view_count}</span>
+                  </div>
+                </div>
+
+                {ad.mileage && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm">
+                      <Car className="h-4 w-4 text-primary" />
+                      <span className="text-muted-foreground">المسافة المقطوعة:</span>
+                      <span className="font-medium">{ad.mileage}</span>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+
+                {/* Location */}
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-accent" />
+                  <span className="text-muted-foreground">الموقع:</span>
+                  <span className="font-medium">{ad.city}</span>
+                </div>
+
+                <Separator />
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button className="flex-1">
+                      <Phone className="h-4 w-4 ml-2" />
+                      اتصال
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      <MessageCircle className="h-4 w-4 ml-2" />
+                      رسالة
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm">
+                      <Heart className="h-4 w-4 ml-2" />
+                      حفظ
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleShare}>
+                      <Share2 className="h-4 w-4 ml-2" />
+                      مشاركة
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Credits Notice */}
+                <div className="text-xs text-center text-muted-foreground bg-muted rounded-lg py-2">
+                  مطلوب 1 كريديت لعرض رقم الهاتف
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Seller Info */}
+            {profile && (
+              <Card className="card-gradient border-0 shadow-lg">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-bold mb-4">معلومات البائع</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-muted-foreground">الاسم:</span>
+                      <p className="font-medium">{profile.display_name || "غير محدد"}</p>
+                    </div>
+                    {profile.city && (
+                      <div>
+                        <span className="text-muted-foreground">المدينة:</span>
+                        <p className="font-medium">{profile.city}</p>
+                      </div>
+                    )}
+                    {profile.is_premium && (
+                      <Badge variant="premium" className="w-fit">
+                        عضو مميز
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdDetails;

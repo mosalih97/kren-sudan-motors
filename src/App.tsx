@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import AddAd from "./pages/AddAd";
 import Cars from "./pages/Cars";
+import AdDetails from "./pages/AdDetails";
 import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/cars" element={<Cars />} />
+            <Route path="/ads/:id" element={<AdDetails />} />
             <Route 
               path="/profile" 
               element={

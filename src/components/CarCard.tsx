@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface CarCardProps {
   id: string;
@@ -21,6 +22,7 @@ interface CarCardProps {
 }
 
 export function CarCard({
+  id,
   title,
   price,
   location,
@@ -35,6 +37,7 @@ export function CarCard({
   viewCount,
   creditsRequired = 1
 }: CarCardProps) {
+  const navigate = useNavigate();
   return (
     <Card className={`group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 ${isPremium ? 'premium-card shadow-premium' : 'card-gradient'}`}>
       {/* الشارات */}
@@ -104,7 +107,12 @@ export function CarCard({
 
         {/* أزرار التفاعل */}
         <div className="flex gap-2 pt-2">
-          <Button variant="default" size="sm" className="flex-1">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => navigate(`/ads/${id}`)}
+          >
             عرض التفاصيل
           </Button>
           <Button variant="outline" size="sm" className="px-3">
