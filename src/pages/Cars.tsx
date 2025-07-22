@@ -174,7 +174,9 @@ const Cars = () => {
                 ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 : "space-y-4"
             }>
-              {cars.map((car) => (
+              {cars.map((car, index) => {
+                console.log(`Car ${index}:`, car.id, car.title); // Debug log
+                return (
                 <CarCard
                   key={car.id}
                   id={car.id}
@@ -193,7 +195,8 @@ const Cars = () => {
                   creditsRequired={1}
                   
                 />
-              ))}
+                );
+              })}
             </div>
           )}
 
