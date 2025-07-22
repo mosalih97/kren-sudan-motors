@@ -14,7 +14,260 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ads: {
+        Row: {
+          brand: string
+          city: string
+          condition: string | null
+          created_at: string
+          description: string | null
+          fuel_type: string | null
+          id: string
+          images: string[] | null
+          is_featured: boolean | null
+          is_premium: boolean | null
+          mileage: string | null
+          model: string
+          phone: string | null
+          price: number
+          status: string | null
+          title: string
+          transmission: string | null
+          updated_at: string
+          user_id: string
+          view_count: number | null
+          whatsapp: string | null
+          year: number | null
+        }
+        Insert: {
+          brand: string
+          city: string
+          condition?: string | null
+          created_at?: string
+          description?: string | null
+          fuel_type?: string | null
+          id?: string
+          images?: string[] | null
+          is_featured?: boolean | null
+          is_premium?: boolean | null
+          mileage?: string | null
+          model: string
+          phone?: string | null
+          price: number
+          status?: string | null
+          title: string
+          transmission?: string | null
+          updated_at?: string
+          user_id: string
+          view_count?: number | null
+          whatsapp?: string | null
+          year?: number | null
+        }
+        Update: {
+          brand?: string
+          city?: string
+          condition?: string | null
+          created_at?: string
+          description?: string | null
+          fuel_type?: string | null
+          id?: string
+          images?: string[] | null
+          is_featured?: boolean | null
+          is_premium?: boolean | null
+          mileage?: string | null
+          model?: string
+          phone?: string | null
+          price?: number
+          status?: string | null
+          title?: string
+          transmission?: string | null
+          updated_at?: string
+          user_id?: string
+          view_count?: number | null
+          whatsapp?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          ad_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          ad_id: string | null
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          ad_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          ad_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          city: string | null
+          created_at: string
+          credits: number | null
+          display_name: string | null
+          id: string
+          is_premium: boolean | null
+          phone: string | null
+          premium_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          city?: string | null
+          created_at?: string
+          credits?: number | null
+          display_name?: string | null
+          id?: string
+          is_premium?: boolean | null
+          phone?: string | null
+          premium_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          city?: string | null
+          created_at?: string
+          credits?: number | null
+          display_name?: string | null
+          id?: string
+          is_premium?: boolean | null
+          phone?: string | null
+          premium_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
