@@ -103,12 +103,15 @@ export function Header() {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                {/* الكريديت */}
+                {/* النقاط ونوع العضوية */}
                 <div className="hidden sm:flex items-center gap-2 bg-primary-light rounded-full px-3 py-2">
                   <Crown className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">
-                    {profile?.credits || 0} كريديت
+                    {profile?.points || 0} نقطة
                   </span>
+                  {profile?.membership_type === 'premium' && (
+                    <Badge variant="premium" className="text-xs px-2 py-0">مميز</Badge>
+                  )}
                 </div>
 
                 {/* الإشعارات */}

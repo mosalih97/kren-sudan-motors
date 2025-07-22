@@ -16,6 +16,7 @@ import { Car, Upload, Phone, MapPin, Calendar, Gauge, Fuel, Settings, FileImage,
 const AddAd = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -47,6 +48,8 @@ const AddAd = () => {
         
         if (!session?.user) {
           navigate("/auth");
+        } else {
+          fetchUserProfile(session.user.id);
         }
       }
     );
@@ -57,11 +60,26 @@ const AddAd = () => {
       
       if (!session?.user) {
         navigate("/auth");
+      } else {
+        fetchUserProfile(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const handleImageAdd = () => {
     const input = document.createElement('input');
@@ -117,11 +135,28 @@ const AddAd = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !profile) return;
+
+    // التحقق من تقييد الإعلانات للمستخدمين العاديين
+    if (profile.membership_type === 'free' && profile.monthly_ads_count >= 5) {
+      toast({
+        title: "وصلت للحد الأقصى",
+        description: "يمكن للمستخدمين العاديين إضافة 5 إعلانات شهرياً فقط. قم بترقية عضويتك للمزيد",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     
     try {
+      // تحديث عدد الإعلانات الشهرية
+      await supabase
+        .from('profiles')
+        .update({ 
+          monthly_ads_count: (profile.monthly_ads_count || 0) + 1 
+        })
+        .eq('user_id', user.id);
       const { error } = await supabase
         .from("ads")
         .insert({
@@ -187,6 +222,47 @@ const AddAd = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* معلومات العضوية والإعلانات */}
+              {profile && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">نوع العضوية:</span>
+                      <Badge variant={profile.membership_type === 'premium' ? 'premium' : 'default'}>
+                        {profile.membership_type === 'premium' ? 'مميز' : 'عادي'}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium text-primary">{profile.points || 0}</span> نقطة
+                    </div>
+                  </div>
+                  
+                  {profile.membership_type === 'free' && (
+                    <div className="bg-background rounded-md p-3 border border-warning/20">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">الإعلانات المتاحة هذا الشهر: </span>
+                        <span className="font-medium text-primary">
+                          {Math.max(0, 5 - (profile.monthly_ads_count || 0))} من 5
+                        </span>
+                      </div>
+                      {(profile.monthly_ads_count || 0) >= 5 && (
+                        <p className="text-warning text-xs mt-1">
+                          وصلت للحد الأقصى من الإعلانات هذا الشهر. قم بترقية عضويتك للمزيد.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {profile.membership_type === 'premium' && (
+                    <div className="bg-primary/10 rounded-md p-3 border border-primary/20">
+                      <p className="text-sm text-primary">
+                        🎉 عضوية مميزة: إعلانات غير محدودة + عرض مجاني لمعلومات التواصل
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* العنوان والوصف */}
                 <div className="space-y-4">

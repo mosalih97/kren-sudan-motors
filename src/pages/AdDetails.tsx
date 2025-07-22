@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { PointsConfirmDialog } from "@/components/PointsConfirmDialog";
 import { 
   ArrowRight, 
   Phone, 
@@ -34,10 +36,19 @@ const AdDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [ad, setAd] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showPointsDialog, setShowPointsDialog] = useState(false);
+  const [actionType, setActionType] = useState<'phone' | 'whatsapp'>('phone');
+  const [revealedContacts, setRevealedContacts] = useState({
+    phone: false,
+    whatsapp: false
+  });
+  const [interactions, setInteractions] = useState<any[]>([]);
 
   useEffect(() => {
     if (id && isValidUUID(id)) {
@@ -45,12 +56,149 @@ const AdDetails = () => {
     } else {
       navigate("/cars");
     }
-  }, [id, navigate]);
+    
+    if (user) {
+      fetchUserProfile();
+      fetchUserInteractions();
+    }
+  }, [id, navigate, user]);
 
   // Function to validate UUID format
   const isValidUUID = (uuid: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
+  };
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const fetchUserInteractions = async () => {
+    if (!user || !id) return;
+    
+    try {
+      const { data } = await supabase
+        .from('ad_interactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ad_id', id);
+      
+      setInteractions(data || []);
+      
+      // Set revealed contacts based on interactions
+      const phoneInteraction = data?.find(i => i.interaction_type === 'phone_view');
+      const whatsappInteraction = data?.find(i => i.interaction_type === 'whatsapp_view');
+      
+      setRevealedContacts({
+        phone: !!phoneInteraction,
+        whatsapp: !!whatsappInteraction
+      });
+    } catch (error) {
+      console.error('Error fetching interactions:', error);
+    }
+  };
+
+  const handleContactRequest = (type: 'phone' | 'whatsapp') => {
+    if (!user) {
+      toast({
+        title: "تسجيل دخول مطلوب",
+        description: "يجب تسجيل الدخول أولاً لعرض معلومات التواصل",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
+
+    // إذا كان المستخدم صاحب الإعلان
+    if (user.id === ad.user_id) {
+      return;
+    }
+
+    // إذا كان الرقم مكشوف بالفعل
+    if (revealedContacts[type]) {
+      return;
+    }
+
+    // إذا كان مستخدم مميز، لا يحتاج نقاط
+    if (userProfile?.membership_type === 'premium') {
+      revealContact(type);
+      return;
+    }
+
+    // إظهار نافذة النقاط
+    setActionType(type);
+    setShowPointsDialog(true);
+  };
+
+  const handlePointsConfirm = async () => {
+    try {
+      // خصم النقاط
+      const { data, error } = await supabase.rpc('deduct_points', {
+        user_id_param: user.id,
+        points_to_deduct: 1
+      });
+
+      if (error) throw error;
+
+      if (!data) {
+        toast({
+          title: "نقاط غير كافية",
+          description: "ليس لديك نقاط كافية لهذا الإجراء",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // تسجيل التفاعل
+      await supabase
+        .from('ad_interactions')
+        .insert({
+          user_id: user.id,
+          ad_id: id,
+          interaction_type: actionType === 'phone' ? 'phone_view' : 'whatsapp_view',
+          points_spent: 1
+        });
+
+      // كشف الرقم
+      revealContact(actionType);
+
+      // تحديث النقاط
+      fetchUserProfile();
+
+      toast({
+        title: "تم بنجاح",
+        description: `تم خصم نقطة واحدة وكشف ${actionType === 'phone' ? 'رقم الهاتف' : 'رقم واتساب'}`,
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Error deducting points:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء العملية",
+        variant: "destructive"
+      });
+    } finally {
+      setShowPointsDialog(false);
+    }
+  };
+
+  const revealContact = (type: 'phone' | 'whatsapp') => {
+    setRevealedContacts(prev => ({
+      ...prev,
+      [type]: true
+    }));
   };
 
   const fetchAdDetails = async () => {
@@ -359,13 +507,23 @@ const AdDetails = () => {
                 {/* Action Buttons */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <Button className="flex-1">
+                    <Button 
+                      className="flex-1"
+                      onClick={() => handleContactRequest('phone')}
+                      disabled={user?.id === ad.user_id}
+                    >
                       <Phone className="h-4 w-4 ml-2" />
-                      اتصال
+                      {revealedContacts.phone && ad.phone ? ad.phone : 'اتصال'}
                     </Button>
-                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                    <Button 
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleContactRequest('whatsapp')}
+                      disabled={user?.id === ad.user_id}
+                    >
                       <WhatsAppIcon />
-                      <span className="ml-2">واتساب</span>
+                      <span className="ml-2">
+                        {revealedContacts.whatsapp && ad.whatsapp ? ad.whatsapp : 'واتساب'}
+                      </span>
                     </Button>
                   </div>
                   
@@ -418,6 +576,15 @@ const AdDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Points Confirmation Dialog */}
+      <PointsConfirmDialog
+        open={showPointsDialog}
+        onOpenChange={setShowPointsDialog}
+        onConfirm={handlePointsConfirm}
+        actionType={actionType}
+        userPoints={userProfile?.points || 0}
+      />
     </div>
   );
 };

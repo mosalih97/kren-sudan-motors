@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
 import { Send, MessageCircle, Search, MoreVertical } from "lucide-react";
+import { filterMessage } from "@/utils/messageFilter";
 
 const Messages = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -137,6 +138,17 @@ const Messages = () => {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedChat || !newMessage.trim()) return;
+
+    // فلترة الرسالة للتأكد من عدم وجود أرقام
+    const messageFilter = filterMessage(newMessage.trim());
+    if (!messageFilter.isValid) {
+      toast({
+        title: "رسالة غير مسموحة",
+        description: messageFilter.errorMessage,
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSending(true);
     try {
