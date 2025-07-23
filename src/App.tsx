@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +16,7 @@ import SellerAds from "./pages/SellerAds";
 import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
 import BoostAd from "./pages/BoostAd";
+import UploadReceipt from "./pages/UploadReceipt";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +71,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <BoostAd />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/upload-receipt" 
+              element={
+                <ProtectedRoute>
+                  <UploadReceipt />
                 </ProtectedRoute>
               } 
             />
