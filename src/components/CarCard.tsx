@@ -2,8 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Heart, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Crown } from "lucide-react";
+import { Heart, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Crown, Zap, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CarCardProps {
   id: string;
@@ -27,6 +28,11 @@ interface CarCardProps {
     membership_type?: string;
   };
   showSellerInfo?: boolean;
+  topSpot?: boolean;
+  topSpotUntil?: string;
+  displayTier?: 'top_spot' | 'premium' | 'featured' | 'regular';
+  showBoostButton?: boolean;
+  userId?: string;
 }
 
 export function CarCard({
@@ -45,13 +51,43 @@ export function CarCard({
   viewCount,
   creditsRequired = 1,
   seller,
-  showSellerInfo = false
+  showSellerInfo = false,
+  topSpot = false,
+  topSpotUntil,
+  displayTier = 'regular',
+  showBoostButton = false,
+  userId
 }: CarCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // تحديد ما إذا كان الإعلان في Top Spot نشط
+  const isActiveTopSpot = topSpot && topSpotUntil && new Date(topSpotUntil) > new Date();
+  
+  // تحديد هل هذا إعلان المستخدم الحالي
+  const isOwnerAd = user?.id === userId;
+
+  // تحديد نمط البطاقة بناءً على النوع
+  const getCardClassName = () => {
+    if (isActiveTopSpot) {
+      return 'group relative overflow-hidden rounded-xl border-2 border-amber-400 shadow-xl hover:shadow-2xl transition-smooth hover:-translate-y-1 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20';
+    }
+    if (isPremium) {
+      return 'group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 premium-card shadow-premium';
+    }
+    return 'group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 card-gradient';
+  };
+
   return (
-    <Card className={`group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 ${isPremium ? 'premium-card shadow-premium' : 'card-gradient'}`}>
+    <Card className={getCardClassName()}>
       {/* الشارات */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        {isActiveTopSpot && (
+          <Badge className="bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 font-bold shadow-lg animate-pulse">
+            <Star className="w-3 h-3 mr-1" />
+            TOP SPOT
+          </Badge>
+        )}
         {isPremium && <Badge variant="premium">مميز</Badge>}
         {isFeatured && <Badge variant="featured">مُوصى</Badge>}
         {isNew && <Badge variant="new">جديد</Badge>}
@@ -154,6 +190,21 @@ export function CarCard({
             <MessageCircle className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* زر الترقية للمالك */}
+        {isOwnerAd && showBoostButton && (
+          <div className="pt-2 border-t border-border/50">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className={`w-full ${isActiveTopSpot ? 'border-amber-400 text-amber-600 hover:bg-amber-50' : 'border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => navigate(`/boost-ad/${id}`)}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              {isActiveTopSpot ? 'مُعزز حالياً' : 'تعزيز الإعلان'}
+            </Button>
+          </div>
+        )}
 
       </CardContent>
     </Card>

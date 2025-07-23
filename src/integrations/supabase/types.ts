@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_boosts: {
+        Row: {
+          ad_id: string
+          boost_type: string
+          boosted_at: string
+          cost: number
+          created_at: string
+          expires_at: string
+          id: string
+          payment_method: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          ad_id: string
+          boost_type?: string
+          boosted_at?: string
+          cost?: number
+          created_at?: string
+          expires_at: string
+          id?: string
+          payment_method?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          ad_id?: string
+          boost_type?: string
+          boosted_at?: string
+          cost?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
+          payment_method?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_boosts_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_interactions: {
         Row: {
           ad_id: string
@@ -54,12 +101,17 @@ export type Database = {
           is_featured: boolean | null
           is_new: boolean | null
           is_premium: boolean | null
+          last_top_spot_viewed: string | null
           mileage: string | null
           model: string
           phone: string | null
           price: number
+          priority_score: number | null
           status: string | null
+          times_shown_top: number | null
           title: string
+          top_spot: boolean | null
+          top_spot_until: string | null
           transmission: string | null
           updated_at: string
           user_id: string
@@ -79,12 +131,17 @@ export type Database = {
           is_featured?: boolean | null
           is_new?: boolean | null
           is_premium?: boolean | null
+          last_top_spot_viewed?: string | null
           mileage?: string | null
           model: string
           phone?: string | null
           price: number
+          priority_score?: number | null
           status?: string | null
+          times_shown_top?: number | null
           title: string
+          top_spot?: boolean | null
+          top_spot_until?: string | null
           transmission?: string | null
           updated_at?: string
           user_id: string
@@ -104,12 +161,17 @@ export type Database = {
           is_featured?: boolean | null
           is_new?: boolean | null
           is_premium?: boolean | null
+          last_top_spot_viewed?: string | null
           mileage?: string | null
           model?: string
           phone?: string | null
           price?: number
+          priority_score?: number | null
           status?: string | null
+          times_shown_top?: number | null
           title?: string
+          top_spot?: boolean | null
+          top_spot_until?: string | null
           transmission?: string | null
           updated_at?: string
           user_id?: string
@@ -324,6 +386,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      boost_ad_to_top_spot: {
+        Args: {
+          ad_id_param: string
+          user_id_param: string
+          hours_duration?: number
+        }
+        Returns: Json
+      }
+      calculate_ad_priority_score: {
+        Args: { ad_id_param: string }
+        Returns: number
+      }
+      can_boost_ad: {
+        Args: { ad_id_param: string; user_id_param: string }
+        Returns: Json
+      }
+      cleanup_expired_top_spots: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       deduct_points: {
         Args: { user_id_param: string; points_to_deduct: number }
         Returns: boolean
@@ -331,6 +413,10 @@ export type Database = {
       generate_unique_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      record_ad_view: {
+        Args: { ad_id_param: string; viewer_user_id?: string }
+        Returns: undefined
       }
     }
     Enums: {

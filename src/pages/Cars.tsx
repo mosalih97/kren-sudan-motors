@@ -23,47 +23,49 @@ const Cars = () => {
   const fetchCars = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("ads")
-        .select(`
-          *,
-          profiles!ads_user_id_fkey(
-            user_id,
-            display_name,
-            avatar_url,
-            membership_type
-          )
-        `)
-        .eq("status", "active");
+      // استخدام Edge Function للحصول على الإعلانات مرتبة حسب الأولوية
+      const { data: response, error } = await supabase.functions.invoke('get-prioritized-ads', {
+        method: 'GET'
+      });
 
-      // Apply sorting
-      switch (sortBy) {
-        case "newest":
-          query = query.order("created_at", { ascending: false });
-          break;
-        case "oldest":
-          query = query.order("created_at", { ascending: true });
-          break;
-        case "price_low":
-          query = query.order("price", { ascending: true });
-          break;
-        case "price_high":
-          query = query.order("price", { ascending: false });
-          break;
-        case "year_new":
-          query = query.order("year", { ascending: false });
-          break;
-        case "year_old":
-          query = query.order("year", { ascending: true });
-          break;
-        default:
-          query = query.order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error fetching cars:", error);
+        toast({
+          title: "خطأ في التحميل",
+          description: "حدث خطأ أثناء تحميل السيارات",
+          variant: "destructive"
+        });
+        return;
       }
 
-      const { data, error } = await query;
+      let cars = response?.ads || [];
 
-      if (error) throw error;
-      setCars(data || []);
+      // Apply sorting if not using prioritized ordering
+      switch (sortBy) {
+        case "newest":
+          cars = cars.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          break;
+        case "oldest":
+          cars = cars.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          break;
+        case "price_low":
+          cars = cars.sort((a: any, b: any) => a.price - b.price);
+          break;
+        case "price_high":
+          cars = cars.sort((a: any, b: any) => b.price - a.price);
+          break;
+        case "year_new":
+          cars = cars.sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
+          break;
+        case "year_old":
+          cars = cars.sort((a: any, b: any) => (a.year || 0) - (b.year || 0));
+          break;
+        default:
+          // للترتيب الافتراضي، استخدم الترتيب حسب الأولوية
+          break;
+      }
+
+      setCars(cars);
     } catch (error) {
       console.error("Error fetching cars:", error);
       toast({
@@ -199,6 +201,11 @@ const Cars = () => {
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
                   creditsRequired={1}
+                  topSpot={car.top_spot}
+                  topSpotUntil={car.top_spot_until}
+                  displayTier={car.display_tier}
+                  userId={car.user_id}
+                  showBoostButton={true}
                   seller={car.profiles ? {
                     id: car.profiles.user_id,
                     display_name: car.profiles.display_name,

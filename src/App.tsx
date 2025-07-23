@@ -14,6 +14,7 @@ import AdDetails from "./pages/AdDetails";
 import SellerAds from "./pages/SellerAds";
 import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
+import BoostAd from "./pages/BoostAd";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Notifications />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/boost-ad/:id" 
+              element={
+                <ProtectedRoute>
+                  <BoostAd />
                 </ProtectedRoute>
               } 
             />
