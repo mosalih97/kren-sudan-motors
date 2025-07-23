@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +19,11 @@ const UploadReceipt = () => {
   const [whiteReceiptFile, setWhiteReceiptFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  // رقم الحساب المختصر (7 خانات) للعرض
+  const displayAccountNumber = "3689929";
+  // رقم الحساب الكامل (16 خانة) للفحص الخلفي
+  const fullAccountNumber = "0913 0368 9929 0001";
 
   // جلب بيانات المستخدم من قاعدة البيانات
   useEffect(() => {
@@ -124,7 +128,7 @@ const UploadReceipt = () => {
         .insert({
           user_id: user.id,
           membership_id: membershipId,
-          receipt_url: JSON.stringify(receiptUrls) // حفظ الروابط كـ JSON
+          receipt_url: JSON.stringify(receiptUrls)
         });
 
       if (insertError) {
@@ -230,7 +234,7 @@ const UploadReceipt = () => {
                   <p>لضمان تفعيل اشتراكك المميز تلقائيًا في تطبيق "الكرين"، يجب اتباع التعليمات التالية بدقة:</p>
                   
                   <ol className="list-decimal list-inside space-y-1 mt-2">
-                    <li>قم بالتحويل إلى رقم الحساب: <strong>0913 0368 9929 0001</strong></li>
+                    <li>قم بالتحويل إلى رقم الحساب: <strong>{displayAccountNumber}</strong></li>
                     <li>اسم المستفيد: <strong>محمد الامين منتصر صالح عبدالقادر</strong></li>
                     <li>يجب كتابة رقم عضويتك (ID المكون من 8 أرقام) في خانة التعليق</li>
                     <li>المبلغ المطلوب: <strong>25,000 جنيه سوداني</strong></li>
@@ -258,7 +262,7 @@ const UploadReceipt = () => {
             <Alert>
               <AlertDescription>
                 <div className="space-y-2 text-sm">
-                  <p><strong>رقم الحساب:</strong> 0913 0368 9929 0001</p>
+                  <p><strong>رقم الحساب:</strong> {displayAccountNumber}</p>
                   <p><strong>اسم المستفيد:</strong> محمد الامين منتصر صالح عبدالقادر</p>
                   <p><strong>المبلغ:</strong> 25,000 جنيه سوداني</p>
                   <p><strong>التعليق:</strong> {membershipId}</p>

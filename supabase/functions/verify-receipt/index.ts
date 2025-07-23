@@ -135,18 +135,27 @@ serve(async (req) => {
     const extractedText = visionData.responses[0].textAnnotations[0].description
     console.log('النص المستخرج:', extractedText)
 
-    // البحث عن البيانات المطلوبة
-    const accountNumberPattern = /0913\s*0368\s*9929\s*0001/
+    // البحث عن البيانات المطلوبة - استخدام رقم الحساب الكامل للفحص
+    const fullAccountNumber = "0913 0368 9929 0001"
+    const accountNumberPattern = new RegExp(fullAccountNumber.replace(/\s/g, '\\s*'))
+    
+    // البحث عن رقم الحساب المختصر أيضاً في حالة عدم ظهور الرقم الكامل
+    const shortAccountNumberPattern = /3689929/
+    
     const beneficiaryPattern = /محمد الامين منتصر صالح عبدالقادر/
     const amountPattern = /25000|25,000|٢٥٠٠٠|٢٥،٠٠٠/
     const membershipIdPattern = /\b\d{8}\b/
 
-    const hasAccountNumber = accountNumberPattern.test(extractedText)
+    const hasFullAccountNumber = accountNumberPattern.test(extractedText)
+    const hasShortAccountNumber = shortAccountNumberPattern.test(extractedText)
+    const hasAccountNumber = hasFullAccountNumber || hasShortAccountNumber
     const hasBeneficiary = beneficiaryPattern.test(extractedText)
     const hasAmount = amountPattern.test(extractedText)
     const membershipIdMatch = extractedText.match(membershipIdPattern)
 
     console.log('فحص البيانات:', {
+      hasFullAccountNumber,
+      hasShortAccountNumber,
       hasAccountNumber,
       hasBeneficiary,
       hasAmount,
