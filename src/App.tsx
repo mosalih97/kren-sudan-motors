@@ -16,7 +16,7 @@ import SellerAds from "./pages/SellerAds";
 import BoostAd from "./pages/BoostAd";
 import BankSubscription from "./pages/BankSubscription";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import "./App.css";
 
 const queryClient = new QueryClient();
