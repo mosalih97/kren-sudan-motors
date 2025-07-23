@@ -76,6 +76,15 @@ const AddAd = () => {
         .eq('user_id', userId)
         .single();
       setProfile(data);
+      
+      // ملء أرقام الهاتف والواتساب تلقائياً إذا كانت موجودة في الملف الشخصي
+      if (data) {
+        setAdData(prev => ({
+          ...prev,
+          phone: data.phone || prev.phone,
+          whatsapp: data.whatsapp || prev.whatsapp
+        }));
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -150,6 +159,18 @@ const AddAd = () => {
     setLoading(true);
     
     try {
+      // تنسيق أرقام الهاتف والواتساب لقاعدة البيانات (إضافة كود الدولة وحذف الصفر)
+      const formatPhoneForDB = (phone: string) => {
+        if (!phone) return '';
+        // إزالة أي أحرف غير رقمية
+        const cleanPhone = phone.replace(/\D/g, '');
+        // إذا كان الرقم يبدأ بـ 0 وطوله 10 خانات، إزالة الصفر وإضافة كود الدولة
+        if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+          return '+249' + cleanPhone.substring(1);
+        }
+        return phone;
+      };
+
       // إدراج الإعلان أولاً
       const { error } = await supabase
         .from("ads")
@@ -162,8 +183,8 @@ const AddAd = () => {
           year: parseInt(adData.year),
           price: parseInt(adData.price),
           city: adData.city,
-          phone: adData.phone,
-          whatsapp: adData.whatsapp,
+          phone: formatPhoneForDB(adData.phone),
+          whatsapp: formatPhoneForDB(adData.whatsapp),
           mileage: adData.mileage,
           fuel_type: adData.fuelType,
           transmission: adData.transmission,
@@ -439,29 +460,37 @@ const AddAd = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">رقم الهاتف</Label>
+                      <Label htmlFor="phone">رقم الهاتف *</Label>
                       <div className="relative">
                         <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="phone"
-                          placeholder="+249 123 456 789"
+                          type="tel"
+                          placeholder="09XXXXXXXX"
                           value={adData.phone}
                           onChange={(e) => setAdData({...adData, phone: e.target.value})}
                           className="pr-10"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          required
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="whatsapp">رقم الواتساب</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp">رقم الواتساب *</Label>
                       <div className="relative">
                         <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="whatsapp"
-                          placeholder="+249 123 456 789"
+                          type="tel"
+                          placeholder="09XXXXXXXX"
                           value={adData.whatsapp}
                           onChange={(e) => setAdData({...adData, whatsapp: e.target.value})}
                           className="pr-10"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          required
                         />
                       </div>
                     </div>

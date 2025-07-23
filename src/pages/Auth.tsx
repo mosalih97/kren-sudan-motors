@@ -26,6 +26,7 @@ const Auth = () => {
     confirmPassword: "",
     displayName: "",
     phone: "",
+    whatsapp: "",
     city: ""
   });
 
@@ -130,6 +131,7 @@ const Auth = () => {
           data: {
             display_name: signupData.displayName,
             phone: signupData.phone,
+            whatsapp: signupData.whatsapp,
             city: signupData.city
           }
         }
@@ -274,16 +276,37 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-phone">رقم الهاتف</Label>
+                    <Label htmlFor="signup-phone">رقم الهاتف *</Label>
                     <div className="relative">
                       <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-phone"
                         type="tel"
-                        placeholder="أدخل رقم هاتفك"
+                        placeholder="09XXXXXXXX"
                         value={signupData.phone}
                         onChange={(e) => setSignupData({...signupData, phone: e.target.value})}
                         className="pr-10"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-whatsapp">رقم الواتساب *</Label>
+                    <div className="relative">
+                      <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-whatsapp"
+                        type="tel"
+                        placeholder="09XXXXXXXX"
+                        value={signupData.whatsapp}
+                        onChange={(e) => setSignupData({...signupData, whatsapp: e.target.value})}
+                        className="pr-10"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
+                        required
                       />
                     </div>
                   </div>

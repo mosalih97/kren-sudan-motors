@@ -69,6 +69,16 @@ const AdDetails = () => {
     return uuidRegex.test(uuid);
   };
 
+  // دالة لتنسيق رقم الهاتف للعرض (تحويل من +249XXXXXXXXX إلى 09XXXXXXXX)
+  const formatPhoneForDisplay = (phone: string) => {
+    if (!phone) return '';
+    // إذا كان الرقم يبدأ بـ +249، إزالة كود الدولة وإضافة 0
+    if (phone.startsWith('+249')) {
+      return '0' + phone.substring(4);
+    }
+    return phone;
+  };
+
   const fetchUserProfile = async () => {
     if (!user) return;
     
@@ -605,7 +615,7 @@ const AdDetails = () => {
                       disabled={user?.id === ad.user_id}
                     >
                       <Phone className="h-4 w-4 ml-2" />
-                      {revealedContacts.phone && ad.phone ? ad.phone : 'اتصال'}
+                      {revealedContacts.phone && ad.phone ? formatPhoneForDisplay(ad.phone) : 'اتصال'}
                     </Button>
                     <Button 
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
@@ -614,7 +624,7 @@ const AdDetails = () => {
                     >
                       <WhatsAppIcon />
                       <span className="ml-2">
-                        {revealedContacts.whatsapp && ad.whatsapp ? ad.whatsapp : 'واتساب'}
+                        {revealedContacts.whatsapp && ad.whatsapp ? formatPhoneForDisplay(ad.whatsapp) : 'واتساب'}
                       </span>
                     </Button>
                   </div>
