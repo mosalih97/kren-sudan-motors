@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
 import { CarCard } from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
