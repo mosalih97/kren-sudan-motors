@@ -52,6 +52,7 @@ export type Database = {
           id: string
           images: string[] | null
           is_featured: boolean | null
+          is_new: boolean | null
           is_premium: boolean | null
           mileage: string | null
           model: string
@@ -76,6 +77,7 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_featured?: boolean | null
+          is_new?: boolean | null
           is_premium?: boolean | null
           mileage?: string | null
           model: string
@@ -100,6 +102,7 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_featured?: boolean | null
+          is_new?: boolean | null
           is_premium?: boolean | null
           mileage?: string | null
           model?: string
