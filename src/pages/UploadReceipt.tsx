@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,7 +86,7 @@ const UploadReceipt = () => {
     try {
       console.log('بدء رفع الإيصالات...');
       
-      const receiptUrls = [];
+      const receiptPaths = [];
 
       // رفع الإيصال الأخضر
       const greenFileExt = greenReceiptFile.name.split('.').pop();
@@ -107,12 +106,8 @@ const UploadReceipt = () => {
         throw greenUploadError;
       }
 
-      const { data: { publicUrl: greenUrl } } = supabase.storage
-        .from('bank-receipts')
-        .getPublicUrl(greenFileName);
-
-      receiptUrls.push(greenUrl);
-      console.log('تم رفع الإيصال الأخضر بنجاح:', greenUrl);
+      receiptPaths.push(greenFileName);
+      console.log('تم رفع الإيصال الأخضر بنجاح:', greenFileName);
 
       // رفع الإيصال الأبيض
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
@@ -132,12 +127,8 @@ const UploadReceipt = () => {
         throw whiteUploadError;
       }
 
-      const { data: { publicUrl: whiteUrl } } = supabase.storage
-        .from('bank-receipts')
-        .getPublicUrl(whiteFileName);
-
-      receiptUrls.push(whiteUrl);
-      console.log('تم رفع الإيصال الأبيض بنجاح:', whiteUrl);
+      receiptPaths.push(whiteFileName);
+      console.log('تم رفع الإيصال الأبيض بنجاح:', whiteFileName);
 
       // حفظ الطلب في قاعدة البيانات
       console.log('حفظ الطلب في قاعدة البيانات...');
@@ -146,7 +137,7 @@ const UploadReceipt = () => {
         .insert({
           user_id: user.id,
           membership_id: membershipId,
-          receipt_url: JSON.stringify(receiptUrls)
+          receipt_url: JSON.stringify(receiptPaths)
         });
 
       if (insertError) {
@@ -161,13 +152,13 @@ const UploadReceipt = () => {
       console.log('بدء التحقق من الإيصالات...');
       
       // التحقق من كل إيصال
-      for (const [index, imageUrl] of receiptUrls.entries()) {
-        console.log(`التحقق من الإيصال ${index + 1}:`, imageUrl);
+      for (const [index, imagePath] of receiptPaths.entries()) {
+        console.log(`التحقق من الإيصال ${index + 1}:`, imagePath);
         
         const { data: verifyData, error: verifyError } = await supabase.functions
           .invoke('verify-receipt', {
             body: { 
-              imageUrl,
+              imagePath,
               membershipId,
               receiptType: index === 0 ? 'green' : 'white'
             }
