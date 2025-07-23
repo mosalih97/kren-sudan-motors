@@ -368,7 +368,7 @@ const SellerAds = () => {
                   image={ad.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=800&h=600&fit=crop"}
                   isPremium={ad.is_premium}
                   isFeatured={ad.is_featured}
-                  isNew={ad.is_new}
+                  isNew={ad.condition === "جديدة"}
                   viewCount={ad.view_count}
                   seller={{
                     id: ad.profiles?.user_id || "",
