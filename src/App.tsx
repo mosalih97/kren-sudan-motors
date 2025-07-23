@@ -1,58 +1,84 @@
-
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Index from './pages/Index';
-import AdDetails from './pages/AdDetails';
-import Profile from './pages/Profile';
-import Auth from './pages/Auth';
-import AddAd from './pages/AddAd';
-import BoostAd from './pages/BoostAd';
-import Cars from './pages/Cars';
-import Messages from './pages/Messages';
-import Notifications from './pages/Notifications';
-import Header from './components/Header';
-import { Toaster } from "@/components/ui/toaster"
-import BankSubscription from './pages/BankSubscription';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
+import AddAd from "./pages/AddAd";
+import Cars from "./pages/Cars";
+import AdDetails from "./pages/AdDetails";
+import SellerAds from "./pages/SellerAds";
+import Messages from "./pages/Messages";
+import Notifications from "./pages/Notifications";
+import BoostAd from "./pages/BoostAd";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  if (!user) {
-    return <Navigate to="/auth" />;
-  }
-  return <>{children}</>;
-};
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <div className="min-h-screen bg-background">
-            <Header />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/cars" element={<Cars />} />
-                <Route path="/ad/:id" element={<AdDetails />} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/ads/new" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
-                <Route path="/boost-ad/:id" element={<ProtectedRoute><BoostAd /></ProtectedRoute>} />
-                <Route path="/bank-subscription" element={<ProtectedRoute><BankSubscription /></ProtectedRoute>} />
-                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              </Routes>
-            </main>
-            <Toaster />
-          </div>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  );
-}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/cars" element={<Cars />} />
+            <Route path="/ads/:id" element={<AdDetails />} />
+            <Route path="/seller/:sellerId" element={<SellerAds />} />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add-ad" 
+              element={
+                <ProtectedRoute>
+                  <AddAd />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/messages" 
+              element={
+                <ProtectedRoute>
+                  <Messages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/notifications" 
+              element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/boost-ad/:id" 
+              element={
+                <ProtectedRoute>
+                  <BoostAd />
+                </ProtectedRoute>
+              } 
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;

@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
 import { CarCard } from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { SlidersHorizontal, Grid, List, Car, Loader2 } from "lucide-react";
+import { SlidersHorizontal, Grid, List, Car } from "lucide-react";
 
 const Cars = () => {
   const [cars, setCars] = useState<any[]>([]);
@@ -23,43 +23,24 @@ const Cars = () => {
   const fetchCars = async () => {
     setLoading(true);
     try {
-      console.log("Fetching cars...");
-      
-      // Try to use the Edge Function first
-      const { data: response, error: functionError } = await supabase.functions.invoke('get-prioritized-ads', {
+      // استخدام Edge Function للحصول على الإعلانات مرتبة حسب الأولوية
+      const { data: response, error } = await supabase.functions.invoke('get-prioritized-ads', {
         method: 'GET'
       });
 
-      let cars = [];
-      
-      if (functionError) {
-        console.warn("Edge function failed, falling back to direct query:", functionError);
-        
-        // Fallback to direct query
-        const { data: directData, error: directError } = await supabase
-          .from('ads')
-          .select(`
-            *,
-            profiles (
-              user_id,
-              display_name,
-              avatar_url,
-              membership_type
-            )
-          `)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
-
-        if (directError) {
-          throw directError;
-        }
-        
-        cars = directData || [];
-      } else {
-        cars = response?.ads || [];
+      if (error) {
+        console.error("Error fetching cars:", error);
+        toast({
+          title: "خطأ في التحميل",
+          description: "حدث خطأ أثناء تحميل السيارات",
+          variant: "destructive"
+        });
+        return;
       }
 
-      // Apply sorting
+      let cars = response?.ads || [];
+
+      // Apply sorting if not using prioritized ordering
       switch (sortBy) {
         case "newest":
           cars = cars.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -80,16 +61,16 @@ const Cars = () => {
           cars = cars.sort((a: any, b: any) => (a.year || 0) - (b.year || 0));
           break;
         default:
+          // للترتيب الافتراضي، استخدم الترتيب حسب الأولوية
           break;
       }
 
       setCars(cars);
-      console.log("Cars loaded successfully:", cars.length);
     } catch (error) {
       console.error("Error fetching cars:", error);
       toast({
         title: "خطأ في التحميل",
-        description: "حدث خطأ أثناء تحميل السيارات. يرجى المحاولة مرة أخرى.",
+        description: "حدث خطأ أثناء تحميل السيارات",
         variant: "destructive"
       });
     } finally {
@@ -100,12 +81,9 @@ const Cars = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
+        <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">جاري تحميل السيارات...</h2>
-            <p className="text-gray-600">يرجى الانتظار بينما نجلب لك أفضل العروض</p>
-          </div>
+          <div className="text-center">جاري التحميل...</div>
         </div>
       </div>
     );
@@ -113,14 +91,16 @@ const Cars = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
+      
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="text-4xl font-bold text-foreground mb-4">
               تصفح السيارات
             </h1>
-            <p className="text-xl text-blue-100">
+            <p className="text-lg text-muted-foreground">
               اكتشف آلاف السيارات المتاحة للبيع في جميع أنحاء السودان
             </p>
           </div>
@@ -186,7 +166,7 @@ const Cars = () => {
 
           {/* Results */}
           {cars.length === 0 ? (
-            <Card className="border-0 shadow-lg">
+            <Card className="card-gradient border-0 shadow-lg">
               <CardContent className="p-12 text-center">
                 <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-xl font-bold mb-2">لا توجد سيارات</h3>
@@ -240,7 +220,7 @@ const Cars = () => {
           {/* Load More Button */}
           {cars.length > 0 && (
             <div className="text-center mt-8">
-              <Button variant="outline" size="lg" onClick={fetchCars}>
+              <Button variant="outline" size="lg">
                 عرض المزيد من السيارات
               </Button>
             </div>

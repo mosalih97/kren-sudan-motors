@@ -1,216 +1,332 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, Zap, Crown, Star, MessageCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { Header } from "@/components/Header";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { Clock, Star, Zap, CreditCard, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import Header from '@/components/Header';
-import { useQuery } from '@tanstack/react-query';
-
-interface Ad {
+interface BoostPlan {
   id: string;
-  created_at: string;
-  updated_at: string;
-  title: string;
+  name: string;
   description: string;
-  price: number;
-  year: number;
-  condition: string;
-  city: string;
-  phone: string;
-  whatsapp: string;
-  images: string[];
-  status: string;
-  brand: string;
-  model: string;
-  mileage: string;
-  fuel_type: string;
-  transmission: string;
-  user_id: string;
-  is_featured: boolean;
-  is_premium: boolean;
-  is_new: boolean;
-  view_count: number;
-  top_spot: boolean;
-  top_spot_until: string | null;
-  times_shown_top: number;
-  last_top_spot_viewed: string | null;
-  priority_score: number;
+  duration: number; // in hours
+  price: number; // in credits
+  icon: any;
+  features: string[];
+  popular?: boolean;
 }
 
-const BoostAd = () => {
-  const { id } = useParams<{ id: string }>();
+const boostPlans: BoostPlan[] = [
+  {
+    id: "basic",
+    name: "تعزيز أساسي",
+    description: "ظهور في المقدمة لمدة 24 ساعة",
+    duration: 24,
+    price: 5,
+    icon: Zap,
+    features: [
+      "ظهور في أعلى النتائج لمدة يوم كامل",
+      "زيادة المشاهدات بنسبة 300%",
+      "أولوية في البحث"
+    ]
+  },
+  {
+    id: "premium",
+    name: "تعزيز مميز",
+    description: "ظهور مميز لمدة 72 ساعة",
+    duration: 72,
+    price: 12,
+    icon: Crown,
+    features: [
+      "ظهور مميز لمدة 3 أيام",
+      "زيادة المشاهدات بنسبة 500%",
+      "شارة مميز على الإعلان",
+      "أولوية قصوى في البحث"
+    ],
+    popular: true
+  },
+  {
+    id: "ultimate",
+    name: "تعزيز احترافي",
+    description: "تعزيز شامل لمدة أسبوع",
+    duration: 168, // 7 days
+    price: 25,
+    icon: Star,
+    features: [
+      "ظهور مميز لمدة أسبوع كامل",
+      "زيادة المشاهدات بنسبة 800%",
+      "شارة احترافي مميز",
+      "تثبيت في أعلى النتائج",
+      "دعم فني مخصص"
+    ]
+  }
+];
+
+export default function BoostAd() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [ad, setAd] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [boosting, setBoosting] = useState<string | null>(null);
+  const [canBoost, setCanBoost] = useState<any>(null);
 
-  const { data: ad, isLoading, isError } = useQuery({
-    queryKey: ['ad', id],
-    queryFn: async () => {
-      if (!id) {
-        throw new Error('Ad ID is required');
-      }
+  useEffect(() => {
+    if (!user || !id) return;
+    
+    fetchAdAndProfile();
+    checkBoostEligibility();
+  }, [user, id]);
 
-      const { data, error } = await supabase
+  const fetchAdAndProfile = async () => {
+    try {
+      // جلب الإعلان
+      const { data: adData, error: adError } = await supabase
         .from('ads')
         .select('*')
         .eq('id', id)
+        .eq('user_id', user?.id)
         .single();
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (adError) throw adError;
+      setAd(adData);
 
-      return data as Ad;
-    }
-  });
+      // جلب بيانات المستخدم
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-    }
-  }, [user, navigate]);
+      if (profileError) throw profileError;
+      setProfile(profileData);
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8">
-        <Header />
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">جاري تحميل الإعلان...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || !ad) {
-    return (
-      <div className="container mx-auto py-8">
-        <Header />
-        <div className="text-center">
-          <p className="text-red-500">خطأ في تحميل الإعلان</p>
-        </div>
-      </div>
-    );
-  }
-
-  const isBoosted = ad.top_spot && ad.top_spot_until !== null && new Date(ad.top_spot_until) > new Date();
-
-  const handleBoost = async () => {
-    if (!id) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('boost-ad', {
-        body: { 
-          ad_id: id,
-          hours_duration: 72 // 3 أيام
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data?.success) {
-        toast({
-          title: "تم تعزيز الإعلان بنجاح",
-          description: "سيظهر إعلانك في أعلى القائمة لمدة 3 أيام.",
-        });
-        navigate(`/ad/${id}`);
-      } else {
-        throw new Error(data?.message || 'فشل في تعزيز الإعلان');
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "فشل تعزيز الإعلان",
-        description: error.message,
-      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error("فشل في جلب بيانات الإعلان");
+      navigate('/profile');
     } finally {
       setLoading(false);
     }
   };
 
+  const checkBoostEligibility = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('boost-ad', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: new URLSearchParams({ ad_id: id! }).toString()
+      });
+
+      if (error) throw error;
+      setCanBoost(data);
+    } catch (error) {
+      console.error('Error checking boost eligibility:', error);
+    }
+  };
+
+  const handleBoost = async (plan: BoostPlan) => {
+    if (!user || !ad) return;
+
+    setBoosting(plan.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('boost-ad', {
+        body: JSON.stringify({
+          ad_id: ad.id,
+          hours_duration: plan.duration
+        })
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("تم تعزيز الإعلان بنجاح!");
+        navigate('/profile');
+      } else {
+        toast.error(data?.message || "فشل في تعزيز الإعلان");
+      }
+    } catch (error) {
+      console.error('Error boosting ad:', error);
+      toast.error("حدث خطأ أثناء تعزيز الإعلان");
+    } finally {
+      setBoosting(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">جاري التحميل...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ad) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">الإعلان غير موجود</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isPremiumUser = profile?.membership_type === 'premium';
+
   return (
-    <div className="container mx-auto py-8">
+    <div className="min-h-screen bg-background">
       <Header />
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">تعزيز الإعلان</CardTitle>
-          <CardDescription>اجعل إعلانك يظهر في أعلى القائمة لمدة 3 أيام.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">
-              {ad.title}
-            </h3>
-            <p className="text-gray-500">
-              {ad.description}
-            </p>
-          </div>
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate(-1)}
+            className="mb-4"
+          >
+            <ArrowLeft className="ml-2 h-4 w-4" />
+            العودة
+          </Button>
+          
+          <h1 className="text-3xl font-bold mb-2">تعزيز الإعلان</h1>
+          <p className="text-muted-foreground">
+            اختر خطة التعزيز المناسبة لإعلانك: {ad.title}
+          </p>
+        </div>
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <p className="text-sm">
-                السعر: <Badge>{ad.price.toLocaleString()} جنيه</Badge>
-              </p>
+        {/* معلومات المستخدم */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>معلومات الحساب</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div>
+                <p className="font-medium">الكريديت المتاح: {profile?.credits || 0}</p>
+                <p className="text-sm text-muted-foreground">
+                  نوع العضوية: {isPremiumUser ? "مميز" : "عادي"}
+                  {isPremiumUser && <Badge variant="secondary" className="mr-2">مجاني للأعضاء المميزين</Badge>}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <p className="text-sm">
-                تاريخ الإنشاء: {new Date(ad.created_at).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {isBoosted ? (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                إعلانك مُعزز ويظهر في أعلى القائمة حتى: {new Date(ad.top_spot_until!).toLocaleDateString()}
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <>
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  هل أنت متأكد أنك تريد تعزيز الإعلان؟ سيتم خصم 60 نقطة من رصيدك وسيظهر إعلانك في أعلى القائمة لمدة 3 أيام.
-                </AlertDescription>
-              </Alert>
-              <Button
-                className="w-full"
-                onClick={handleBoost}
-                disabled={loading}
+        {/* رسالة عدم القدرة على التعزيز */}
+        {canBoost && !canBoost.can_boost && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive font-medium">{canBoost.reason}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* خطط التعزيز */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {boostPlans.map((plan) => {
+            const Icon = plan.icon;
+            const actualPrice = isPremiumUser ? 0 : plan.price;
+            const canAfford = isPremiumUser || (profile?.credits || 0) >= plan.price;
+            const isEligible = canBoost?.can_boost;
+            
+            return (
+              <Card 
+                key={plan.id} 
+                className={`relative ${plan.popular ? 'border-primary' : ''}`}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    جاري تعزيز الإعلان...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-4 w-4" />
-                    تعزيز الإعلان (60 نقطة)
-                  </>
+                {plan.popular && (
+                  <Badge className="absolute -top-2 right-4 bg-primary">
+                    الأكثر شعبية
+                  </Badge>
                 )}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                
+                <CardHeader className="text-center">
+                  <Icon className="w-12 h-12 mx-auto mb-4 text-primary" />
+                  <CardTitle>{plan.name}</CardTitle>
+                  <CardDescription>{plan.description}</CardDescription>
+                  
+                  <div className="text-2xl font-bold">
+                    {actualPrice === 0 ? (
+                      <span className="text-green-600">مجاني</span>
+                    ) : (
+                      <span>{actualPrice} كريديت</span>
+                    )}
+                    {!isPremiumUser && plan.price > 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        ({plan.duration} ساعة)
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button 
+                    className="w-full"
+                    onClick={() => handleBoost(plan)}
+                    disabled={!isEligible || !canAfford || boosting === plan.id}
+                  >
+                    {boosting === plan.id ? "جاري التعزيز..." : "تعزيز الإعلان"}
+                  </Button>
+                  
+                  {!canAfford && !isPremiumUser && (
+                    <p className="text-sm text-destructive mt-2 text-center">
+                      كريديت غير كافي
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <Separator className="my-8" />
+
+        {/* معلومات التواصل */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              تحتاج مساعدة؟
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              للحصول على خدمات التعزيز والترقية، تواصل معنا عبر واتساب
+            </p>
+            <Button asChild>
+              <a 
+                href="https://wa.me/249123456789?text=أريد%20تعزيز%20إعلاني" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                تواصل عبر واتساب
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
-};
-
-export default BoostAd;
+}
