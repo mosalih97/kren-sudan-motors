@@ -17,7 +17,6 @@ serve(async (req) => {
   }
 
   try {
-    // استلام البيانات من الطلب
     const requestBody = await req.json()
     console.log('استلام البيانات:', JSON.stringify(requestBody, null, 2))
     
@@ -31,16 +30,8 @@ serve(async (req) => {
       )
     }
 
-    if (!membershipId) {
-      console.error('رقم العضوية مفقود')
-      return new Response(
-        JSON.stringify({ success: false, error: 'رقم العضوية مطلوب' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     console.log('مسار الصورة:', imagePath)
-    console.log('رقم العضوية:', membershipId)
+    console.log('رقم العضوية المرسل:', membershipId)
 
     // إعداد Supabase client
     const supabase = createClient(
@@ -138,10 +129,8 @@ serve(async (req) => {
     
     // تنظيف المفتاح الخاص
     let privateKeyPem = serviceAccount.private_key
-    // إزالة الرؤوس والتذييلات
     privateKeyPem = privateKeyPem.replace(/-----BEGIN PRIVATE KEY-----/g, '')
     privateKeyPem = privateKeyPem.replace(/-----END PRIVATE KEY-----/g, '')
-    // إزالة جميع المسافات والأسطر الجديدة
     privateKeyPem = privateKeyPem.replace(/\s+/g, '')
     
     // تحويل base64 إلى ArrayBuffer
@@ -272,161 +261,80 @@ serve(async (req) => {
     }
 
     const extractedText = visionData.responses[0].textAnnotations[0].description
-    console.log('النص المستخرج:', extractedText)
+    console.log('النص المستخرج الكامل:', extractedText)
 
-    // البحث عن البيانات المطلوبة
-    const fullAccountNumber = "0913 0368 9929 0001"
-    const shortAccountNumber = "3689929"
+    // البحث عن رقم المستخدم المكون من 8 أرقام في النص الكامل
+    console.log('البحث عن رقم المستخدم المكون من 8 أرقام...')
+    const userIdMatch = extractedText.match(/\b\d{8}\b/)
     
-    // البحث عن رقم الحساب
-    console.log('البحث عن رقم الحساب...')
-    const accountPatterns = [
-      /0913\s*0368\s*9929\s*0001/,
-      /09130368992900001/,
-      /3689929/
-    ]
-    
-    const hasAccountNumber = accountPatterns.some(pattern => pattern.test(extractedText))
-    console.log('وجود رقم الحساب:', hasAccountNumber)
-    
-    // البحث عن اسم المستفيد
-    console.log('البحث عن اسم المستفيد...')
-    const beneficiaryPatterns = [
-      /محمد\s*الامين\s*منتصر\s*صالح\s*عبدالقادر/,
-      /محمد\s*الامين/,
-      /منتصر\s*صالح/,
-      /عبدالقادر/
-    ]
-    
-    const hasBeneficiary = beneficiaryPatterns.some(pattern => pattern.test(extractedText))
-    console.log('وجود اسم المستفيد:', hasBeneficiary)
-    
-    // البحث عن المبلغ
-    console.log('البحث عن المبلغ...')
-    const amountPatterns = [
-      /25000/,
-      /25,000/,
-      /25\.000/,
-      /٢٥٠٠٠/,
-      /٢٥،٠٠٠/
-    ]
-    
-    const hasAmount = amountPatterns.some(pattern => pattern.test(extractedText))
-    console.log('وجود المبلغ:', hasAmount)
-    
-    // البحث عن رقم العضوية
-    console.log('البحث عن رقم العضوية:', membershipId)
-    const membershipPattern = new RegExp(membershipId)
-    const hasMembershipId = membershipPattern.test(extractedText)
-    console.log('وجود رقم العضوية:', hasMembershipId)
-
-    // التحقق من وجود البيانات الأساسية
-    if (!hasAccountNumber || !hasBeneficiary || !hasAmount) {
-      const missingData = []
-      if (!hasAccountNumber) missingData.push('رقم الحساب')
-      if (!hasBeneficiary) missingData.push('اسم المستفيد')
-      if (!hasAmount) missingData.push('المبلغ')
-
-      console.log('بيانات مفقودة:', missingData)
+    if (!userIdMatch) {
+      console.log('لم يتم العثور على رقم مستخدم مكون من 8 أرقام')
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: `البيانات المطلوبة غير مكتملة: ${missingData.join(', ')}`,
+        JSON.stringify({ 
+          success: false, 
+          error: 'تعذر التعرف على رقم المستخدم من الإيصال. تأكد من أن الرقم ظاهر بوضوح في خانة التعليق وأن الصورة عالية الجودة.',
           extractedText: extractedText
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // إذا وجد رقم العضوية، تفعيل الاشتراك
-    if (hasMembershipId) {
-      console.log('تم العثور على رقم العضوية، تفعيل الاشتراك...')
-      
-      // البحث عن الطلب في قاعدة البيانات
-      const { data: submission, error: fetchError } = await supabase
-        .from('receipt_submissions')
-        .select('*')
-        .eq('membership_id', membershipId)
-        .eq('status', 'pending')
-        .maybeSingle()
+    const foundUserId = userIdMatch[0]
+    console.log('تم العثور على رقم المستخدم:', foundUserId)
 
-      if (fetchError) {
-        console.error('خطأ في جلب الطلب:', fetchError)
-        return new Response(
-          JSON.stringify({ success: false, error: 'خطأ في جلب الطلب' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
+    // التحقق من وجود المستخدم في قاعدة البيانات
+    console.log('البحث عن المستخدم في قاعدة البيانات...')
+    const { data: userProfile, error: userError } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, membership_type')
+      .eq('user_id_display', foundUserId)
+      .single()
 
-      if (!submission) {
-        console.log('لم يتم العثور على طلب مطابق')
-        return new Response(
-          JSON.stringify({ success: false, error: 'لم يتم العثور على طلب مطابق' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('تم العثور على الطلب:', submission.id)
-
-      // تحديث حالة الطلب
-      const { error: updateError } = await supabase
-        .from('receipt_submissions')
-        .update({
-          status: 'approved',
-          verified_at: new Date().toISOString(),
-          extracted_text: extractedText
-        })
-        .eq('id', submission.id)
-
-      if (updateError) {
-        console.error('خطأ في تحديث الطلب:', updateError)
-        return new Response(
-          JSON.stringify({ success: false, error: 'خطأ في تحديث الطلب' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // تفعيل الاشتراك المميز
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          membership_type: 'premium',
-          credits: 130,
-          premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        })
-        .eq('user_id', submission.user_id)
-
-      if (profileError) {
-        console.error('خطأ في تفعيل الاشتراك:', profileError)
-        return new Response(
-          JSON.stringify({ success: false, error: 'خطأ في تفعيل الاشتراك' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('تم تفعيل الاشتراك المميز بنجاح')
-
-      // الرد النهائي
+    if (userError || !userProfile) {
+      console.error('المستخدم غير موجود:', userError)
       return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
-          membershipId,
-          extractedText
+        JSON.stringify({ 
+          success: false, 
+          error: `المستخدم برقم ${foundUserId} غير موجود في النظام`,
+          foundUserId: foundUserId
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // إذا لم يتم العثور على رقم العضوية
-    console.log('لم يتم العثور على رقم العضوية في الإيصال')
+    console.log('تم العثور على المستخدم:', userProfile)
+
+    // تحديث حالة المستخدم إلى مميز
+    console.log('تحديث حالة المستخدم إلى مميز...')
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        membership_type: 'premium',
+        credits: 130,
+        premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      })
+      .eq('user_id', userProfile.user_id)
+
+    if (updateError) {
+      console.error('خطأ في تحديث المستخدم:', updateError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'خطأ في تحديث حالة المستخدم' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('تم تحديث حالة المستخدم بنجاح')
+
+    // الرد النهائي
     return new Response(
       JSON.stringify({
-        success: false,
-        message: 'تم التحقق من بيانات الإيصال، لكن لم يتم العثور على رقم العضوية',
-        extractedText
+        success: true,
+        message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
+        userId: foundUserId,
+        userName: userProfile.display_name,
+        extractedText: extractedText
       }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
