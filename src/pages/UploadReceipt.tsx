@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -206,10 +205,10 @@ const UploadReceipt = () => {
         navigate('/profile');
       } else {
         toast({
-          title: "تم رفع الإيصالات بنجاح",
-          description: "تم تفعيل الاشتراك المميز بنجاح بناءً على رقم العضوية",
+          variant: "destructive",
+          title: "الإيصالات خاطئة",
+          description: "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات",
         });
-        navigate('/profile');
       }
 
     } catch (error) {
