@@ -154,16 +154,29 @@ export function Header() {
                 {/* الملف الشخصي */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
+                    <Button variant="ghost" size="icon" className="rounded-full relative">
                       <User className="h-5 w-5" />
+                      {profile?.membership_type === 'premium' && (
+                        <Crown className="h-3 w-3 text-primary absolute -top-1 -right-1" />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-64">
                     <div className="p-2">
                       <p className="text-sm font-medium">
                         {profile?.display_name || user.email}
                       </p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Crown className="h-4 w-4 text-primary" />
+                        <span className="text-sm">{profile?.points || 0} نقطة</span>
+                        {profile?.membership_type === 'premium' && (
+                          <Badge variant="premium" className="text-xs">مميز</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        إعلانات شهرية: {profile?.monthly_ads_count || 0}/10
+                      </p>
                     </div>
                     <DropdownMenuSeparator />
                     <Link to="/profile">

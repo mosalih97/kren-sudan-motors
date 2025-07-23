@@ -564,12 +564,23 @@ const AdDetails = () => {
                         <p className="font-medium">{profile.city}</p>
                       </div>
                     )}
-                    {profile.is_premium && (
+                    {profile.membership_type === 'premium' && (
                       <Badge variant="premium" className="w-fit">
                         عضو مميز
                       </Badge>
                     )}
                   </div>
+                  
+                  <Separator className="my-4" />
+                  
+                  {/* زر تصفح إعلانات البائع */}
+                  <Button 
+                    variant="outline" 
+                    className="w-full bg-accent/10 hover:bg-accent/20 border-accent text-accent-foreground"
+                    onClick={() => navigate(`/seller/${profile.user_id}`)}
+                  >
+                    تصفح إعلانات البائع
+                  </Button>
                 </CardContent>
               </Card>
             )}

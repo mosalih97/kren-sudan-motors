@@ -25,7 +25,15 @@ const Cars = () => {
     try {
       let query = supabase
         .from("ads")
-        .select("*")
+        .select(`
+          *,
+          profiles!ads_user_id_fkey(
+            user_id,
+            display_name,
+            avatar_url,
+            membership_type
+          )
+        `)
         .eq("status", "active");
 
       // Apply sorting
@@ -191,6 +199,12 @@ const Cars = () => {
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
                   creditsRequired={1}
+                  seller={car.profiles ? {
+                    id: car.profiles.user_id,
+                    display_name: car.profiles.display_name,
+                    avatar_url: car.profiles.avatar_url,
+                    membership_type: car.profiles.membership_type
+                  } : undefined}
                 />
               ))}
             </div>
