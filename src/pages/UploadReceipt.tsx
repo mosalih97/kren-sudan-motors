@@ -85,17 +85,25 @@ const UploadReceipt = () => {
 
     setUploading(true);
     try {
+      console.log('بدء رفع الإيصالات...');
+      
       const receiptUrls = [];
 
       // رفع الإيصال الأخضر
       const greenFileExt = greenReceiptFile.name.split('.').pop();
-      const greenFileName = `${user.id}-green-${Date.now()}.${greenFileExt}`;
+      const greenFileName = `${user.id}/${Date.now()}-green.${greenFileExt}`;
+      
+      console.log('رفع الإيصال الأخضر:', greenFileName);
       
       const { data: greenUploadData, error: greenUploadError } = await supabase.storage
         .from('bank-receipts')
-        .upload(greenFileName, greenReceiptFile);
+        .upload(greenFileName, greenReceiptFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (greenUploadError) {
+        console.error('خطأ في رفع الإيصال الأخضر:', greenUploadError);
         throw greenUploadError;
       }
 
@@ -104,16 +112,23 @@ const UploadReceipt = () => {
         .getPublicUrl(greenFileName);
 
       receiptUrls.push(greenUrl);
+      console.log('تم رفع الإيصال الأخضر بنجاح:', greenUrl);
 
       // رفع الإيصال الأبيض
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
-      const whiteFileName = `${user.id}-white-${Date.now()}.${whiteFileExt}`;
+      const whiteFileName = `${user.id}/${Date.now()}-white.${whiteFileExt}`;
+      
+      console.log('رفع الإيصال الأبيض:', whiteFileName);
       
       const { data: whiteUploadData, error: whiteUploadError } = await supabase.storage
         .from('bank-receipts')
-        .upload(whiteFileName, whiteReceiptFile);
+        .upload(whiteFileName, whiteReceiptFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (whiteUploadError) {
+        console.error('خطأ في رفع الإيصال الأبيض:', whiteUploadError);
         throw whiteUploadError;
       }
 
@@ -122,8 +137,10 @@ const UploadReceipt = () => {
         .getPublicUrl(whiteFileName);
 
       receiptUrls.push(whiteUrl);
+      console.log('تم رفع الإيصال الأبيض بنجاح:', whiteUrl);
 
       // حفظ الطلب في قاعدة البيانات
+      console.log('حفظ الطلب في قاعدة البيانات...');
       const { error: insertError } = await supabase
         .from('receipt_submissions')
         .insert({
@@ -133,21 +150,39 @@ const UploadReceipt = () => {
         });
 
       if (insertError) {
+        console.error('خطأ في حفظ الطلب:', insertError);
         throw insertError;
       }
 
+      console.log('تم حفظ الطلب بنجاح');
+
       // بدء التحقق من الإيصالات
       setVerifying(true);
+      console.log('بدء التحقق من الإيصالات...');
       
       // التحقق من كل إيصال
-      for (const imageUrl of receiptUrls) {
+      for (const [index, imageUrl] of receiptUrls.entries()) {
+        console.log(`التحقق من الإيصال ${index + 1}:`, imageUrl);
+        
         const { data: verifyData, error: verifyError } = await supabase.functions
           .invoke('verify-receipt', {
-            body: { imageUrl }
+            body: { 
+              imageUrl,
+              membershipId,
+              receiptType: index === 0 ? 'green' : 'white'
+            }
           });
 
-        if (verifyError || verifyData?.error) {
-          throw new Error(verifyData?.error || 'خطأ في التحقق من الإيصال');
+        console.log(`نتيجة التحقق من الإيصال ${index + 1}:`, verifyData);
+
+        if (verifyError) {
+          console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, verifyError);
+          throw new Error(`خطأ في التحقق من الإيصال ${index === 0 ? 'الأخضر' : 'الأبيض'}: ${verifyError.message}`);
+        }
+
+        if (verifyData?.error) {
+          console.error(`خطأ في بيانات التحقق من الإيصال ${index + 1}:`, verifyData.error);
+          throw new Error(`خطأ في التحقق من الإيصال ${index === 0 ? 'الأخضر' : 'الأبيض'}: ${verifyData.error}`);
         }
       }
 
@@ -160,10 +195,23 @@ const UploadReceipt = () => {
 
     } catch (error) {
       console.error('خطأ في رفع الإيصال:', error);
+      
+      let errorMessage = "حدث خطأ غير متوقع";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        } else if ('error' in error) {
+          errorMessage = String(error.error);
+        }
+      }
+      
       toast({
         variant: "destructive",
         title: "خطأ في رفع الإيصال",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        description: errorMessage,
       });
     } finally {
       setUploading(false);
@@ -371,4 +419,3 @@ const UploadReceipt = () => {
 };
 
 export default UploadReceipt;
-

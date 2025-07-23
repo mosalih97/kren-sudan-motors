@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -8,21 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface GoogleVisionResponse {
-  responses: [{
-    textAnnotations: [{
-      description: string;
-    }];
-  }];
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { imageUrl } = await req.json()
+    const { imageUrl, membershipId, receiptType } = await req.json()
     
     if (!imageUrl) {
       return new Response(
@@ -31,7 +22,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('معالجة الصورة:', imageUrl)
+    console.log('معالجة الإيصال:', { imageUrl, membershipId, receiptType })
 
     // إعداد Supabase client
     const supabase = createClient(
@@ -39,20 +30,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // الحصول على مفتاح Google Vision API
-    const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    if (!serviceAccountJson) {
-      return new Response(
-        JSON.stringify({ error: 'مفتاح Google Vision API غير متوفر' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const serviceAccount = JSON.parse(serviceAccountJson)
-
     // تحويل الصورة إلى base64
+    console.log('تحميل الصورة من:', imageUrl)
     const imageResponse = await fetch(imageUrl)
     if (!imageResponse.ok) {
+      console.error('فشل في تحميل الصورة:', imageResponse.status, imageResponse.statusText)
       return new Response(
         JSON.stringify({ error: 'فشل في تحميل الصورة' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -61,45 +43,19 @@ serve(async (req) => {
 
     const imageBuffer = await imageResponse.arrayBuffer()
     const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+    console.log('تم تحويل الصورة إلى base64 بنجاح')
 
-    // إنشاء JWT token للمصادقة مع Google
-    const header = {
-      alg: 'RS256',
-      typ: 'JWT'
+    // استخدام Google Vision API مع مفتاح API
+    const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY')
+    if (!apiKey) {
+      console.error('مفتاح Google Vision API غير متوفر')
+      return new Response(
+        JSON.stringify({ error: 'مفتاح Google Vision API غير متوفر' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    const now = Math.floor(Date.now() / 1000)
-    const payload = {
-      iss: serviceAccount.client_email,
-      scope: 'https://www.googleapis.com/auth/cloud-platform',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now
-    }
-
-    // تحويل إلى base64
-    const headerB64 = btoa(JSON.stringify(header))
-    const payloadB64 = btoa(JSON.stringify(payload))
-
-    // إنشاء التوقيع (simplified version - in production use proper JWT library)
-    const signatureInput = `${headerB64}.${payloadB64}`
-    
-    // الحصول على access token من Google
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: `${headerB64}.${payloadB64}.${serviceAccount.private_key}` // Simplified
-      })
-    })
-
-    // استخدام مفتاح API مباشرة بدلاً من JWT المعقد
-    const apiKey = serviceAccount.private_key_id || 'YOUR_API_KEY'
-
-    // استدعاء Google Vision API
+    console.log('استدعاء Google Vision API...')
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
@@ -117,16 +73,19 @@ serve(async (req) => {
     )
 
     if (!visionResponse.ok) {
-      console.error('خطأ في Vision API:', await visionResponse.text())
+      const errorText = await visionResponse.text()
+      console.error('خطأ في Vision API:', visionResponse.status, errorText)
       return new Response(
         JSON.stringify({ error: 'فشل في تحليل الصورة' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const visionData: GoogleVisionResponse = await visionResponse.json()
+    const visionData = await visionResponse.json()
+    console.log('استجابة Google Vision API:', JSON.stringify(visionData, null, 2))
     
     if (!visionData.responses?.[0]?.textAnnotations?.[0]) {
+      console.error('لم يتم العثور على نص في الصورة')
       return new Response(
         JSON.stringify({ error: 'لم يتم العثور على نص في الصورة' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -136,31 +95,43 @@ serve(async (req) => {
     const extractedText = visionData.responses[0].textAnnotations[0].description
     console.log('النص المستخرج:', extractedText)
 
-    // البحث عن البيانات المطلوبة - استخدام رقم الحساب الكامل للفحص
+    // البحث عن البيانات المطلوبة
     const fullAccountNumber = "0913 0368 9929 0001"
-    const accountNumberPattern = new RegExp(fullAccountNumber.replace(/\s/g, '\\s*'))
+    const shortAccountNumber = "3689929"
     
-    // البحث عن رقم الحساب المختصر أيضاً في حالة عدم ظهور الرقم الكامل
-    const shortAccountNumberPattern = /3689929/
+    // البحث عن رقم الحساب بجميع الصيغ الممكنة
+    const fullAccountPattern = new RegExp(fullAccountNumber.replace(/\s/g, '\\s*'))
+    const shortAccountPattern = new RegExp(shortAccountNumber)
+    const accountWithSpacesPattern = /0913\s*0368\s*9929\s*0001/
+    const accountWithoutSpacesPattern = /09130368992900001/
     
-    const beneficiaryPattern = /محمد الامين منتصر صالح عبدالقادر/
-    const amountPattern = /25000|25,000|٢٥٠٠٠|٢٥،٠٠٠/
-    const membershipIdPattern = /\b\d{8}\b/
-
-    const hasFullAccountNumber = accountNumberPattern.test(extractedText)
-    const hasShortAccountNumber = shortAccountNumberPattern.test(extractedText)
-    const hasAccountNumber = hasFullAccountNumber || hasShortAccountNumber
+    const hasFullAccount = fullAccountPattern.test(extractedText)
+    const hasShortAccount = shortAccountPattern.test(extractedText)
+    const hasAccountWithSpaces = accountWithSpacesPattern.test(extractedText)
+    const hasAccountWithoutSpaces = accountWithoutSpacesPattern.test(extractedText)
+    
+    const hasAccountNumber = hasFullAccount || hasShortAccount || hasAccountWithSpaces || hasAccountWithoutSpaces
+    
+    const beneficiaryPattern = /محمد الامين منتصر صالح عبدالقادر|محمد الامين|منتصر صالح|عبدالقادر/
     const hasBeneficiary = beneficiaryPattern.test(extractedText)
+    
+    const amountPattern = /25000|25,000|٢٥٠٠٠|٢٥،٠٠٠|25\.000/
     const hasAmount = amountPattern.test(extractedText)
-    const membershipIdMatch = extractedText.match(membershipIdPattern)
+    
+    // البحث عن رقم العضوية
+    const membershipIdPattern = new RegExp(membershipId)
+    const hasMembershipId = membershipIdPattern.test(extractedText)
 
-    console.log('فحص البيانات:', {
-      hasFullAccountNumber,
-      hasShortAccountNumber,
+    console.log('نتائج الفحص:', {
+      hasFullAccount,
+      hasShortAccount,
+      hasAccountWithSpaces,
+      hasAccountWithoutSpaces,
       hasAccountNumber,
       hasBeneficiary,
       hasAmount,
-      membershipIdMatch
+      hasMembershipId,
+      membershipId
     })
 
     // التحقق من وجود البيانات الأساسية
@@ -170,6 +141,7 @@ serve(async (req) => {
       if (!hasBeneficiary) missingData.push('اسم المستفيد')
       if (!hasAmount) missingData.push('المبلغ')
 
+      console.log('بيانات مفقودة:', missingData)
       return new Response(
         JSON.stringify({
           error: `البيانات المطلوبة غير مكتملة: ${missingData.join(', ')}`,
@@ -179,10 +151,10 @@ serve(async (req) => {
       )
     }
 
-    // إذا وجد رقم العضوية، تحقق من الطلب
-    if (membershipIdMatch) {
-      const membershipId = membershipIdMatch[0]
-
+    // إذا وجد رقم العضوية، تحقق من الطلب وحدّث حالته
+    if (hasMembershipId) {
+      console.log('تم العثور على رقم العضوية، البحث عن الطلب...')
+      
       // البحث عن الطلب في قاعدة البيانات
       const { data: submission, error: fetchError } = await supabase
         .from('receipt_submissions')
@@ -198,6 +170,8 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
+
+      console.log('تم العثور على الطلب:', submission.id)
 
       // تحديث حالة الطلب
       const { error: updateError } = await supabase
@@ -217,6 +191,8 @@ serve(async (req) => {
         )
       }
 
+      console.log('تم تحديث حالة الطلب بنجاح')
+
       // تفعيل الاشتراك المميز
       const { error: profileError } = await supabase
         .from('profiles')
@@ -235,21 +211,26 @@ serve(async (req) => {
         )
       }
 
+      console.log('تم تفعيل الاشتراك المميز بنجاح')
+
       return new Response(
         JSON.stringify({
           message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
           status: 'approved',
-          membershipId
+          membershipId,
+          receiptType
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // إذا لم يتم العثور على رقم العضوية
+    console.log('لم يتم العثور على رقم العضوية في الإيصال')
     return new Response(
       JSON.stringify({
         message: 'تم التحقق من بيانات الإيصال بنجاح، لكن لم يتم العثور على رقم العضوية',
-        status: 'partial_success'
+        status: 'partial_success',
+        receiptType
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -262,4 +243,3 @@ serve(async (req) => {
     )
   }
 })
-
