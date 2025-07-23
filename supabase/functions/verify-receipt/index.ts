@@ -74,9 +74,162 @@ serve(async (req) => {
     const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
     console.log('تم تحويل الصورة إلى base64 بنجاح، الحجم:', imageBase64.length)
 
-    // بدلاً من استخدام Google Vision API المعطل، سنقوم بتحليل مبسط للنص
-    // في الواقع، سنحاول البحث عن رقم المستخدم مباشرة
-    console.log('بحث عن رقم المستخدم في البيانات...')
+    // استخدام Google Vision API لاستخراج النص
+    console.log('بدء استخدام Google Vision API...')
+    const visionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY')
+    
+    if (!visionApiKey) {
+      console.error('Google Vision API Key مفقود')
+      return new Response(
+        JSON.stringify({ success: false, error: 'Google Vision API Key غير متوفر' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const visionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: {
+                content: imageBase64,
+              },
+              features: [
+                {
+                  type: 'TEXT_DETECTION',
+                  maxResults: 1,
+                },
+              ],
+            },
+          ],
+        }),
+      }
+    )
+
+    if (!visionResponse.ok) {
+      console.error('فشل في استدعاء Google Vision API:', visionResponse.status)
+      return new Response(
+        JSON.stringify({ success: false, error: 'فشل في تحليل الصورة' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const visionData = await visionResponse.json()
+    console.log('استجابة Google Vision API:', JSON.stringify(visionData, null, 2))
+
+    if (!visionData.responses?.[0]?.textAnnotations?.[0]?.description) {
+      console.error('لم يتم العثور على نص في الصورة')
+      return new Response(
+        JSON.stringify({ success: false, error: 'لم يتم العثور على نص في الصورة' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const extractedText = visionData.responses[0].textAnnotations[0].description
+    console.log('النص المستخرج من الصورة:', extractedText)
+
+    // استخراج رقم العملية (11 رقم)
+    const transactionMatch = extractedText.match(/\b\d{11}\b/)
+    let transactionNumber = null
+    
+    if (transactionMatch) {
+      transactionNumber = transactionMatch[0]
+      console.log('رقم العملية المستخرج:', transactionNumber)
+    } else {
+      console.error('لم يتم العثور على رقم العملية في الإيصال')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'لم يتم العثور على رقم العملية في الإيصال. تأكد من وضوح الصورة'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // استخراج التاريخ بصيغة DD-MMM-YYYY
+    const dateMatch = extractedText.match(/\b(\d{1,2})-([A-Za-z]{3})-(\d{4})\b/)
+    let receiptDate = null
+    
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0')
+      const month = dateMatch[2]
+      const year = dateMatch[3]
+      
+      // تحويل الشهر إلى رقم
+      const monthMap: { [key: string]: string } = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      }
+      
+      const monthNumber = monthMap[month]
+      if (monthNumber) {
+        receiptDate = `${year}-${monthNumber}-${day}`
+        console.log('تاريخ الإيصال المستخرج:', receiptDate)
+      }
+    }
+
+    if (!receiptDate) {
+      console.error('لم يتم العثور على تاريخ الإيصال')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'لم يتم العثور على تاريخ الإيصال في الصورة. تأكد من وضوح التاريخ'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // التحقق من أن التاريخ هو اليوم الحالي
+    const today = new Date().toISOString().split('T')[0]
+    console.log('تاريخ اليوم:', today)
+    console.log('تاريخ الإيصال:', receiptDate)
+    
+    if (receiptDate !== today) {
+      console.error('تاريخ الإيصال غير صحيح')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'الإيصال غير صالح. يجب أن يكون الإيصال من نفس اليوم'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // التحقق من عدم استخدام رقم العملية مسبقاً
+    console.log('التحقق من عدم استخدام رقم العملية مسبقاً...')
+    const { data: existingTransaction, error: transactionError } = await supabase
+      .from('used_receipt_transactions')
+      .select('id')
+      .eq('transaction_number', transactionNumber)
+      .single()
+
+    if (transactionError && transactionError.code !== 'PGRST116') {
+      console.error('خطأ في التحقق من رقم العملية:', transactionError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'خطأ في التحقق من رقم العملية' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (existingTransaction) {
+      console.error('رقم العملية مستخدم مسبقاً')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'هذا الإيصال تم استخدامه مسبقاً. لا يمكن استخدام نفس الإيصال أكثر من مرة'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // البحث عن رقم المستخدم
+    console.log('البحث عن رقم المستخدم في البيانات...')
     
     let foundUserId = null
     
@@ -85,11 +238,11 @@ serve(async (req) => {
       foundUserId = membershipId
       console.log('تم العثور على رقم المستخدم من معرف العضوية:', foundUserId)
     } else {
-      // محاولة استخراج رقم من 8 أرقام من اسم الملف أو أي مكان آخر
-      const fileNameMatch = imagePath.match(/\d{8}/)
-      if (fileNameMatch) {
-        foundUserId = fileNameMatch[0]
-        console.log('تم العثور على رقم المستخدم من اسم الملف:', foundUserId)
+      // محاولة استخراج رقم من 8 أرقام من النص المستخرج
+      const userIdMatch = extractedText.match(/\b\d{8}\b/)
+      if (userIdMatch) {
+        foundUserId = userIdMatch[0]
+        console.log('تم العثور على رقم المستخدم من النص المستخرج:', foundUserId)
       }
     }
 
@@ -127,6 +280,24 @@ serve(async (req) => {
 
     console.log('تم العثور على المستخدم:', userProfile)
 
+    // تسجيل رقم العملية كمستخدم
+    console.log('تسجيل رقم العملية كمستخدم...')
+    const { error: insertTransactionError } = await supabase
+      .from('used_receipt_transactions')
+      .insert({
+        transaction_number: transactionNumber,
+        receipt_date: receiptDate,
+        user_id: userProfile.user_id
+      })
+
+    if (insertTransactionError) {
+      console.error('خطأ في تسجيل رقم العملية:', insertTransactionError)
+      return new Response(
+        JSON.stringify({ success: false, error: 'خطأ في تسجيل رقم العملية' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // تحديث حالة المستخدم إلى مميز
     console.log('تحديث حالة المستخدم إلى مميز...')
     const { error: updateError } = await supabase
@@ -152,9 +323,11 @@ serve(async (req) => {
     const { error: logError } = await supabase
       .from('receipt_submissions')
       .update({
-        status: 'verified',
+        status: 'approved',
         verified_at: new Date().toISOString(),
-        extracted_text: `رقم المستخدم: ${foundUserId}`
+        extracted_text: `رقم المستخدم: ${foundUserId}`,
+        transaction_number: transactionNumber,
+        receipt_date: receiptDate
       })
       .eq('user_id', userProfile.user_id)
       .eq('membership_id', membershipId)
@@ -170,6 +343,8 @@ serve(async (req) => {
         message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
         userId: foundUserId,
         userName: userProfile.display_name,
+        transactionNumber: transactionNumber,
+        receiptDate: receiptDate,
         extractedText: `رقم المستخدم: ${foundUserId}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

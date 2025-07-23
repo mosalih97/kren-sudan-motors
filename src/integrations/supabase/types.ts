@@ -419,10 +419,12 @@ export type Database = {
           extracted_text: string | null
           id: string
           membership_id: string
+          receipt_date: string | null
           receipt_url: string
           rejection_reason: string | null
           status: string | null
           submitted_at: string | null
+          transaction_number: string | null
           user_id: string
           verified_at: string | null
         }
@@ -430,10 +432,12 @@ export type Database = {
           extracted_text?: string | null
           id?: string
           membership_id: string
+          receipt_date?: string | null
           receipt_url: string
           rejection_reason?: string | null
           status?: string | null
           submitted_at?: string | null
+          transaction_number?: string | null
           user_id: string
           verified_at?: string | null
         }
@@ -441,12 +445,41 @@ export type Database = {
           extracted_text?: string | null
           id?: string
           membership_id?: string
+          receipt_date?: string | null
           receipt_url?: string
           rejection_reason?: string | null
           status?: string | null
           submitted_at?: string | null
+          transaction_number?: string | null
           user_id?: string
           verified_at?: string | null
+        }
+        Relationships: []
+      }
+      used_receipt_transactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          receipt_date: string
+          transaction_number: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          receipt_date: string
+          transaction_number: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          receipt_date?: string
+          transaction_number?: string
+          used_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
