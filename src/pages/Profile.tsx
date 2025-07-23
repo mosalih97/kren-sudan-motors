@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
-import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins } from "lucide-react";
+import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard } from "lucide-react";
 import { CarCard } from "@/components/CarCard";
 
 const Profile = () => {
@@ -231,6 +231,19 @@ const Profile = () => {
                       إعلانات شهرية: {profile.monthly_ads_count || 0}/5
                     </Badge>
                   </div>
+
+                  {/* زر تفعيل العضوية المميزة */}
+                  {profile.membership_type !== 'premium' && (
+                    <div className="mt-4">
+                      <Button 
+                        onClick={() => navigate('/upload-receipt')}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        تفعيل العضوية المميزة
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <Button variant="outline" onClick={handleLogout} className="gap-2">
