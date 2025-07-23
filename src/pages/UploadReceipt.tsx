@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,8 +23,6 @@ const UploadReceipt = () => {
 
   // رقم الحساب المختصر (7 خانات) للعرض
   const displayAccountNumber = "3689929";
-  // رقم الحساب الكامل (16 خانة) للفحص الخلفي
-  const fullAccountNumber = "0913 0368 9929 0001";
 
   // جلب بيانات المستخدم من قاعدة البيانات
   useEffect(() => {
@@ -94,7 +93,7 @@ const UploadReceipt = () => {
       
       console.log('رفع الإيصال الأخضر:', greenFileName);
       
-      const { data: greenUploadData, error: greenUploadError } = await supabase.storage
+      const { error: greenUploadError } = await supabase.storage
         .from('bank-receipts')
         .upload(greenFileName, greenReceiptFile, {
           cacheControl: '3600',
@@ -107,7 +106,7 @@ const UploadReceipt = () => {
       }
 
       receiptPaths.push(greenFileName);
-      console.log('تم رفع الإيصال الأخضر بنجاح:', greenFileName);
+      console.log('تم رفع الإيصال الأخضر بنجاح');
 
       // رفع الإيصال الأبيض
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
@@ -115,7 +114,7 @@ const UploadReceipt = () => {
       
       console.log('رفع الإيصال الأبيض:', whiteFileName);
       
-      const { data: whiteUploadData, error: whiteUploadError } = await supabase.storage
+      const { error: whiteUploadError } = await supabase.storage
         .from('bank-receipts')
         .upload(whiteFileName, whiteReceiptFile, {
           cacheControl: '3600',
@@ -128,7 +127,7 @@ const UploadReceipt = () => {
       }
 
       receiptPaths.push(whiteFileName);
-      console.log('تم رفع الإيصال الأبيض بنجاح:', whiteFileName);
+      console.log('تم رفع الإيصال الأبيض بنجاح');
 
       // حفظ الطلب في قاعدة البيانات
       console.log('حفظ الطلب في قاعدة البيانات...');
@@ -151,38 +150,51 @@ const UploadReceipt = () => {
       setVerifying(true);
       console.log('بدء التحقق من الإيصالات...');
       
+      let verificationSuccess = false;
+
       // التحقق من كل إيصال
       for (const [index, imagePath] of receiptPaths.entries()) {
         console.log(`التحقق من الإيصال ${index + 1}:`, imagePath);
         
-        const { data: verifyData, error: verifyError } = await supabase.functions
-          .invoke('verify-receipt', {
-            body: { 
-              imagePath,
-              membershipId,
-              receiptType: index === 0 ? 'green' : 'white'
-            }
-          });
+        try {
+          const { data: verifyData, error: verifyError } = await supabase.functions
+            .invoke('verify-receipt', {
+              body: { 
+                imagePath,
+                membershipId
+              }
+            });
 
-        console.log(`نتيجة التحقق من الإيصال ${index + 1}:`, verifyData);
+          console.log(`نتيجة التحقق من الإيصال ${index + 1}:`, verifyData);
 
-        if (verifyError) {
-          console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, verifyError);
-          throw new Error(`خطأ في التحقق من الإيصال ${index === 0 ? 'الأخضر' : 'الأبيض'}: ${verifyError.message}`);
-        }
+          if (verifyError) {
+            console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, verifyError);
+            continue; // تجاهل الخطأ والمحاولة مع الإيصال التالي
+          }
 
-        if (verifyData?.error) {
-          console.error(`خطأ في بيانات التحقق من الإيصال ${index + 1}:`, verifyData.error);
-          throw new Error(`خطأ في التحقق من الإيصال ${index === 0 ? 'الأخضر' : 'الأبيض'}: ${verifyData.error}`);
+          if (verifyData?.success) {
+            verificationSuccess = true;
+            break; // إذا نجح التحقق من أي إيصال، توقف
+          }
+        } catch (error) {
+          console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, error);
+          continue; // تجاهل الخطأ والمحاولة مع الإيصال التالي
         }
       }
 
-      toast({
-        title: "تم التحقق بنجاح",
-        description: "تم تفعيل الاشتراك المميز بنجاح",
-      });
-
-      navigate('/profile');
+      if (verificationSuccess) {
+        toast({
+          title: "تم التحقق بنجاح",
+          description: "تم تفعيل الاشتراك المميز بنجاح",
+        });
+        navigate('/profile');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "فشل في التحقق",
+          description: "لم يتم العثور على المعلومات المطلوبة في الإيصالات",
+        });
+      }
 
     } catch (error) {
       console.error('خطأ في رفع الإيصال:', error);
