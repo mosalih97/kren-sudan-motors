@@ -10,9 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
-import { Edit, Star, Car, Heart, Settings, LogOut, Crown, CreditCard } from "lucide-react";
+import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard } from "lucide-react";
 import { CarCard } from "@/components/CarCard";
-import { UserPointsDisplay } from "@/components/UserPointsDisplay";
 
 const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -223,10 +222,13 @@ const Profile = () => {
                         عضو عادي
                       </Badge>
                     )}
+                    <Badge variant="accent" className="gap-1 text-sm">
+                      <Coins className="h-4 w-4" />
+                      {profile.points || 0} نقطة
+                    </Badge>
                     <Badge variant="outline" className="gap-1 text-sm">
                       <Car className="h-4 w-4" />
-                      إعلانات شهرية: {profile.monthly_ads_count || 0}/
-                      {profile.membership_type === 'premium' ? '40' : '5'}
+                      إعلانات شهرية: {profile.monthly_ads_count || 0}/5
                     </Badge>
                   </div>
 
@@ -251,11 +253,6 @@ const Profile = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* عرض النقاط المجمعة */}
-          <div className="mb-8">
-            <UserPointsDisplay variant="profile" />
-          </div>
 
           {/* Profile Tabs */}
           <Tabs defaultValue="settings" className="w-full">
@@ -364,10 +361,6 @@ const Profile = () => {
                         isFeatured={ad.is_featured}
                         viewCount={ad.view_count}
                         creditsRequired={1}
-                        showBoostButton={true}
-                        userId={ad.user_id}
-                        topSpot={ad.top_spot}
-                        topSpotUntil={ad.top_spot_until}
                       />
                     ))}
                   </div>

@@ -5,24 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Zap, Crown, Star, MessageCircle, AlertCircle, TrendingUp, Clock, Eye } from "lucide-react";
+import { ArrowLeft, Zap, Crown, Star, MessageCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
-import { UserPointsDisplay } from "@/components/UserPointsDisplay";
-import { useUserPoints } from "@/hooks/useUserPoints";
 
 interface BoostPlan {
   id: string;
   name: string;
   description: string;
   duration: number; // in hours
-  price: number; // in points
+  price: number; // in credits
   icon: any;
   features: string[];
   popular?: boolean;
-  color: string;
 }
 
 const boostPlans: BoostPlan[] = [
@@ -33,12 +30,10 @@ const boostPlans: BoostPlan[] = [
     duration: 1,
     price: 5,
     icon: Zap,
-    color: "from-blue-500 to-blue-600",
     features: [
       "ظهور في أعلى النتائج لمدة ساعة كاملة",
       "زيادة المشاهدات بنسبة 200%",
-      "أولوية في البحث",
-      "تسليط الضوء على الإعلان"
+      "أولوية في البحث"
     ]
   },
   {
@@ -48,14 +43,12 @@ const boostPlans: BoostPlan[] = [
     duration: 72,
     price: 60,
     icon: Crown,
-    color: "from-purple-500 to-purple-600",
     features: [
       "ظهور مميز لمدة 3 أيام كاملة",
       "زيادة المشاهدات بنسبة 500%",
       "شارة مميز على الإعلان",
       "أولوية قصوى في البحث",
-      "تثبيت في المقدمة",
-      "عرض في القسم المميز"
+      "تثبيت في المقدمة"
     ],
     popular: true
   },
@@ -66,15 +59,13 @@ const boostPlans: BoostPlan[] = [
     duration: 168, // 7 days
     price: 100,
     icon: Star,
-    color: "from-amber-500 to-amber-600",
     features: [
       "ظهور مميز لمدة أسبوع كامل",
       "زيادة المشاهدات بنسبة 800%",
       "شارة احترافي مميز",
       "تثبيت في أعلى النتائج",
       "أولوية مطلقة في البحث",
-      "عرض مميز في جميع الأقسام",
-      "إحصائيات متقدمة"
+      "عرض مميز في جميع الأقسام"
     ]
   }
 ];
@@ -83,21 +74,22 @@ export default function BoostAd() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { pointsData, refreshPoints } = useUserPoints();
   const [ad, setAd] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [boosting, setBoosting] = useState<string | null>(null);
-  const [canBoostResults, setCanBoostResults] = useState<Record<string, any>>({});
+  const [canBoost, setCanBoost] = useState<any>(null);
 
   useEffect(() => {
     if (!user || !id) return;
     
-    fetchAd();
+    fetchAdAndProfile();
     checkBoostEligibility();
   }, [user, id]);
 
-  const fetchAd = async () => {
+  const fetchAdAndProfile = async () => {
     try {
+      // جلب الإعلان
       const { data: adData, error: adError } = await supabase
         .from('ads')
         .select('*')
@@ -107,8 +99,19 @@ export default function BoostAd() {
 
       if (adError) throw adError;
       setAd(adData);
+
+      // جلب بيانات المستخدم
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+
     } catch (error) {
-      console.error('Error fetching ad:', error);
+      console.error('Error fetching data:', error);
       toast.error("فشل في جلب بيانات الإعلان");
       navigate('/profile');
     } finally {
@@ -117,30 +120,20 @@ export default function BoostAd() {
   };
 
   const checkBoostEligibility = async () => {
-    if (!user || !id) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('boost-ad', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: new URLSearchParams({ ad_id: id! }).toString()
+      });
 
-    const results: Record<string, any> = {};
-    
-    for (const plan of boostPlans) {
-      try {
-        const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          body: new URLSearchParams({ 
-            ad_id: id, 
-            boost_plan: plan.id 
-          }).toString()
-        });
-
-        if (error) throw error;
-        results[plan.id] = data;
-      } catch (error) {
-        console.error(`Error checking boost eligibility for ${plan.id}:`, error);
-        results[plan.id] = { can_boost: false, reason: 'خطأ في فحص الأهلية' };
-      }
+      if (error) throw error;
+      setCanBoost(data);
+    } catch (error) {
+      console.error('Error checking boost eligibility:', error);
     }
-    
-    setCanBoostResults(results);
   };
 
   const handleBoost = async (plan: BoostPlan) => {
@@ -149,18 +142,17 @@ export default function BoostAd() {
     setBoosting(plan.id);
     
     try {
-      const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
+      const { data, error } = await supabase.functions.invoke('boost-ad', {
         body: JSON.stringify({
           ad_id: ad.id,
-          boost_plan: plan.id
+          hours_duration: plan.duration
         })
       });
 
       if (error) throw error;
 
       if (data?.success) {
-        toast.success(`تم تعزيز الإعلان بنجاح بخطة ${plan.name}!`);
-        refreshPoints(); // تحديث النقاط
+        toast.success("تم تعزيز الإعلان بنجاح!");
         navigate('/profile');
       } else {
         toast.error(data?.message || "فشل في تعزيز الإعلان");
@@ -195,6 +187,10 @@ export default function BoostAd() {
     );
   }
 
+  const isPremiumUser = profile?.membership_type === 'premium';
+  const userCredits = profile?.credits || 0;
+  const monthlyAdsCount = profile?.monthly_ads_count || 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -216,23 +212,70 @@ export default function BoostAd() {
           </p>
         </div>
 
-        {/* معلومات النقاط */}
-        <div className="mb-6">
-          <UserPointsDisplay variant="profile" />
-        </div>
+        {/* معلومات المستخدم */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5" />
+              معلومات الحساب
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">نوع العضوية:</span>
+                <Badge variant={isPremiumUser ? "default" : "secondary"}>
+                  {isPremiumUser ? "مميز" : "عادي"}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">الكريديت المتاح:</span>
+                <span className="font-bold text-lg">{userCredits} نقطة</span>
+              </div>
+              
+              {isPremiumUser && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">الإعلانات الشهرية:</span>
+                  <span className="font-medium">{monthlyAdsCount}/40</span>
+                </div>
+              )}
+              
+              {!isPremiumUser && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm text-amber-700">
+                    يجب تفعيل العضوية المميزة لاستخدام خدمات التعزيز
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* رسالة عدم القدرة على التعزيز */}
+        {canBoost && !canBoost.can_boost && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+                <p className="text-destructive font-medium">{canBoost.reason}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* خطط التعزيز */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {boostPlans.map((plan) => {
             const Icon = plan.icon;
-            const canBoostData = canBoostResults[plan.id];
-            const canBoost = canBoostData?.can_boost || false;
-            const canAfford = pointsData ? pointsData.total_points >= plan.price : false;
+            const canAfford = userCredits >= plan.price;
+            const isEligible = canBoost?.can_boost && isPremiumUser;
             
             return (
               <Card 
                 key={plan.id} 
-                className={`relative ${plan.popular ? 'border-primary shadow-lg scale-105' : ''} ${!canBoost ? 'opacity-75' : ''}`}
+                className={`relative ${plan.popular ? 'border-primary shadow-lg' : ''} ${!isEligible ? 'opacity-60' : ''}`}
               >
                 {plan.popular && (
                   <Badge className="absolute -top-2 right-4 bg-primary">
@@ -241,56 +284,48 @@ export default function BoostAd() {
                 )}
                 
                 <CardHeader className="text-center">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon className="w-8 h-8 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  <Icon className="w-12 h-12 mx-auto mb-4 text-primary" />
+                  <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>
                   
-                  <div className="space-y-2">
-                    <div className="text-3xl font-bold text-primary">
-                      {plan.price} نقطة
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {plan.duration === 1 ? "ساعة واحدة" : 
-                       plan.duration === 72 ? "3 أيام" : 
-                       "أسبوع كامل"}
-                    </div>
+                  <div className="text-3xl font-bold text-primary">
+                    {plan.price} نقطة
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {plan.duration === 1 ? "ساعة واحدة" : 
+                     plan.duration === 72 ? "3 أيام" : 
+                     "أسبوع كامل"}
                   </div>
                 </CardHeader>
                 
                 <CardContent>
-                  <ul className="space-y-3 mb-6">
+                  <ul className="space-y-2 mb-6">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
-                        <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
-                        <span>{feature}</span>
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                        {feature}
                       </li>
                     ))}
                   </ul>
                   
                   <Button 
-                    className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white`}
+                    className="w-full"
                     onClick={() => handleBoost(plan)}
-                    disabled={!canBoost || !canAfford || boosting === plan.id}
+                    disabled={!isEligible || !canAfford || boosting === plan.id}
                   >
-                    {boosting === plan.id ? "جاري التعزيز..." : 
-                     !canBoost ? "غير متاح" :
-                     !canAfford ? "نقاط غير كافية" :
-                     "تعزيز الإعلان"}
+                    {boosting === plan.id ? "جاري التعزيز..." : "تعزيز الإعلان"}
                   </Button>
                   
-                  {canBoostData && !canBoost && (
-                    <div className="mt-3 p-2 bg-destructive/10 rounded text-xs text-destructive">
-                      {canBoostData.reason}
-                    </div>
+                  {!canAfford && isPremiumUser && (
+                    <p className="text-sm text-destructive mt-2 text-center">
+                      نقاط غير كافية - تحتاج {plan.price} نقطة
+                    </p>
                   )}
                   
-                  {canBoost && !canAfford && (
-                    <div className="mt-3 p-2 bg-amber-50 rounded text-xs text-amber-700">
-                      تحتاج {plan.price - (pointsData?.total_points || 0)} نقطة إضافية
-                    </div>
+                  {!isPremiumUser && (
+                    <p className="text-sm text-muted-foreground mt-2 text-center">
+                      يتطلب عضوية مميزة
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -300,52 +335,49 @@ export default function BoostAd() {
 
         <Separator className="my-8" />
 
-        {/* نظام النقاط */}
+        {/* تفاصيل نظام النقاط */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              كيف يعمل نظام النقاط والتعزيز
+              <Zap className="w-5 h-5" />
+              نظام النقاط والعضوية المميزة
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h4 className="font-semibold">أنواع النقاط:</h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-blue-500" />
-                    <span><strong>النقاط الأساسية:</strong> 20 نقطة عند التسجيل</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-primary" />
-                    <span><strong>نقاط العضوية المميزة:</strong> 130 نقطة شهرياً</span>
-                  </li>
-                </ul>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium">المستخدمون المميزون يحصلون على:</h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• 130 نقطة شهرياً للتعزيز</li>
+                    <li>• حتى 40 إعلان شهرياً</li>
+                    <li>• عرض معلومات الاتصال مجاناً</li>
+                    <li>• أولوية في البحث</li>
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">أسعار التعزيز:</h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• ساعة واحدة: 5 نقاط</li>
+                    <li>• 3 أيام: 60 نقطة</li>
+                    <li>• أسبوع كامل: 100 نقطة</li>
+                  </ul>
+                </div>
               </div>
               
-              <div className="space-y-4">
-                <h4 className="font-semibold">مميزات التعزيز:</h4>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-green-500" />
-                    <span>زيادة المشاهدات بشكل كبير</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-purple-500" />
-                    <span>أولوية في نتائج البحث</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-amber-500" />
-                    <span>شارات مميزة على الإعلان</span>
-                  </li>
-                </ul>
-              </div>
+              {!isPremiumUser && (
+                <div className="p-4 bg-primary/10 rounded-lg">
+                  <p className="text-sm">
+                    <strong>ملاحظة:</strong> المستخدمون العاديون لا يمكنهم استخدام نقاط التعزيز. 
+                    يجب تفعيل العضوية المميزة للاستفادة من هذه الخدمة.
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* تواصل */}
+        {/* معلومات التواصل */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -355,11 +387,11 @@ export default function BoostAd() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              لتفعيل العضوية المميزة أو الحصول على نقاط إضافية، تواصل معنا
+              لتفعيل العضوية المميزة أو الحصول على مساعدة، تواصل معنا عبر واتساب
             </p>
             <Button asChild>
               <a 
-                href="https://wa.me/249123456789?text=أريد%20مساعدة%20في%20نظام%20التعزيز" 
+                href="https://wa.me/249123456789?text=أريد%20تفعيل%20العضوية%20المميزة" 
                 target="_blank" 
                 rel="noopener noreferrer"
               >
