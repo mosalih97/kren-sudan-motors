@@ -301,7 +301,7 @@ const Index = () => {
               <div className="space-y-4">
                 {/* زر واتساب عصري */}
                 <a 
-                  href="https://wa.me/249966960202" 
+                  href="https://wa.me/24966960202"
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 rounded-xl hover:shadow-lg transition-smooth"
@@ -314,13 +314,13 @@ const Index = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-white font-semibold">واتساب</div>
-                    <div className="text-white/80 text-sm">+249 966 960 202</div>
+                    <div className="text-white/80 text-sm">+24966960202</div>
                   </div>
                 </a>
 
                 {/* زر الإيميل عصري */}
                 <a 
-                  href="mailto:info@alkareen.sd"
+                  href="mailto:info@alkeren.com"
                   className="flex items-center gap-3 p-3 rounded-xl hover:shadow-lg transition-smooth"
                   style={{ background: 'var(--gradient-secondary)' }}
                 >
@@ -331,7 +331,7 @@ const Index = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-white font-semibold">البريد الإلكتروني</div>
-                    <div className="text-white/80 text-sm">info@alkareen.sd</div>
+                    <div className="text-white/80 text-sm">info@alkeren.com</div>
                   </div>
                 </a>
 
