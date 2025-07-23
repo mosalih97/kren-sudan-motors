@@ -47,7 +47,7 @@ const Index = () => {
         <div className="hero-gradient py-20 lg:py-32">
           <div className="container mx-auto px-4 text-center text-white">
             <div className="max-w-4xl mx-auto space-y-8">
-              <div className="inline-block bg-warning/20 text-warning px-8 py-4 rounded-full text-xl font-bold mb-8">
+              <div className="inline-block bg-gradient-to-r from-orange-400 to-orange-500 text-white px-10 py-5 rounded-full text-2xl font-bold mb-8 shadow-lg">
                 🚀 الآن في السودان - منصة السيارات الأكثر تطوراً
               </div>
               

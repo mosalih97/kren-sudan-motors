@@ -75,30 +75,32 @@ export function CarCard({
       </div>
 
       <CardContent className="p-4 space-y-4">
-        {/* العنوان والسعر مع معلومات البائع */}
+        {/* معلومات البائع */}
+        {seller && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={seller.avatar_url} alt={seller.display_name} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {seller.display_name?.charAt(0) || 'ب'}
+                </AvatarFallback>
+              </Avatar>
+              {seller.membership_type === 'premium' && (
+                <Crown className="h-3 w-3 text-primary absolute -top-0.5 -right-0.5" />
+              )}
+            </div>
+            <span className="text-sm text-orange-500 font-medium">
+              {seller.display_name}
+            </span>
+          </div>
+        )}
+
+        {/* العنوان والسعر */}
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-smooth line-clamp-2 flex-1">
               {title}
             </h3>
-            {seller && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <div className="relative">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={seller.avatar_url} alt={seller.display_name} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {seller.display_name?.charAt(0) || 'ب'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {seller.membership_type === 'premium' && (
-                    <Crown className="h-2 w-2 text-primary absolute -top-0.5 -right-0.5" />
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground max-w-[60px] truncate">
-                  {seller.display_name}
-                </span>
-              </div>
-            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-2xl font-bold primary-gradient bg-clip-text text-transparent">
