@@ -1,190 +1,156 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
-import { User, Session } from "@supabase/supabase-js";
-import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CarCard } from "@/components/CarCard";
+import { UserPointsDisplay } from "@/components/UserPointsDisplay";
+import { Header } from "@/components/Header";
+import { 
+  Heart, 
+  Plus, 
+  MapPin, 
+  Eye, 
+  ExternalLink, 
+  LogOut,
+  Crown,
+  Zap
+} from "lucide-react";
+import { toast } from "sonner";
 
-const Profile = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+interface Ad {
+  id: string;
+  title: string;
+  price: number;
+  brand: string;
+  model: string;
+  year: number;
+  city: string;
+  view_count: number;
+  images: string[];
+  status: string;
+  top_spot: boolean;
+  top_spot_until: string;
+}
+
+interface Favorite {
+  ad_id: string;
+  ads: Ad;
+}
+
+export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
-  const [userAds, setUserAds] = useState<any[]>([]);
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [userAds, setUserAds] = useState<Ad[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [city, setCity] = useState('');
   const [updating, setUpdating] = useState(false);
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Profile form state
-  const [profileData, setProfileData] = useState({
-    displayName: "",
-    phone: "",
-    city: ""
-  });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session?.user) {
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (!session?.user) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchUserAds();
-      fetchFavorites();
+    if (!user) {
+      navigate('/login');
+      return;
     }
-  }, [user]);
+
+    fetchProfile();
+    fetchUserAds();
+    fetchFavorites();
+  }, [user, navigate]);
 
   const fetchProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user?.id)
+      .single();
 
-      if (error) throw error;
-
-      setProfile(data);
-      setProfileData({
-        displayName: data.display_name || "",
-        phone: data.phone || "",
-        city: data.city || ""
-      });
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    } finally {
-      setLoading(false);
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return;
     }
+
+    setProfile(data);
+    setDisplayName(data?.display_name || '');
+    setPhone(data?.phone || '');
+    setWhatsapp(data?.whatsapp || '');
+    setCity(data?.city || '');
   };
 
   const fetchUserAds = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("ads")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUserAds(data || []);
-    } catch (error) {
-      console.error("Error fetching user ads:", error);
+    if (error) {
+      console.error('Error fetching user ads:', error);
+      return;
     }
+
+    setUserAds(data || []);
   };
 
   const fetchFavorites = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from("favorites")
-        .select(`
-          *,
-          ads (*)
-        `)
-        .eq("user_id", user.id);
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('ad_id, ads(*)')
+      .eq('user_id', user?.id);
 
-      if (error) throw error;
-      setFavorites(data || []);
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
+    if (error) {
+      console.error('Error fetching favorites:', error);
+      return;
     }
+
+    setFavorites(data || []);
   };
 
-  const updateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: any) => {
     e.preventDefault();
-    if (!user) return;
-
     setUpdating(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          display_name: profileData.displayName,
-          phone: profileData.phone,
-          city: profileData.city
-        })
-        .eq("user_id", user.id);
 
-      if (error) throw error;
+    const updates = {
+      user_id: user?.id,
+      display_name: displayName,
+      phone: phone,
+      whatsapp: whatsapp,
+      city: city,
+      updated_at: new Date(),
+    };
 
-      toast({
-        title: "تم تحديث الملف الشخصي",
-        description: "تم حفظ التغييرات بنجاح"
-      });
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(updates, { returning: 'minimal' });
 
+    if (error) {
+      toast.error('Failed to update profile.');
+      console.error('Update profile error:', error);
+    } else {
+      toast.success('Profile updated successfully!');
       fetchProfile();
-    } catch (error) {
-      toast({
-        title: "خطأ في التحديث",
-        description: "حدث خطأ أثناء حفظ التغييرات",
-        variant: "destructive"
-      });
-    } finally {
-      setUpdating(false);
     }
+
+    setUpdating(false);
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate("/");
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تسجيل الخروج",
-        variant: "destructive"
-      });
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast.error('Failed to sign out.');
+      console.error('Sign out error:', error);
+    } else {
+      navigate('/login');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">جاري التحميل...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user || !profile) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -192,228 +158,233 @@ const Profile = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
-          <Card className="card-gradient border-0 shadow-lg mb-8">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-24 h-24 rounded-full primary-gradient flex items-center justify-center">
-                  <span className="text-white text-3xl font-bold">
-                    {profile.display_name?.charAt(0) || user.email?.charAt(0)}
+          <div className="mb-8">
+            <div className="flex items-center gap-4 mb-6">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="text-2xl">
+                  {profile?.display_name?.charAt(0) || 'م'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-3xl font-bold">{profile?.display_name}</h1>
+                <p className="text-muted-foreground">{profile?.city}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant={profile?.membership_type === 'premium' ? 'default' : 'secondary'}>
+                    {profile?.membership_type === 'premium' ? 'مميز' : 'عادي'}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    ID: {profile?.user_id_display}
                   </span>
                 </div>
-                
-                <div className="flex-1 text-center md:text-right">
-                  <h1 className="text-3xl font-bold text-foreground">
-                    {profile.display_name || "مستخدم جديد"}
-                  </h1>
-                  <p className="text-muted-foreground text-lg">ID: {profile.user_id_display}</p>
-                  {profile.city && (
-                    <p className="text-muted-foreground">{profile.city}</p>
-                  )}
-                  
-                  <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-                    {profile.membership_type === 'premium' ? (
-                      <Badge variant="premium" className="gap-1 text-sm">
-                        <Crown className="h-4 w-4" />
-                        عضو مميز
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1 text-sm">
-                        عضو عادي
-                      </Badge>
-                    )}
-                    <Badge variant="accent" className="gap-1 text-sm">
-                      <Coins className="h-4 w-4" />
-                      {profile.points || 0} نقطة
-                    </Badge>
-                    <Badge variant="outline" className="gap-1 text-sm">
-                      <Car className="h-4 w-4" />
-                      إعلانات شهرية: {profile.monthly_ads_count || 0}/5
-                    </Badge>
-                  </div>
-
-                  {/* زر تفعيل العضوية المميزة */}
-                  {profile.membership_type !== 'premium' && (
-                    <div className="mt-4">
-                      <Button 
-                        onClick={() => navigate('/upload-receipt')}
-                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white gap-2"
-                      >
-                        <CreditCard className="h-4 w-4" />
-                        تفعيل العضوية المميزة
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                <Button variant="outline" onClick={handleLogout} className="gap-2">
-                  <LogOut className="h-4 w-4" />
-                  تسجيل الخروج
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Profile Tabs */}
-          <Tabs defaultValue="settings" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="settings" className="gap-2">
-                <Settings className="h-4 w-4" />
-                الإعدادات
-              </TabsTrigger>
-              <TabsTrigger value="ads" className="gap-2">
-                <Car className="h-4 w-4" />
-                إعلاناتي ({userAds.length})
-              </TabsTrigger>
-              <TabsTrigger value="favorites" className="gap-2">
-                <Heart className="h-4 w-4" />
-                المفضلة ({favorites.length})
-              </TabsTrigger>
-              <TabsTrigger value="reviews" className="gap-2">
-                <Star className="h-4 w-4" />
-                التقييمات
-              </TabsTrigger>
+            {/* عرض النقاط المجمعة */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>النقاط المتاحة</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <UserPointsDisplay variant="full" />
+              </CardContent>
+            </Card>
+
+            {/* معلومات الحساب */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>معلومات الحساب</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">رقم الهاتف</label>
+                    <p className="text-muted-foreground">{profile?.phone || 'غير محدد'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">رقم الواتساب</label>
+                    <p className="text-muted-foreground">{profile?.whatsapp || 'غير محدد'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">المدينة</label>
+                    <p className="text-muted-foreground">{profile?.city || 'غير محددة'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">تاريخ الانضمام</label>
+                    <p className="text-muted-foreground">
+                      {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('ar-SA') : 'غير محدد'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* باقي الكود يبقى كما هو */}
+          <Tabs defaultValue="ads" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="ads">إعلاناتي ({userAds.length})</TabsTrigger>
+              <TabsTrigger value="favorites">المفضلة ({favorites.length})</TabsTrigger>
+              <TabsTrigger value="settings">الإعدادات</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="settings" className="mt-6">
-              <Card className="card-gradient border-0 shadow-lg">
+            <TabsContent value="ads" className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h2 className="text-2xl font-bold">إعلاناتي</h2>
+                <Button asChild>
+                  <Link to="/add-ad">
+                    <Plus className="w-4 h-4 mr-2" />
+                    إضافة إعلان جديد
+                  </Link>
+                </Button>
+              </div>
+
+              {userAds.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">لم تقم بإنشاء أي إعلانات بعد</p>
+                    <Button asChild className="mt-4">
+                      <Link to="/add-ad">إنشاء إعلان جديد</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {userAds.map((ad) => (
+                    <Card key={ad.id} className="overflow-hidden">
+                      <div className="relative">
+                        <img
+                          src={ad.images?.[0] || '/placeholder.svg'}
+                          alt={ad.title}
+                          className="w-full h-48 object-cover"
+                        />
+                        <div className="absolute top-2 right-2">
+                          <Badge variant={ad.status === 'active' ? 'default' : 'secondary'}>
+                            {ad.status === 'active' ? 'نشط' : 'غير نشط'}
+                          </Badge>
+                        </div>
+                        {ad.top_spot && ad.top_spot_until && new Date(ad.top_spot_until) > new Date() && (
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-yellow-500 text-white">
+                              <Crown className="w-3 h-3 mr-1" />
+                              معزز
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold mb-2">{ad.title}</h3>
+                        <p className="text-2xl font-bold text-primary mb-2">
+                          {ad.price?.toLocaleString()} جنيه
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {ad.brand} {ad.model} - {ad.year}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                          <MapPin className="w-4 h-4" />
+                          {ad.city}
+                          <Eye className="w-4 h-4 ml-4" />
+                          {ad.view_count} مشاهدة
+                        </div>
+                        <div className="flex gap-2">
+                          <Button asChild size="sm" variant="outline" className="flex-1">
+                            <Link to={`/ad/${ad.id}`}>
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              عرض
+                            </Link>
+                          </Button>
+                          <Button asChild size="sm" className="flex-1">
+                            <Link to={`/boost/${ad.id}`}>
+                              <Zap className="w-4 h-4 mr-2" />
+                              تعزيز
+                            </Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="favorites" className="space-y-4">
+              <h2 className="text-2xl font-bold mb-6">المفضلة</h2>
+              {favorites.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <Heart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">لم تقم بإضافة أي إعلانات للمفضلة</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {favorites.map((favorite) => (
+                    <CarCard key={favorite.ad_id} ad={favorite.ads} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-4">
+              <h2 className="text-2xl font-bold mb-6">الإعدادات</h2>
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Edit className="h-5 w-5" />
-                    تحديث الملف الشخصي
-                  </CardTitle>
+                  <CardTitle>تحديث الملف الشخصي</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={updateProfile} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="display-name">الاسم الكامل</Label>
+                  <form onSubmit={handleUpdateProfile} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">اسم العرض</label>
                       <Input
-                        id="display-name"
-                        value={profileData.displayName}
-                        onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
-                        placeholder="أدخل اسمك الكامل"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="اسم العرض"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">رقم الهاتف</Label>
+                    <div>
+                      <label className="text-sm font-medium">رقم الهاتف</label>
                       <Input
-                        id="phone"
-                        value={profileData.phone}
-                        onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                        placeholder="أدخل رقم هاتفك"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="رقم الهاتف"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="city">المدينة</Label>
+                    <div>
+                      <label className="text-sm font-medium">رقم الواتساب</label>
                       <Input
-                        id="city"
-                        value={profileData.city}
-                        onChange={(e) => setProfileData({...profileData, city: e.target.value})}
-                        placeholder="أدخل مدينتك"
+                        value={whatsapp}
+                        onChange={(e) => setWhatsapp(e.target.value)}
+                        placeholder="رقم الواتساب"
                       />
                     </div>
-
-                    <Button type="submit" disabled={updating} className="w-full">
-                      {updating ? "جاري الحفظ..." : "حفظ التغييرات"}
+                    <div>
+                      <label className="text-sm font-medium">المدينة</label>
+                      <Input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="المدينة"
+                      />
+                    </div>
+                    <Button type="submit" disabled={updating}>
+                      {updating ? 'جاري التحديث...' : 'حفظ التغييرات'}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            <TabsContent value="ads" className="mt-6">
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">إعلاناتي</h2>
-                  <Button onClick={() => navigate("/add-ad")}>
-                    إضافة إعلان جديد
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-destructive">منطقة الخطر</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleSignOut}
+                    className="w-full"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    تسجيل الخروج
                   </Button>
-                </div>
-
-                {userAds.length === 0 ? (
-                  <Card className="card-gradient border-0 shadow-lg">
-                    <CardContent className="p-8 text-center">
-                      <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-xl font-bold mb-2">لا توجد إعلانات</h3>
-                      <p className="text-muted-foreground mb-4">لم تقم بإضافة أي إعلانات بعد</p>
-                      <Button onClick={() => navigate("/add-ad")}>
-                        أضف إعلانك الأول
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userAds.map((ad) => (
-                      <CarCard
-                        key={ad.id}
-                        id={ad.id}
-                        title={ad.title}
-                        price={ad.price}
-                        location={ad.city}
-                        year={ad.year}
-                        mileage={ad.mileage}
-                        fuelType={ad.fuel_type}
-                        transmission={ad.transmission}
-                        image={ad.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
-                        isPremium={ad.is_premium}
-                        isFeatured={ad.is_featured}
-                        viewCount={ad.view_count}
-                        creditsRequired={1}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="favorites" className="mt-6">
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold">السيارات المفضلة</h2>
-
-                {favorites.length === 0 ? (
-                  <Card className="card-gradient border-0 shadow-lg">
-                    <CardContent className="p-8 text-center">
-                      <Heart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-xl font-bold mb-2">لا توجد مفضلات</h3>
-                      <p className="text-muted-foreground mb-4">لم تقم بإضافة أي سيارات للمفضلة</p>
-                      <Button onClick={() => navigate("/")}>
-                        تصفح السيارات
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {favorites.map((favorite) => (
-                      <CarCard
-                        key={favorite.ads.id}
-                        id={favorite.ads.id}
-                        title={favorite.ads.title}
-                        price={favorite.ads.price}
-                        location={favorite.ads.city}
-                        year={favorite.ads.year}
-                        mileage={favorite.ads.mileage}
-                        fuelType={favorite.ads.fuel_type}
-                        transmission={favorite.ads.transmission}
-                        image={favorite.ads.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
-                        isPremium={favorite.ads.is_premium}
-                        isFeatured={favorite.ads.is_featured}
-                        viewCount={favorite.ads.view_count}
-                        creditsRequired={1}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="reviews" className="mt-6">
-              <Card className="card-gradient border-0 shadow-lg">
-                <CardContent className="p-8 text-center">
-                  <Star className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-bold mb-2">التقييمات</h3>
-                  <p className="text-muted-foreground">سيتم إضافة نظام التقييمات قريباً</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -422,6 +393,4 @@ const Profile = () => {
       </div>
     </div>
   );
-};
-
-export default Profile;
+}

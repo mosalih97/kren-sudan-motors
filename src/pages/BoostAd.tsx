@@ -10,13 +10,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
+import { UserPointsDisplay } from "@/components/UserPointsDisplay";
+import { useUserPoints } from "@/hooks/useUserPoints";
 
 interface BoostPlan {
   id: string;
   name: string;
   description: string;
-  duration: number; // in hours
-  price: number; // in credits
+  duration: number;
+  price: number;
   icon: any;
   features: string[];
   popular?: boolean;
@@ -56,7 +58,7 @@ const boostPlans: BoostPlan[] = [
     id: "ultimate",
     name: "تعزيز احترافي",
     description: "تعزيز شامل لمدة أسبوع كامل",
-    duration: 168, // 7 days
+    duration: 168,
     price: 100,
     icon: Star,
     features: [
@@ -74,22 +76,21 @@ export default function BoostAd() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: pointsData, refetch: refetchPoints } = useUserPoints();
   const [ad, setAd] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [boosting, setBoosting] = useState<string | null>(null);
-  const [canBoost, setCanBoost] = useState<any>(null);
+  const [boostEligibility, setBoostEligibility] = useState<{[key: string]: any}>({});
 
   useEffect(() => {
     if (!user || !id) return;
     
-    fetchAdAndProfile();
+    fetchAd();
     checkBoostEligibility();
   }, [user, id]);
 
-  const fetchAdAndProfile = async () => {
+  const fetchAd = async () => {
     try {
-      // جلب الإعلان
       const { data: adData, error: adError } = await supabase
         .from('ads')
         .select('*')
@@ -99,19 +100,8 @@ export default function BoostAd() {
 
       if (adError) throw adError;
       setAd(adData);
-
-      // جلب بيانات المستخدم
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (profileError) throw profileError;
-      setProfile(profileData);
-
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching ad:', error);
       toast.error("فشل في جلب بيانات الإعلان");
       navigate('/profile');
     } finally {
@@ -120,20 +110,32 @@ export default function BoostAd() {
   };
 
   const checkBoostEligibility = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('boost-ad', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: new URLSearchParams({ ad_id: id! }).toString()
-      });
+    if (!id) return;
+    
+    const eligibilityResults: {[key: string]: any} = {};
+    
+    for (const plan of boostPlans) {
+      try {
+        const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: new URLSearchParams({ 
+            ad_id: id, 
+            boost_plan: plan.id 
+          }).toString()
+        });
 
-      if (error) throw error;
-      setCanBoost(data);
-    } catch (error) {
-      console.error('Error checking boost eligibility:', error);
+        if (!error) {
+          eligibilityResults[plan.id] = data;
+        }
+      } catch (error) {
+        console.error(`Error checking eligibility for ${plan.id}:`, error);
+      }
     }
+    
+    setBoostEligibility(eligibilityResults);
   };
 
   const handleBoost = async (plan: BoostPlan) => {
@@ -142,10 +144,10 @@ export default function BoostAd() {
     setBoosting(plan.id);
     
     try {
-      const { data, error } = await supabase.functions.invoke('boost-ad', {
+      const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
         body: JSON.stringify({
           ad_id: ad.id,
-          hours_duration: plan.duration
+          boost_plan: plan.id
         })
       });
 
@@ -153,6 +155,7 @@ export default function BoostAd() {
 
       if (data?.success) {
         toast.success("تم تعزيز الإعلان بنجاح!");
+        await refetchPoints();
         navigate('/profile');
       } else {
         toast.error(data?.message || "فشل في تعزيز الإعلان");
@@ -187,9 +190,8 @@ export default function BoostAd() {
     );
   }
 
-  const isPremiumUser = profile?.membership_type === 'premium';
-  const userCredits = profile?.credits || 0;
-  const monthlyAdsCount = profile?.monthly_ads_count || 0;
+  const totalPoints = pointsData?.total_points || 0;
+  const isPremium = pointsData?.membership_type === 'premium';
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,65 +214,36 @@ export default function BoostAd() {
           </p>
         </div>
 
-        {/* معلومات المستخدم */}
+        {/* معلومات الحساب والنقاط */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="w-5 h-5" />
-              معلومات الحساب
+              معلومات الحساب والنقاط
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">نوع العضوية:</span>
-                <Badge variant={isPremiumUser ? "default" : "secondary"}>
-                  {isPremiumUser ? "مميز" : "عادي"}
-                </Badge>
+            <UserPointsDisplay variant="full" />
+            
+            {!isPremium && (
+              <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-amber-700">
+                  المستخدمون العاديون يستخدمون النقاط الأساسية فقط للتعزيز
+                </span>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">الكريديت المتاح:</span>
-                <span className="font-bold text-lg">{userCredits} نقطة</span>
-              </div>
-              
-              {isPremiumUser && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">الإعلانات الشهرية:</span>
-                  <span className="font-medium">{monthlyAdsCount}/40</span>
-                </div>
-              )}
-              
-              {!isPremiumUser && (
-                <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span className="text-sm text-amber-700">
-                    يجب تفعيل العضوية المميزة لاستخدام خدمات التعزيز
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
           </CardContent>
         </Card>
-
-        {/* رسالة عدم القدرة على التعزيز */}
-        {canBoost && !canBoost.can_boost && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive" />
-                <p className="text-destructive font-medium">{canBoost.reason}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* خطط التعزيز */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {boostPlans.map((plan) => {
             const Icon = plan.icon;
-            const canAfford = userCredits >= plan.price;
-            const isEligible = canBoost?.can_boost && isPremiumUser;
+            const eligibility = boostEligibility[plan.id];
+            const canBoost = eligibility?.can_boost || false;
+            const canAfford = totalPoints >= plan.price;
+            const isEligible = canBoost && canAfford;
             
             return (
               <Card 
@@ -311,20 +284,20 @@ export default function BoostAd() {
                   <Button 
                     className="w-full"
                     onClick={() => handleBoost(plan)}
-                    disabled={!isEligible || !canAfford || boosting === plan.id}
+                    disabled={!isEligible || boosting === plan.id}
                   >
                     {boosting === plan.id ? "جاري التعزيز..." : "تعزيز الإعلان"}
                   </Button>
                   
-                  {!canAfford && isPremiumUser && (
+                  {!canAfford && (
                     <p className="text-sm text-destructive mt-2 text-center">
                       نقاط غير كافية - تحتاج {plan.price} نقطة
                     </p>
                   )}
                   
-                  {!isPremiumUser && (
-                    <p className="text-sm text-muted-foreground mt-2 text-center">
-                      يتطلب عضوية مميزة
+                  {eligibility && !canBoost && (
+                    <p className="text-sm text-destructive mt-2 text-center">
+                      {eligibility.reason}
                     </p>
                   )}
                 </CardContent>
@@ -340,21 +313,12 @@ export default function BoostAd() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
-              نظام النقاط والعضوية المميزة
+              نظام النقاط والتعزيز
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">المستخدمون المميزون يحصلون على:</h4>
-                  <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>• 130 نقطة شهرياً للتعزيز</li>
-                    <li>• حتى 40 إعلان شهرياً</li>
-                    <li>• عرض معلومات الاتصال مجاناً</li>
-                    <li>• أولوية في البحث</li>
-                  </ul>
-                </div>
                 <div className="space-y-2">
                   <h4 className="font-medium">أسعار التعزيز:</h4>
                   <ul className="text-sm space-y-1 text-muted-foreground">
@@ -363,16 +327,16 @@ export default function BoostAd() {
                     <li>• أسبوع كامل: 100 نقطة</li>
                   </ul>
                 </div>
-              </div>
-              
-              {!isPremiumUser && (
-                <div className="p-4 bg-primary/10 rounded-lg">
-                  <p className="text-sm">
-                    <strong>ملاحظة:</strong> المستخدمون العاديون لا يمكنهم استخدام نقاط التعزيز. 
-                    يجب تفعيل العضوية المميزة للاستفادة من هذه الخدمة.
-                  </p>
+                <div className="space-y-2">
+                  <h4 className="font-medium">المستخدمون المميزون:</h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• 130 نقطة إضافية شهرياً</li>
+                    <li>• أولوية في استخدام النقاط</li>
+                    <li>• حتى 40 إعلان شهرياً</li>
+                    <li>• مزايا إضافية في التعزيز</li>
+                  </ul>
                 </div>
-              )}
+              </div>
             </div>
           </CardContent>
         </Card>
