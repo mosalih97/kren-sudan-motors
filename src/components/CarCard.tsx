@@ -77,21 +77,21 @@ export function CarCard({
       </div>
 
       <CardContent className="p-4 space-y-4">
-        {/* معلومات البائع */}
+        {/* معلومات البائع أعلى العنوان */}
         {seller && showSellerInfo && (
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 -mt-2 mb-3">
             <div className="relative">
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-6 w-6">
                 <AvatarImage src={seller.avatar_url} alt={seller.display_name} />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
                   {seller.display_name?.charAt(0) || 'ب'}
                 </AvatarFallback>
               </Avatar>
               {seller.membership_type === 'premium' && (
-                <Crown className="h-3 w-3 text-primary absolute -top-0.5 -right-0.5" />
+                <Crown className="h-2.5 w-2.5 text-primary absolute -top-0.5 -right-0.5" />
               )}
             </div>
-            <span className="text-sm text-orange-500 font-medium">
+            <span className="text-xs text-orange-500 font-medium">
               {seller.display_name}
             </span>
           </div>
