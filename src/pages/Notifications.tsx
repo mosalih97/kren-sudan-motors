@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
-import { Bell, Check, CheckCheck, Trash2, Filter, Settings } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, Filter, Settings, MessageCircle } from "lucide-react";
 
 const Notifications = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -213,9 +213,9 @@ const Notifications = () => {
                     </Button>
                   )}
                   
-                  <Button variant="ghost" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    إعدادات الإشعارات
+                  <Button variant="ghost" className="gap-2" onClick={() => navigate('/messages')}>
+                    <MessageCircle className="h-4 w-4" />
+                    الرسائل
                   </Button>
                 </div>
               </div>

@@ -47,14 +47,14 @@ const Index = () => {
         <div className="hero-gradient py-20 lg:py-32">
           <div className="container mx-auto px-4 text-center text-white">
             <div className="max-w-4xl mx-auto space-y-8">
-              <Badge variant="new" className="mb-4">
+              <div className="inline-block bg-warning/20 text-warning px-8 py-4 rounded-full text-xl font-bold mb-8">
                 🚀 الآن في السودان - منصة السيارات الأكثر تطوراً
-              </Badge>
+              </div>
               
-              <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
+              <h1 className="text-4xl lg:text-6xl font-bold leading-tight font-almarai">
                 بيع واشتري بمزاجك مع
                 <br />
-                <span className="bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2 inline-block mt-4">
+                <span className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 inline-block mt-4 font-amiri">
                   الكرين
                 </span>
               </h1>
@@ -226,7 +226,7 @@ const Index = () => {
                 <div className="w-8 h-8 rounded-lg primary-gradient flex items-center justify-center">
                   <span className="text-white font-bold">ك</span>
                 </div>
-                <span className="text-xl font-bold">الكرين</span>
+                <span className="text-xl font-bold font-amiri">الكرين</span>
               </div>
               <p className="text-white/70">
                 منصة السيارات الرائدة في السودان. نربط البائعين والمشترين بطريقة آمنة وموثوقة.

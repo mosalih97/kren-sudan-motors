@@ -306,6 +306,96 @@ const AdDetails = () => {
     }
   };
 
+  const handleShareWhatsApp = () => {
+    const text = `${ad.title} - ${ad.price.toLocaleString('ar-SD')} جنيه`;
+    const url = window.location.href;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleShareFacebook = () => {
+    const url = window.location.href;
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    window.open(facebookUrl, '_blank');
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "تم النسخ",
+      description: "تم نسخ رابط الإعلان إلى الحافظة"
+    });
+  };
+
+  const handleMessage = () => {
+    if (!user) {
+      toast({
+        title: "تسجيل دخول مطلوب",
+        description: "يجب تسجيل الدخول أولاً لإرسال رسالة",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
+    navigate('/messages');
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        title: "تسجيل دخول مطلوب",
+        description: "يجب تسجيل الدخول أولاً لحفظ الإعلان",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
+
+    try {
+      // Check if already saved
+      const { data: existing } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('ad_id', id)
+        .single();
+
+      if (existing) {
+        // Remove from favorites
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('ad_id', id);
+        
+        toast({
+          title: "تم الإلغاء",
+          description: "تم إزالة الإعلان من المفضلة"
+        });
+      } else {
+        // Add to favorites
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            ad_id: id
+          });
+        
+        toast({
+          title: "تم الحفظ",
+          description: "تم إضافة الإعلان إلى المفضلة"
+        });
+      }
+    } catch (error) {
+      console.error('Error saving ad:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء حفظ الإعلان",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -528,21 +618,36 @@ const AdDetails = () => {
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={handleMessage}>
                       <MessageCircle className="h-4 w-4 ml-2" />
                       رسالة
                     </Button>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={handleSave}>
                       <Heart className="h-4 w-4 ml-2" />
                       حفظ
                     </Button>
                   </div>
                   
-                  <div className="flex justify-center">
-                    <Button variant="outline" size="sm" onClick={handleShare} className="w-full">
-                      <Share2 className="h-4 w-4 ml-2" />
-                      مشاركة
-                    </Button>
+                  {/* أزرار المشاركة */}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="bg-green-50 hover:bg-green-100 text-green-700">
+                        <WhatsAppIcon />
+                        <span className="ml-1">واتساب</span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleShareFacebook} className="bg-blue-50 hover:bg-blue-100 text-blue-700">
+                        <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        فيسبوك
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleCopyLink}>
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        نسخ
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -576,7 +681,7 @@ const AdDetails = () => {
                   {/* زر تصفح إعلانات البائع */}
                   <Button 
                     variant="outline" 
-                    className="w-full bg-accent/10 hover:bg-accent/20 border-accent text-accent-foreground"
+                    className="w-full bg-primary/10 hover:bg-primary/20 border-primary text-primary font-medium"
                     onClick={() => navigate(`/seller/${profile.user_id}`)}
                   >
                     تصفح إعلانات البائع

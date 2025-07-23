@@ -211,16 +211,24 @@ const Profile = () => {
                     <p className="text-muted-foreground">{profile.city}</p>
                   )}
                   
-                  <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">
-                    {profile.is_premium && (
-                      <Badge variant="premium" className="gap-1">
-                        <Crown className="h-3 w-3" />
+                  <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
+                    {profile.membership_type === 'premium' ? (
+                      <Badge variant="premium" className="gap-1 text-sm">
+                        <Crown className="h-4 w-4" />
                         عضو مميز
                       </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="gap-1 text-sm">
+                        عضو عادي
+                      </Badge>
                     )}
-                    <Badge variant="outline" className="gap-1">
-                      <Coins className="h-3 w-3" />
-                      {profile.credits || 0} نقطة
+                    <Badge variant="accent" className="gap-1 text-sm">
+                      <Coins className="h-4 w-4" />
+                      {profile.points || 0} نقطة
+                    </Badge>
+                    <Badge variant="outline" className="gap-1 text-sm">
+                      <Car className="h-4 w-4" />
+                      إعلانات شهرية: {profile.monthly_ads_count || 0}/5
                     </Badge>
                   </div>
                 </div>

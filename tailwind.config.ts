@@ -20,6 +20,8 @@ export default {
 		extend: {
 			fontFamily: {
 				cairo: ['Cairo', 'sans-serif'],
+				almarai: ['Almarai', 'sans-serif'],
+				amiri: ['Amiri', 'serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

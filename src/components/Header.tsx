@@ -68,7 +68,7 @@ export function Header() {
                 <span className="text-white font-bold text-xl">ك</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold primary-gradient bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold primary-gradient bg-clip-text text-transparent font-amiri">
                   الكرين
                 </h1>
                 <p className="text-xs text-muted-foreground">سوق السيارات السوداني</p>
@@ -175,7 +175,7 @@ export function Header() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        إعلانات شهرية: {profile?.monthly_ads_count || 0}/10
+                        إعلانات شهرية: {profile?.monthly_ads_count || 0}/5
                       </p>
                     </div>
                     <DropdownMenuSeparator />
