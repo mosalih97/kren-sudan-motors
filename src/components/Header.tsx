@@ -68,7 +68,7 @@ export function Header() {
                 <span className="text-white font-bold text-xl">ك</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold primary-gradient bg-clip-text text-transparent font-amiri">
+                <h1 className="text-2xl font-bold primary-gradient bg-clip-text text-transparent font-scheherazade">
                   الكرين
                 </h1>
                 <p className="text-xs text-muted-foreground">سوق السيارات السوداني</p>

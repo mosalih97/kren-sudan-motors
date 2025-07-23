@@ -47,16 +47,16 @@ const Index = () => {
         <div className="hero-gradient py-20 lg:py-32">
           <div className="container mx-auto px-4 text-center text-white">
             <div className="max-w-4xl mx-auto space-y-8">
-              <div className="inline-block bg-gradient-to-r from-orange-400 to-orange-500 text-white px-10 py-5 rounded-full text-2xl font-bold mb-8 shadow-lg">
+              <div className="inline-block bg-gradient-to-r from-orange-400 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-medium mb-8 shadow-lg whitespace-nowrap">
                 🚀 الآن في السودان - منصة السيارات الأكثر تطوراً
               </div>
               
               <h1 className="text-4xl lg:text-6xl font-bold leading-tight font-almarai">
                 بيع واشتري بمزاجك مع
                 <br />
-                <span className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 inline-block mt-4 font-amiri">
-                  الكرين
-                </span>
+                 <span className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 inline-block mt-4 font-scheherazade">
+                   الكرين
+                 </span>
               </h1>
               
               <p className="text-xl lg:text-2xl text-white/90 max-w-2xl mx-auto">
@@ -148,7 +148,7 @@ const Index = () => {
               ))
             ) : featuredCars.length > 0 ? (
               featuredCars.map((car) => (
-                <CarCard 
+                 <CarCard 
                   key={car.id} 
                   id={car.id}
                   title={car.title}
@@ -164,6 +164,7 @@ const Index = () => {
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
                   creditsRequired={1}
+                  showSellerInfo={true}
                 />
               ))
             ) : (

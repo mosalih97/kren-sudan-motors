@@ -22,6 +22,7 @@ export default {
 				cairo: ['Cairo', 'sans-serif'],
 				almarai: ['Almarai', 'sans-serif'],
 				amiri: ['Amiri', 'serif'],
+				scheherazade: ['Scheherazade New', 'serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

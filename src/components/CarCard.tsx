@@ -26,6 +26,7 @@ interface CarCardProps {
     avatar_url?: string;
     membership_type?: string;
   };
+  showSellerInfo?: boolean;
 }
 
 export function CarCard({
@@ -43,7 +44,8 @@ export function CarCard({
   isNew = false,
   viewCount,
   creditsRequired = 1,
-  seller
+  seller,
+  showSellerInfo = false
 }: CarCardProps) {
   const navigate = useNavigate();
   return (
@@ -76,7 +78,7 @@ export function CarCard({
 
       <CardContent className="p-4 space-y-4">
         {/* معلومات البائع */}
-        {seller && (
+        {seller && showSellerInfo && (
           <div className="flex items-center gap-2 mb-3">
             <div className="relative">
               <Avatar className="h-8 w-8">
