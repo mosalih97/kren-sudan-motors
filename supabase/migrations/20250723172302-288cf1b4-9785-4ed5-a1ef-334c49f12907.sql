@@ -1,15 +1,16 @@
 
--- إعادة إنشاء عمود credits في جدول profiles
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS credits integer DEFAULT 5;
+-- تحديث النقاط الافتراضية للمستخدمين المميزين الجدد
+UPDATE public.profiles 
+SET credits = 130 
+WHERE membership_type = 'premium' AND credits = 5;
 
--- تحديث دالة handle_new_user لتشمل الكريديت
+-- تحديث دالة handle_new_user لتعطي 130 نقطة للمستخدمين المميزين
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $$
+AS $function$
 BEGIN
   INSERT INTO public.profiles (user_id, display_name, phone, whatsapp, city, points, membership_type, user_id_display, credits)
   VALUES (
@@ -28,9 +29,9 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$;
+$function$;
 
--- تحديث دالة can_boost_ad لتعمل مع النظام الجديد
+-- تحديث دالة can_boost_ad للتحقق من متطلبات التعزيز الجديدة
 CREATE OR REPLACE FUNCTION public.can_boost_ad(
   ad_id_param uuid,
   user_id_param uuid
@@ -38,7 +39,7 @@ CREATE OR REPLACE FUNCTION public.can_boost_ad(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $$
+AS $function$
 DECLARE
   ad_owner uuid;
   existing_boost_count integer;
@@ -105,9 +106,9 @@ BEGIN
   
   RETURN result;
 END;
-$$;
+$function$;
 
--- تحديث دالة boost_ad_to_top_spot
+-- تحديث دالة boost_ad_to_top_spot لتطبيق النظام الجديد
 CREATE OR REPLACE FUNCTION public.boost_ad_to_top_spot(
   ad_id_param uuid,
   user_id_param uuid,
@@ -116,7 +117,7 @@ CREATE OR REPLACE FUNCTION public.boost_ad_to_top_spot(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $$
+AS $function$
 DECLARE
   can_boost_result jsonb;
   cost_amount integer;
@@ -190,15 +191,15 @@ BEGIN
   
   RETURN result;
 END;
-$$;
+$function$;
 
--- تحديث دالة deduct_points للعمل مع النظام الجديد
+-- تحديث دالة deduct_points للمستخدمين المميزين
 CREATE OR REPLACE FUNCTION public.deduct_points(user_id_param uuid, points_to_deduct integer)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $$
+AS $function$
 DECLARE
   current_points integer;
   user_membership text;
@@ -223,38 +224,4 @@ BEGIN
     RETURN false;
   END IF;
 END;
-$$;
-
--- إنشاء جدول receipt_logs إذا لم يكن موجوداً
-CREATE TABLE IF NOT EXISTS public.receipt_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  image_urls text[] NOT NULL,
-  extracted_data jsonb,
-  status text NOT NULL,
-  reason text,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now()
-);
-
--- تفعيل RLS على جدول receipt_logs
-ALTER TABLE public.receipt_logs ENABLE ROW LEVEL SECURITY;
-
--- سياسات RLS لجدول receipt_logs
-CREATE POLICY "Users can view their own receipt logs" 
-ON public.receipt_logs 
-FOR SELECT 
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create their own receipt logs" 
-ON public.receipt_logs 
-FOR INSERT 
-WITH CHECK (auth.uid() = user_id);
-
--- تحديث المستخدمين الحاليين بالكريديت الافتراضي
-UPDATE public.profiles 
-SET credits = CASE 
-  WHEN membership_type = 'premium' THEN 130
-  ELSE 5
-END
-WHERE credits IS NULL;
+$function$;

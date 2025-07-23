@@ -1,228 +1,305 @@
 
-import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Header } from "@/components/Header";
-import { Upload, CreditCard, Shield, CheckCircle, Clock, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Upload, AlertTriangle, CheckCircle, Copy, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
-export default function BankSubscription() {
+const BankSubscription = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [uploading, setUploading] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [greenReceipt, setGreenReceipt] = useState<File | null>(null);
+  const [whiteReceipt, setWhiteReceipt] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [userIdDisplay, setUserIdDisplay] = useState<string>('');
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    try {
-      const imageUrls: string[] = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user?.id}/${Date.now()}-${i}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('bank-receipts')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('bank-receipts')
-          .getPublicUrl(fileName);
-
-        imageUrls.push(publicUrl);
-      }
-
-      setUploadedImages(imageUrls);
-      toast.success("تم رفع الإيصالات بنجاح!");
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error("حدث خطأ أثناء رفع الإيصالات");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (uploadedImages.length === 0) {
-      toast.error("يرجى رفع الإيصالات أولاً");
+  React.useEffect(() => {
+    if (!user) {
+      navigate('/auth');
       return;
     }
 
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-bank-receipts', {
-        body: { imageUrls: uploadedImages }
-      });
+    // جلب رقم العضوية للمستخدم
+    const fetchUserIdDisplay = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id_display')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success("تم إرسال الإيصالات للمراجعة بنجاح!");
-        setUploadedImages([]);
-      } else {
-        toast.error(data.message || "حدث خطأ أثناء معالجة الإيصالات");
+      if (data && !error) {
+        setUserIdDisplay(data.user_id_display);
       }
-    } catch (error) {
-      console.error('Verification error:', error);
-      toast.error("حدث خطأ أثناء التحقق من الإيصالات");
+    };
+
+    fetchUserIdDisplay();
+  }, [user, navigate]);
+
+  const handleFileSelect = (file: File, type: 'green' | 'white') => {
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "حجم الملف كبير جداً",
+        description: "يجب أن يكون حجم الملف أقل من 2 ميجابايت",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      toast({
+        title: "نوع ملف غير مدعوم",
+        description: "يجب أن يكون الملف من نوع JPG أو PNG",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (type === 'green') {
+      setGreenReceipt(file);
+    } else {
+      setWhiteReceipt(file);
     }
   };
 
+  const copyUserIdToClipboard = () => {
+    navigator.clipboard.writeText(userIdDisplay);
+    toast({
+      title: "تم النسخ",
+      description: "تم نسخ رقم العضوية إلى الحافظة",
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!greenReceipt || !whiteReceipt) {
+      toast({
+        title: "ملفات مفقودة",
+        description: "يجب رفع الإيصالين (الأخضر والأبيض)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('greenReceipt', greenReceipt);
+      formData.append('whiteReceipt', whiteReceipt);
+
+      const { data, error } = await supabase.functions.invoke('verify-bank-receipts', {
+        body: formData
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        toast({
+          title: "تم التفعيل بنجاح! 🎉",
+          description: data.message,
+        });
+        
+        // إعادة توجيه للصفحة الرئيسية بعد 3 ثواني
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
+      } else {
+        toast({
+          title: "فشل في التحقق",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "خطأ في النظام",
+        description: "حدث خطأ أثناء التحقق من الإيصالات",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user) {
+    return <div>جاري التحميل...</div>;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
-      <Header />
-      
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
-        <div className="mb-6">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(-1)}
-            className="mb-4"
-          >
-            <ArrowLeft className="ml-2 h-4 w-4" />
-            العودة
-          </Button>
-        </div>
-
-        <Card className="shadow-lg border-0 bg-white/95 backdrop-blur-sm">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <CreditCard className="h-12 w-12 md:h-16 md:w-16 text-primary" />
-            </div>
-            <CardTitle className="text-xl md:text-2xl font-bold">تفعيل العضوية المميزة</CardTitle>
-            <CardDescription className="text-sm md:text-base">
-              ارفع إيصال التحويل البنكي لتفعيل العضوية المميزة
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {/* بيانات التحويل */}
-            <div className="bg-muted/50 p-4 md:p-6 rounded-lg">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                بيانات التحويل البنكي
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">اسم البنك:</span>
-                  <span className="font-medium">بنك الخرطوم</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">رقم الحساب:</span>
-                  <span className="font-medium">1234567890</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">اسم المستفيد:</span>
-                  <span className="font-medium">شركة كارز سودان</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">المبلغ:</span>
-                  <span className="font-medium text-primary">1000 جنيه سوداني</span>
-                </div>
-              </div>
-            </div>
-
-            {/* رفع الإيصالات */}
-            <div className="space-y-4">
-              <Label htmlFor="receipt-upload" className="text-base font-medium">
-                رفع إيصال التحويل
-              </Label>
-              
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 md:p-8 text-center">
-                <Upload className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4 text-sm md:text-base">
-                  اسحب واسقط الإيصالات هنا أو انقر لاختيار الملفات
-                </p>
-                <Input
-                  id="receipt-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="max-w-xs mx-auto"
-                />
-              </div>
-
-              {uploadedImages.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    تم رفع {uploadedImages.length} إيصال(ات)
-                  </p>
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm">جاهز للإرسال</span>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-right">تفعيل الاشتراك البنكي</CardTitle>
+              <CardDescription className="text-right">
+                قم برفع إيصالات التحويل البنكي لتفعيل العضوية المميزة
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* عرض رقم العضوية */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">رقم عضويتك:</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-lg font-mono">
+                        {userIdDisplay}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyUserIdToClipboard}
+                      >
+                        <Copy className="h-4 w-4 ml-1" />
+                        نسخ
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* مزايا العضوية */}
-            <div className="bg-primary/5 p-4 md:p-6 rounded-lg">
-              <h3 className="font-semibold mb-4 text-primary">مزايا العضوية المميزة</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span>130 نقطة تعزيز شهرياً</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span>إعلانات مميزة تظهر في المقدمة</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span>عرض معلومات الاتصال مجاناً</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span>حتى 40 إعلان شهرياً</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  <span>دعم فني مخصص</span>
-                </div>
               </div>
-            </div>
 
-            {/* أزرار التحكم */}
-            <div className="flex gap-3">
+              {/* التنبيه المهم */}
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-right">
+                  <strong>⚠️ تنبيه مهم:</strong> تأكد من تحويل المبلغ الصحيح (25,000 جنيه) إلى الحساب الظاهر في الإيصالات، 
+                  مع كتابة رقم عضويتك المكون من 8 أرقام ({userIdDisplay}) في خانة التعليق داخل الإيصال البنكي.
+                  <br />
+                  <strong>في حالة وجود خطأ في رقم الحساب أو عدم إدخال رقم العضوية في خانة التعليق، 
+                  لن يتم تفعيل اشتراكك ولن تُسترد قيمة التحويل.</strong>
+                </AlertDescription>
+              </Alert>
+
+              {/* بيانات الحساب المستفيد */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg text-right">بيانات الحساب المستفيد</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-right">
+                  <div>
+                    <span className="font-semibold">اسم المستفيد: </span>
+                    <span>محمد الأمين منتصر صالح عبدالقادر</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">رقم الحساب: </span>
+                    <span className="font-mono">0913 0368 9929 0001</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">المبلغ المطلوب: </span>
+                    <span className="text-green-600 font-bold">25,000 جنيه</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* رفع الإيصالات */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* الإيصال الأخضر */}
+                <Card className="border-green-200">
+                  <CardHeader>
+                    <CardTitle className="text-center text-green-700">الإيصال الأخضر</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'green')}
+                        className="hidden"
+                        id="green-receipt"
+                      />
+                      <label
+                        htmlFor="green-receipt"
+                        className="cursor-pointer flex flex-col items-center justify-center h-32 border-2 border-dashed border-green-300 rounded-lg hover:bg-green-50 transition-colors"
+                      >
+                        {greenReceipt ? (
+                          <div className="text-green-700">
+                            <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">{greenReceipt.name}</p>
+                          </div>
+                        ) : (
+                          <div className="text-green-600">
+                            <Upload className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">اختر الإيصال الأخضر</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* الإيصال الأبيض */}
+                <Card className="border-gray-200">
+                  <CardHeader>
+                    <CardTitle className="text-center text-gray-700">الإيصال الأبيض</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0], 'white')}
+                        className="hidden"
+                        id="white-receipt"
+                      />
+                      <label
+                        htmlFor="white-receipt"
+                        className="cursor-pointer flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        {whiteReceipt ? (
+                          <div className="text-gray-700">
+                            <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">{whiteReceipt.name}</p>
+                          </div>
+                        ) : (
+                          <div className="text-gray-600">
+                            <Upload className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">اختر الإيصال الأبيض</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* زر التفعيل */}
               <Button
                 onClick={handleSubmit}
-                disabled={uploading || uploadedImages.length === 0}
-                className="flex-1"
+                disabled={!greenReceipt || !whiteReceipt || loading}
+                className="w-full"
+                size="lg"
               >
-                {uploading ? (
+                {loading ? (
                   <>
-                    <Clock className="h-4 w-4 mr-2 animate-spin" />
-                    جاري الرفع...
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    جاري التحقق من الإيصالات...
                   </>
                 ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    إرسال للمراجعة
-                  </>
+                  "تفعيل الاشتراك"
                 )}
               </Button>
-            </div>
 
-            {/* معلومات إضافية */}
-            <div className="text-center text-sm text-muted-foreground space-y-1">
-              <p>سيتم مراجعة الإيصال خلال 24 ساعة</p>
-              <p>وسيتم تفعيل العضوية المميزة فور التأكد من التحويل</p>
-            </div>
-          </CardContent>
-        </Card>
+              {/* معلومات إضافية */}
+              <div className="text-sm text-gray-500 text-right space-y-1">
+                <p>• الحد الأقصى لحجم الملف: 2 ميجابايت</p>
+                <p>• الصيغ المدعومة: JPG, PNG</p>
+                <p>• سيتم التحقق من الإيصالات خلال 30 ثانية</p>
+                <p>• العضوية المميزة صالحة لمدة شهر من تاريخ التفعيل</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default BankSubscription;

@@ -1,76 +1,49 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient } from 'react-query';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Home from './pages/Home';
+import AdDetails from './pages/AdDetails';
+import Profile from './pages/Profile';
+import Auth from './pages/Auth';
+import PostAd from './pages/PostAd';
+import EditAd from './pages/EditAd';
+import Header from './components/Header';
+import { Toaster } from "@/components/ui/toaster"
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "./contexts/AuthContext";
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
-import Cars from "./pages/Cars";
-import AdDetails from "./pages/AdDetails";
-import Auth from "./pages/Auth";
-import Profile from "./pages/Profile";
-import AddAd from "./pages/AddAd";
-import Messages from "./pages/Messages";
-import Notifications from "./pages/Notifications";
-import SellerAds from "./pages/SellerAds";
-import BoostAd from "./pages/BoostAd";
-import BankSubscription from "./pages/BankSubscription";
-import NotFound from "./pages/NotFound";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import "./App.css";
+import BankSubscription from './pages/BankSubscription';
 
-const queryClient = new QueryClient();
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light">
+    <QueryClient>
+      <BrowserRouter>
         <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/cars" element={<Cars />} />
-              <Route path="/ad/:id" element={<AdDetails />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/seller/:sellerId" element={<SellerAds />} />
-              <Route path="/subscription" element={<BankSubscription />} />
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/add-ad" element={
-                <ProtectedRoute>
-                  <AddAd />
-                </ProtectedRoute>
-              } />
-              <Route path="/messages" element={
-                <ProtectedRoute>
-                  <Messages />
-                </ProtectedRoute>
-              } />
-              <Route path="/notifications" element={
-                <ProtectedRoute>
-                  <Notifications />
-                </ProtectedRoute>
-              } />
-              <Route path="/boost/:id" element={
-                <ProtectedRoute>
-                  <BoostAd />
-                </ProtectedRoute>
-              } />
-              <Route path="/boost-ad/:id" element={
-                <ProtectedRoute>
-                  <BoostAd />
-                </ProtectedRoute>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
-          <Toaster />
+          <div className="min-h-screen bg-background">
+            <Header />
+            <main className="flex-1">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/ad/:id" element={<AdDetails />} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/post-ad" element={<ProtectedRoute><PostAd /></ProtectedRoute>} />
+                <Route path="/edit-ad/:id" element={<ProtectedRoute><EditAd /></ProtectedRoute>} />
+                <Route path="/bank-subscription" element={<ProtectedRoute><BankSubscription /></ProtectedRoute>} />
+              </Routes>
+            </main>
+            <Toaster />
+          </div>
         </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+      </BrowserRouter>
+    </QueryClient>
   );
 }
 
