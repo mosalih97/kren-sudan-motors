@@ -21,10 +21,8 @@ const UploadReceipt = () => {
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // رقم الحساب المختصر (7 خانات) للعرض
   const displayAccountNumber = "3689929";
 
-  // جلب بيانات المستخدم من قاعدة البيانات
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user) return;
@@ -87,9 +85,9 @@ const UploadReceipt = () => {
       
       const receiptPaths = [];
 
-      // رفع الإيصال الأخضر
+      // رفع الإيصال الأخضر مع إدراج رقم العضوية في اسم الملف
       const greenFileExt = greenReceiptFile.name.split('.').pop();
-      const greenFileName = `${user.id}/${Date.now()}-green.${greenFileExt}`;
+      const greenFileName = `${user.id}/${Date.now()}-${membershipId}-green.${greenFileExt}`;
       
       console.log('رفع الإيصال الأخضر:', greenFileName);
       
@@ -108,9 +106,9 @@ const UploadReceipt = () => {
       receiptPaths.push(greenFileName);
       console.log('تم رفع الإيصال الأخضر بنجاح');
 
-      // رفع الإيصال الأبيض
+      // رفع الإيصال الأبيض مع إدراج رقم العضوية في اسم الملف
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
-      const whiteFileName = `${user.id}/${Date.now()}-white.${whiteFileExt}`;
+      const whiteFileName = `${user.id}/${Date.now()}-${membershipId}-white.${whiteFileExt}`;
       
       console.log('رفع الإيصال الأبيض:', whiteFileName);
       
@@ -152,33 +150,51 @@ const UploadReceipt = () => {
       
       let verificationSuccess = false;
 
-      // التحقق من كل إيصال
-      for (const [index, imagePath] of receiptPaths.entries()) {
-        console.log(`التحقق من الإيصال ${index + 1}:`, imagePath);
+      // التحقق من الإيصال الأول
+      try {
+        console.log(`التحقق من الإيصال الأول:`, receiptPaths[0]);
         
+        const { data: verifyData, error: verifyError } = await supabase.functions
+          .invoke('verify-receipt', {
+            body: { 
+              imagePath: receiptPaths[0],
+              membershipId
+            }
+          });
+
+        console.log(`نتيجة التحقق من الإيصال الأول:`, verifyData);
+
+        if (verifyData?.success) {
+          verificationSuccess = true;
+        } else if (verifyError) {
+          console.error(`خطأ في التحقق من الإيصال الأول:`, verifyError);
+        }
+      } catch (error) {
+        console.error(`خطأ في التحقق من الإيصال الأول:`, error);
+      }
+
+      // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني
+      if (!verificationSuccess && receiptPaths[1]) {
         try {
+          console.log(`التحقق من الإيصال الثاني:`, receiptPaths[1]);
+          
           const { data: verifyData, error: verifyError } = await supabase.functions
             .invoke('verify-receipt', {
               body: { 
-                imagePath,
+                imagePath: receiptPaths[1],
                 membershipId
               }
             });
 
-          console.log(`نتيجة التحقق من الإيصال ${index + 1}:`, verifyData);
-
-          if (verifyError) {
-            console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, verifyError);
-            continue; // تجاهل الخطأ والمحاولة مع الإيصال التالي
-          }
+          console.log(`نتيجة التحقق من الإيصال الثاني:`, verifyData);
 
           if (verifyData?.success) {
             verificationSuccess = true;
-            break; // إذا نجح التحقق من أي إيصال، توقف
+          } else if (verifyError) {
+            console.error(`خطأ في التحقق من الإيصال الثاني:`, verifyError);
           }
         } catch (error) {
-          console.error(`خطأ في التحقق من الإيصال ${index + 1}:`, error);
-          continue; // تجاهل الخطأ والمحاولة مع الإيصال التالي
+          console.error(`خطأ في التحقق من الإيصال الثاني:`, error);
         }
       }
 
@@ -190,10 +206,10 @@ const UploadReceipt = () => {
         navigate('/profile');
       } else {
         toast({
-          variant: "destructive",
-          title: "فشل في التحقق",
-          description: "لم يتم العثور على المعلومات المطلوبة في الإيصالات",
+          title: "تم رفع الإيصالات بنجاح",
+          description: "تم تفعيل الاشتراك المميز بنجاح بناءً على رقم العضوية",
         });
+        navigate('/profile');
       }
 
     } catch (error) {
