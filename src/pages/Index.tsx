@@ -52,7 +52,7 @@ const Index = () => {
               </Badge>
               
               <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
-                اكتشف سيارة أحلامك مع
+                بيع واشتري بمزاجك مع
                 <br />
                 <span className="bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2 inline-block mt-4">
                   الكرين
@@ -301,10 +301,10 @@ const Index = () => {
               <div className="space-y-4">
                 {/* زر واتساب عصري */}
                 <a 
-                  href="https://wa.me/24966960202"
+                  href="https://wa.me/249966960202"
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-xl hover:shadow-lg transition-smooth"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:shadow-lg transition-smooth mb-3"
                   style={{ background: 'var(--gradient-accent)' }}
                 >
                   <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
@@ -314,7 +314,7 @@ const Index = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-white font-semibold">واتساب</div>
-                    <div className="text-white/80 text-sm">+24966960202</div>
+                    <div className="text-white/80 text-sm">+249 966 960 202</div>
                   </div>
                 </a>
 
@@ -341,7 +341,7 @@ const Index = () => {
           </div>
 
           <div className="border-t border-white/20 mt-8 pt-8 text-center text-white/70">
-            <p>&copy; 2024 الكرين. جميع الحقوق محفوظة.</p>
+            <p>&copy; 2025 الكرين. جميع الحقوق محفوظة.</p>
           </div>
         </div>
       </footer>
