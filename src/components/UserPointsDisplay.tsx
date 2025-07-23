@@ -25,13 +25,15 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
   const basePoints = pointsData.base_points;
   const premiumCredits = pointsData.premium_credits;
   const isPremium = pointsData.membership_type === 'premium';
+  const monthlyAdsCount = pointsData.monthly_ads_count;
+  const monthlyAdsLimit = pointsData.monthly_ads_limit;
 
   if (variant === 'full') {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Crown className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">النقاط المتاحة</h3>
+          <h3 className="font-semibold">النقاط والإعلانات المتاحة</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -53,11 +55,23 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
             </div>
           )}
         </div>
-        
+
         <div className="p-4 bg-background border rounded-lg">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <span className="font-medium">إجمالي النقاط</span>
             <span className="text-2xl font-bold text-primary">{totalPoints}</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">الإعلانات الشهرية</span>
+            <span className="text-xl font-bold text-blue-600">
+              {monthlyAdsCount}/{monthlyAdsLimit}
+            </span>
+          </div>
+          <div className="mt-2 text-sm text-blue-600">
+            متبقي: {monthlyAdsLimit - monthlyAdsCount} إعلان
           </div>
         </div>
       </div>
@@ -66,15 +80,17 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
 
   if (variant === 'sidebar') {
     return (
-      <div className="flex items-center gap-2">
-        <Coins className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium">{totalPoints}</span>
-        {isPremium && (
-          <Badge variant="outline" className="text-xs">
-            <Crown className="w-3 h-3 ml-1" />
-            مميز
-          </Badge>
-        )}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Coins className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{totalPoints} نقطة</span>
+          {isPremium && <Crown className="w-4 h-4 text-primary" />}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            إعلانات: {monthlyAdsCount}/{monthlyAdsLimit}
+          </span>
+        </div>
       </div>
     );
   }

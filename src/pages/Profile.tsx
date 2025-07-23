@@ -119,17 +119,17 @@ export default function Profile() {
     setUpdating(true);
 
     const updates = {
-      user_id: user?.id,
       display_name: displayName,
       phone: phone,
       whatsapp: whatsapp,
       city: city,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(),
     };
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(updates, { returning: 'minimal' });
+      .update(updates)
+      .eq('user_id', user?.id);
 
     if (error) {
       toast.error('Failed to update profile.');
@@ -180,10 +180,10 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* عرض النقاط المجمعة */}
+            {/* عرض النقاط والإعلانات */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>النقاط المتاحة</CardTitle>
+                <CardTitle>النقاط والإعلانات المتاحة</CardTitle>
               </CardHeader>
               <CardContent>
                 <UserPointsDisplay variant="full" />
@@ -220,7 +220,6 @@ export default function Profile() {
             </Card>
           </div>
 
-          {/* باقي الكود يبقى كما هو */}
           <Tabs defaultValue="ads" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ads">إعلاناتي ({userAds.length})</TabsTrigger>
@@ -319,7 +318,9 @@ export default function Profile() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {favorites.map((favorite) => (
-                    <CarCard key={favorite.ad_id} ad={favorite.ads} />
+                    <div key={favorite.ad_id}>
+                      <CarCard ad={favorite.ads} />
+                    </div>
                   ))}
                 </div>
               )}

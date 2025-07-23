@@ -192,6 +192,8 @@ export default function BoostAd() {
 
   const totalPoints = pointsData?.total_points || 0;
   const isPremium = pointsData?.membership_type === 'premium';
+  const monthlyAdsCount = pointsData?.monthly_ads_count || 0;
+  const monthlyAdsLimit = pointsData?.monthly_ads_limit || 5;
 
   return (
     <div className="min-h-screen bg-background">
@@ -313,7 +315,7 @@ export default function BoostAd() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
-              نظام النقاط والتعزيز
+              نظام النقاط والإعلانات
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -328,12 +330,11 @@ export default function BoostAd() {
                   </ul>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="font-medium">المستخدمون المميزون:</h4>
+                  <h4 className="font-medium">حدود الإعلانات:</h4>
                   <ul className="text-sm space-y-1 text-muted-foreground">
-                    <li>• 130 نقطة إضافية شهرياً</li>
-                    <li>• أولوية في استخدام النقاط</li>
-                    <li>• حتى 40 إعلان شهرياً</li>
-                    <li>• مزايا إضافية في التعزيز</li>
+                    <li>• العضوية العادية: 5 إعلانات شهرياً</li>
+                    <li>• العضوية المميزة: 40 إعلان شهرياً</li>
+                    <li>• إعلاناتك الحالية: {monthlyAdsCount}/{monthlyAdsLimit}</li>
                   </ul>
                 </div>
               </div>
