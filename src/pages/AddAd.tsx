@@ -150,13 +150,7 @@ const AddAd = () => {
     setLoading(true);
     
     try {
-      // تحديث عدد الإعلانات الشهرية
-      await supabase
-        .from('profiles')
-        .update({ 
-          monthly_ads_count: (profile.monthly_ads_count || 0) + 1 
-        })
-        .eq('user_id', user.id);
+      // إدراج الإعلان أولاً
       const { error } = await supabase
         .from("ads")
         .insert({
@@ -179,6 +173,19 @@ const AddAd = () => {
         });
 
       if (error) throw error;
+
+      // تحديث عدد الإعلانات الشهرية فقط بعد نجاح إدراج الإعلان
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          monthly_ads_count: (profile.monthly_ads_count || 0) + 1 
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error("Error updating monthly ads count:", updateError);
+        // لا نريد أن نفشل العملية بسبب عدم تحديث العداد
+      }
 
       toast({
         title: "تم نشر الإعلان بنجاح",
