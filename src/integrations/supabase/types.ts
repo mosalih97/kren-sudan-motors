@@ -274,6 +274,7 @@ export type Database = {
           premium_expires_at: string | null
           updated_at: string
           user_id: string
+          user_id_display: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -293,6 +294,7 @@ export type Database = {
           premium_expires_at?: string | null
           updated_at?: string
           user_id: string
+          user_id_display?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -312,6 +314,7 @@ export type Database = {
           premium_expires_at?: string | null
           updated_at?: string
           user_id?: string
+          user_id_display?: string | null
           whatsapp?: string | null
         }
         Relationships: []
@@ -324,6 +327,10 @@ export type Database = {
       deduct_points: {
         Args: { user_id_param: string; points_to_deduct: number }
         Returns: boolean
+      }
+      generate_unique_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
     }
     Enums: {

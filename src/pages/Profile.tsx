@@ -206,7 +206,7 @@ const Profile = () => {
                   <h1 className="text-3xl font-bold text-foreground">
                     {profile.display_name || "مستخدم جديد"}
                   </h1>
-                  <p className="text-muted-foreground text-lg">{user.email}</p>
+                  <p className="text-muted-foreground text-lg">ID: {profile.user_id_display}</p>
                   {profile.city && (
                     <p className="text-muted-foreground">{profile.city}</p>
                   )}
