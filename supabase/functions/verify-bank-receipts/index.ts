@@ -46,17 +46,16 @@ function isNameSimilar(extractedName: string, expectedName: string): boolean {
   return similarity > 0.7; // 70% تشابه على الأقل
 }
 
-// دالة الحصول على Access Token من Google
-async function getAccessToken(): Promise<string> {
-  const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
-  
-  if (!serviceAccountJson) {
-    throw new Error('Google Service Account JSON not configured');
-  }
+// دالة إنشاء JWT للمصادقة مع Google
+function base64urlEscape(str: string): string {
+  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
 
-  const serviceAccount = JSON.parse(serviceAccountJson);
-  
-  // Create JWT for Google OAuth2
+function base64urlEncode(str: string): string {
+  return base64urlEscape(btoa(str));
+}
+
+async function createJWT(serviceAccount: any): Promise<string> {
   const header = {
     "alg": "RS256",
     "typ": "JWT"
@@ -71,10 +70,17 @@ async function getAccessToken(): Promise<string> {
     "iat": now
   };
 
-  // Import the private key
+  const encodedHeader = base64urlEncode(JSON.stringify(header));
+  const encodedPayload = base64urlEncode(JSON.stringify(payload));
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+
+  // إعداد المفتاح الخاص للتوقيع
+  const privateKeyPem = serviceAccount.private_key;
+  const privateKeyBuffer = new TextEncoder().encode(privateKeyPem);
+  
   const privateKey = await crypto.subtle.importKey(
     "pkcs8",
-    new TextEncoder().encode(serviceAccount.private_key),
+    privateKeyBuffer,
     {
       name: "RSASSA-PKCS1-v1_5",
       hash: "SHA-256",
@@ -83,69 +89,94 @@ async function getAccessToken(): Promise<string> {
     ["sign"]
   );
 
-  // Sign the JWT
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const signatureInput = `${encodedHeader}.${encodedPayload}`;
-  
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     privateKey,
     new TextEncoder().encode(signatureInput)
   );
 
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const encodedSignature = base64urlEscape(btoa(String.fromCharCode(...new Uint8Array(signature))));
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+}
 
-  const jwt = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+// دالة الحصول على Access Token من Google
+async function getAccessToken(): Promise<string> {
+  try {
+    const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
+    
+    if (!serviceAccountJson) {
+      throw new Error('Google Service Account JSON not configured');
+    }
 
-  // Exchange JWT for access token
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-  });
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    const jwt = await createJWT(serviceAccount);
 
-  const tokenData = await tokenResponse.json();
-  
-  if (!tokenData.access_token) {
-    throw new Error('Failed to get access token');
+    // استبدال JWT بـ access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      throw new Error(`Failed to get access token: ${errorText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      throw new Error('No access token received');
+    }
+
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    throw error;
   }
-
-  return tokenData.access_token;
 }
 
 // دالة استخراج النصوص من الصورة باستخدام Google Vision API
 async function extractTextFromImage(imageBase64: string): Promise<string> {
-  const accessToken = await getAccessToken();
-  
-  const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      requests: [{
-        image: {
-          content: imageBase64
-        },
-        features: [{
-          type: 'TEXT_DETECTION'
+  try {
+    const accessToken = await getAccessToken();
+    
+    const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        requests: [{
+          image: {
+            content: imageBase64
+          },
+          features: [{
+            type: 'TEXT_DETECTION'
+          }]
         }]
-      }]
-    })
-  });
+      })
+    });
 
-  const data = await response.json();
-  
-  if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
-    return data.responses[0].textAnnotations[0].description || '';
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Vision API error: ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
+      return data.responses[0].textAnnotations[0].description || '';
+    }
+    
+    return '';
+  } catch (error) {
+    console.error('Error extracting text from image:', error);
+    throw error;
   }
-  
-  return '';
 }
 
 // دالة التحقق من صحة الإيصال
@@ -218,8 +249,8 @@ serve(async (req) => {
     }
 
     // التحقق من حجم الملفات
-    if (greenReceipt.size > 2 * 1024 * 1024 || whiteReceipt.size > 2 * 1024 * 1024) {
-      return new Response(JSON.stringify({ error: 'حجم الملف يجب أن يكون أقل من 2 ميجابايت' }), {
+    if (greenReceipt.size > 5 * 1024 * 1024 || whiteReceipt.size > 5 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'حجم الملف يجب أن يكون أقل من 5 ميجابايت' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -258,6 +289,7 @@ serve(async (req) => {
     ])
 
     if (greenUpload.error || whiteUpload.error) {
+      console.error('Upload errors:', greenUpload.error, whiteUpload.error);
       return new Response(JSON.stringify({ error: 'فشل في رفع الملفات' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
