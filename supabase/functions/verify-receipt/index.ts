@@ -105,7 +105,16 @@ serve(async (req) => {
       )
     }
 
-    const serviceAccount = JSON.parse(serviceAccountJSON)
+    let serviceAccount
+    try {
+      serviceAccount = JSON.parse(serviceAccountJSON)
+    } catch (parseError) {
+      console.error('خطأ في تحليل بيانات Google Service Account:', parseError)
+      return new Response(
+        JSON.stringify({ error: 'خطأ في تحليل بيانات Google Service Account' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     
     // تصحيح private_key
     if (serviceAccount.private_key) {
@@ -134,26 +143,66 @@ serve(async (req) => {
     const payloadB64 = btoa(JSON.stringify(jwtPayload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
     
     const signatureInput = `${headerB64}.${payloadB64}`
-    const keyData = serviceAccount.private_key
+    
+    // إصلاح عملية تحويل المفتاح الخاص
+    console.log('معالجة المفتاح الخاص...')
+    
+    // إزالة الرؤوس والتذييلات من المفتاح
+    let privateKeyPem = serviceAccount.private_key
+    privateKeyPem = privateKeyPem.replace(/-----BEGIN PRIVATE KEY-----/, '')
+    privateKeyPem = privateKeyPem.replace(/-----END PRIVATE KEY-----/, '')
+    privateKeyPem = privateKeyPem.replace(/\n/g, '')
+    privateKeyPem = privateKeyPem.replace(/\r/g, '')
+    privateKeyPem = privateKeyPem.replace(/\s/g, '')
+    
+    // تحويل base64 إلى ArrayBuffer
+    let keyBuffer
+    try {
+      keyBuffer = Uint8Array.from(atob(privateKeyPem), c => c.charCodeAt(0))
+    } catch (decodeError) {
+      console.error('خطأ في فك تشفير المفتاح الخاص:', decodeError)
+      return new Response(
+        JSON.stringify({ error: 'خطأ في فك تشفير المفتاح الخاص' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     
     // استيراد المفتاح الخاص
-    const privateKey = await crypto.subtle.importKey(
-      'pkcs8',
-      encoder.encode(keyData),
-      {
-        name: 'RSASSA-PKCS1-v1_5',
-        hash: 'SHA-256'
-      },
-      false,
-      ['sign']
-    )
+    let privateKey
+    try {
+      privateKey = await crypto.subtle.importKey(
+        'pkcs8',
+        keyBuffer.buffer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256'
+        },
+        false,
+        ['sign']
+      )
+    } catch (importError) {
+      console.error('خطأ في استيراد المفتاح الخاص:', importError)
+      return new Response(
+        JSON.stringify({ error: 'خطأ في استيراد المفتاح الخاص' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // إنشاء التوقيع
-    const signatureBuffer = await crypto.subtle.sign(
-      'RSASSA-PKCS1-v1_5',
-      privateKey,
-      encoder.encode(signatureInput)
-    )
+    let signatureBuffer
+    try {
+      signatureBuffer = await crypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5',
+        privateKey,
+        encoder.encode(signatureInput)
+      )
+    } catch (signError) {
+      console.error('خطأ في إنشاء التوقيع:', signError)
+      return new Response(
+        JSON.stringify({ error: 'خطأ في إنشاء التوقيع' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)))
       .replace(/=/g, '')
@@ -176,7 +225,8 @@ serve(async (req) => {
     })
 
     if (!tokenResponse.ok) {
-      console.error('فشل في الحصول على Access Token:', tokenResponse.status)
+      const errorText = await tokenResponse.text()
+      console.error('فشل في الحصول على Access Token:', tokenResponse.status, errorText)
       return new Response(
         JSON.stringify({ error: 'فشل في المصادقة مع Google' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -185,6 +235,7 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
+    console.log('تم الحصول على Access Token بنجاح')
 
     // استدعاء Google Vision API
     console.log('استدعاء Google Vision API...')
