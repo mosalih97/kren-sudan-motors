@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,10 +165,13 @@ export default function BoostAd() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">جاري التحميل...</div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">جاري التحميل...</p>
+          </div>
         </div>
       </div>
     );
@@ -175,10 +179,18 @@ export default function BoostAd() {
 
   if (!ad) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">الإعلان غير موجود</div>
+          <Card className="max-w-md mx-auto text-center">
+            <CardContent className="pt-6">
+              <h2 className="text-xl font-bold text-destructive mb-2">الإعلان غير موجود</h2>
+              <p className="text-muted-foreground mb-4">لا يمكن العثور على الإعلان المطلوب</p>
+              <Button onClick={() => navigate('/profile')}>
+                العودة للملف الشخصي
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -187,10 +199,10 @@ export default function BoostAd() {
   const isPremiumUser = profile?.membership_type === 'premium';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       <Header />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="mb-6">
           <Button 
             variant="ghost" 
@@ -201,41 +213,53 @@ export default function BoostAd() {
             العودة
           </Button>
           
-          <h1 className="text-3xl font-bold mb-2">تعزيز الإعلان</h1>
-          <p className="text-muted-foreground">
-            اختر خطة التعزيز المناسبة لإعلانك: {ad.title}
-          </p>
+          <div className="text-center md:text-right">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">تعزيز الإعلان</h1>
+            <p className="text-muted-foreground text-sm md:text-base">
+              اختر خطة التعزيز المناسبة لإعلانك: <span className="font-semibold">{ad.title}</span>
+            </p>
+          </div>
         </div>
 
         {/* معلومات المستخدم */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>معلومات الحساب</CardTitle>
+            <CardTitle className="text-lg">معلومات الحساب</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="font-medium">الكريديت المتاح: {profile?.credits || 0}</p>
+                <p className="font-medium">الكريديت المتاح: <span className="text-primary">{profile?.credits || 0}</span></p>
                 <p className="text-sm text-muted-foreground">
                   نوع العضوية: {isPremiumUser ? "مميز" : "عادي"}
-                  {isPremiumUser && <Badge variant="secondary" className="mr-2">مجاني للأعضاء المميزين</Badge>}
                 </p>
               </div>
+              {isPremiumUser && (
+                <div className="flex items-center">
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    <Crown className="w-4 h-4 mr-1" />
+                    تعزيز مجاني للأعضاء المميزين
+                  </Badge>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* رسالة عدم القدرة على التعزيز */}
         {canBoost && !canBoost.can_boost && (
-          <Card className="mb-6 border-destructive">
+          <Card className="mb-6 border-destructive bg-destructive/5">
             <CardContent className="pt-6">
-              <p className="text-destructive font-medium">{canBoost.reason}</p>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                <p className="text-destructive font-medium">{canBoost.reason}</p>
+              </div>
             </CardContent>
           </Card>
         )}
 
         {/* خطط التعزيز */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
           {boostPlans.map((plan) => {
             const Icon = plan.icon;
             const actualPrice = isPremiumUser ? 0 : plan.price;
@@ -245,39 +269,37 @@ export default function BoostAd() {
             return (
               <Card 
                 key={plan.id} 
-                className={`relative ${plan.popular ? 'border-primary' : ''}`}
+                className={`relative ${plan.popular ? 'border-primary shadow-lg' : ''} hover:shadow-md transition-shadow`}
               >
                 {plan.popular && (
-                  <Badge className="absolute -top-2 right-4 bg-primary">
+                  <Badge className="absolute -top-2 right-4 bg-primary text-primary-foreground">
                     الأكثر شعبية
                   </Badge>
                 )}
                 
-                <CardHeader className="text-center">
-                  <Icon className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
+                <CardHeader className="text-center pb-4">
+                  <Icon className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 text-primary" />
+                  <CardTitle className="text-lg">{plan.name}</CardTitle>
+                  <CardDescription className="text-sm">{plan.description}</CardDescription>
                   
-                  <div className="text-2xl font-bold">
+                  <div className="text-xl md:text-2xl font-bold mt-2">
                     {actualPrice === 0 ? (
                       <span className="text-green-600">مجاني</span>
                     ) : (
                       <span>{actualPrice} كريديت</span>
                     )}
-                    {!isPremiumUser && plan.price > 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        ({plan.duration} ساعة)
-                      </div>
-                    )}
+                    <div className="text-xs text-muted-foreground">
+                      ({plan.duration} ساعة)
+                    </div>
                   </div>
                 </CardHeader>
                 
-                <CardContent>
+                <CardContent className="pt-0">
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
                         <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                        {feature}
+                        <span className="leading-tight">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -287,7 +309,14 @@ export default function BoostAd() {
                     onClick={() => handleBoost(plan)}
                     disabled={!isEligible || !canAfford || boosting === plan.id}
                   >
-                    {boosting === plan.id ? "جاري التعزيز..." : "تعزيز الإعلان"}
+                    {boosting === plan.id ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        جاري التعزيز...
+                      </div>
+                    ) : (
+                      "تعزيز الإعلان"
+                    )}
                   </Button>
                   
                   {!canAfford && !isPremiumUser && (
@@ -315,7 +344,7 @@ export default function BoostAd() {
             <p className="text-muted-foreground mb-4">
               للحصول على خدمات التعزيز والترقية، تواصل معنا عبر واتساب
             </p>
-            <Button asChild>
+            <Button asChild className="w-full md:w-auto">
               <a 
                 href="https://wa.me/249123456789?text=أريد%20تعزيز%20إعلاني" 
                 target="_blank" 

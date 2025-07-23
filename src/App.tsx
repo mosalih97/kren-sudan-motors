@@ -59,6 +59,11 @@ function App() {
                   <BoostAd />
                 </ProtectedRoute>
               } />
+              <Route path="/boost-ad/:id" element={
+                <ProtectedRoute>
+                  <BoostAd />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Router>
