@@ -184,69 +184,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* مميزات المنصة */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              لماذا تختار الكرين؟
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              نحن نقدم تجربة شراء وبيع استثنائية مع أحدث التقنيات وأفضل الخدمات
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="card-gradient border-0 shadow-lg text-center p-6 hover:shadow-xl transition-smooth">
-              <CardContent className="p-0 space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full primary-gradient flex items-center justify-center">
-                  <Shield className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">آمان مضمون</h3>
-                <p className="text-muted-foreground">
-                  جميع السيارات محققة ومضمونة من قبل خبرائنا
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-gradient border-0 shadow-lg text-center p-6 hover:shadow-xl transition-smooth">
-              <CardContent className="p-0 space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full secondary-gradient flex items-center justify-center">
-                  <TrendingUp className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">أسعار عادلة</h3>
-                <p className="text-muted-foreground">
-                  تقييم دقيق للأسعار بناءً على حالة وموديل السيارة
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-gradient border-0 shadow-lg text-center p-6 hover:shadow-xl transition-smooth">
-              <CardContent className="p-0 space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full accent-gradient flex items-center justify-center">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">مجتمع موثوق</h3>
-                <p className="text-muted-foreground">
-                  آلاف المستخدمين المعتمدين والتقييمات الحقيقية
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-gradient border-0 shadow-lg text-center p-6 hover:shadow-xl transition-smooth">
-              <CardContent className="p-0 space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full premium-gradient flex items-center justify-center">
-                  <Star className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">تجربة مميزة</h3>
-                <p className="text-muted-foreground">
-                  واجهة سهلة الاستخدام مع أدوات بحث متطورة
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       {/* دعوة للعمل */}
       <section className="py-20 primary-gradient">
