@@ -46,17 +46,85 @@ function isNameSimilar(extractedName: string, expectedName: string): boolean {
   return similarity > 0.7; // 70% تشابه على الأقل
 }
 
-// دالة استخراج النصوص من الصورة باستخدام Google Vision API
-async function extractTextFromImage(imageBase64: string): Promise<string> {
-  const GOOGLE_VISION_API_KEY = Deno.env.get('GOOGLE_CLOUD_VISION_API_KEY');
+// دالة الحصول على Access Token من Google
+async function getAccessToken(): Promise<string> {
+  const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
   
-  if (!GOOGLE_VISION_API_KEY) {
-    throw new Error('Google Vision API key not configured');
+  if (!serviceAccountJson) {
+    throw new Error('Google Service Account JSON not configured');
   }
 
-  const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`, {
+  const serviceAccount = JSON.parse(serviceAccountJson);
+  
+  // Create JWT for Google OAuth2
+  const header = {
+    "alg": "RS256",
+    "typ": "JWT"
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    "iss": serviceAccount.client_email,
+    "scope": "https://www.googleapis.com/auth/cloud-platform",
+    "aud": "https://oauth2.googleapis.com/token",
+    "exp": now + 3600,
+    "iat": now
+  };
+
+  // Import the private key
+  const privateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    new TextEncoder().encode(serviceAccount.private_key),
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+    },
+    false,
+    ["sign"]
+  );
+
+  // Sign the JWT
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    privateKey,
+    new TextEncoder().encode(signatureInput)
+  );
+
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+  const jwt = `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+
+  // Exchange JWT for access token
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  const tokenData = await tokenResponse.json();
+  
+  if (!tokenData.access_token) {
+    throw new Error('Failed to get access token');
+  }
+
+  return tokenData.access_token;
+}
+
+// دالة استخراج النصوص من الصورة باستخدام Google Vision API
+async function extractTextFromImage(imageBase64: string): Promise<string> {
+  const accessToken = await getAccessToken();
+  
+  const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
