@@ -49,6 +49,27 @@ export function Header() {
       fetchProfile();
       fetchUnreadNotifications();
       fetchUnreadMessages();
+
+      // Setup real-time subscription for messages
+      const messagesSubscription = supabase
+        .channel('header-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id.eq.${user.id}`
+          },
+          () => {
+            fetchUnreadMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        messagesSubscription.unsubscribe();
+      };
     }
   }, [user]);
 
@@ -136,7 +157,7 @@ export function Header() {
                   <Button variant="ghost" size="icon" className="hidden sm:flex relative">
                     <MessageCircle className="h-5 w-5" />
                     {unreadMessages > 0 && (
-                      <Badge variant="accent" className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs">
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs animate-pulse">
                         {unreadMessages}
                       </Badge>
                     )}
@@ -224,7 +245,7 @@ export function Header() {
               <Button variant="outline" size="sm" className="relative">
                 <MessageCircle className="h-4 w-4" />
                 {unreadMessages > 0 && (
-                  <Badge variant="accent" className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs">
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs animate-pulse">
                     {unreadMessages}
                   </Badge>
                 )}

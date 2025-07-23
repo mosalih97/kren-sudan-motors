@@ -337,7 +337,9 @@ const AdDetails = () => {
       navigate('/auth');
       return;
     }
-    navigate('/messages');
+    
+    // Navigate to messages with seller and ad info
+    navigate(`/messages?seller=${ad.user_id}&ad=${ad.id}`);
   };
 
   const handleSave = async () => {
