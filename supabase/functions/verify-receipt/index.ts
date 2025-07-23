@@ -8,21 +8,40 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('=== بدء تشغيل دالة verify-receipt ===')
+  console.log('Method:', req.method)
+  
   if (req.method === 'OPTIONS') {
+    console.log('معالجة طلب OPTIONS')
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { imageUrl, membershipId, receiptType } = await req.json()
+    // استلام البيانات من الطلب
+    const requestBody = await req.json()
+    console.log('استلام event.body:', JSON.stringify(requestBody, null, 2))
+    
+    const { imageUrl, membershipId, receiptType } = requestBody
     
     if (!imageUrl) {
+      console.error('رابط الصورة مفقود')
       return new Response(
         JSON.stringify({ error: 'رابط الصورة مطلوب' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('معالجة الإيصال:', { imageUrl, membershipId, receiptType })
+    if (!membershipId) {
+      console.error('رقم العضوية مفقود')
+      return new Response(
+        JSON.stringify({ error: 'رقم العضوية مطلوب' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('رابط الصورة:', imageUrl)
+    console.log('رقم العضوية:', membershipId)
+    console.log('نوع الإيصال:', receiptType)
 
     // إعداد Supabase client
     const supabase = createClient(
@@ -30,22 +49,35 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // تحويل الصورة إلى base64
-    console.log('تحميل الصورة من:', imageUrl)
-    const imageResponse = await fetch(imageUrl)
+    // تحميل الصورة من Supabase Storage
+    console.log('تحميل الصورة من Supabase Storage...')
+    let imageResponse;
+    try {
+      imageResponse = await fetch(imageUrl)
+      console.log('حالة استجابة تحميل الصورة:', imageResponse.status)
+    } catch (fetchError) {
+      console.error('خطأ في تحميل الصورة:', fetchError)
+      return new Response(
+        JSON.stringify({ error: 'فشل في الوصول لرابط الصورة' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     if (!imageResponse.ok) {
       console.error('فشل في تحميل الصورة:', imageResponse.status, imageResponse.statusText)
       return new Response(
-        JSON.stringify({ error: 'فشل في تحميل الصورة' }),
+        JSON.stringify({ error: 'فشل في تحميل الصورة من التخزين' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    // تحويل الصورة إلى base64
+    console.log('تحويل الصورة إلى base64...')
     const imageBuffer = await imageResponse.arrayBuffer()
     const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
-    console.log('تم تحويل الصورة إلى base64 بنجاح')
+    console.log('تم تحويل الصورة إلى base64 بنجاح، الحجم:', imageBase64.length)
 
-    // استخدام Google Vision API مع مفتاح API
+    // التحقق من وجود Google Vision API key
     const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY')
     if (!apiKey) {
       console.error('مفتاح Google Vision API غير متوفر')
@@ -55,6 +87,7 @@ serve(async (req) => {
       )
     }
 
+    // استدعاء Google Vision API
     console.log('استدعاء Google Vision API...')
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
@@ -72,6 +105,8 @@ serve(async (req) => {
       }
     )
 
+    console.log('حالة استجابة Vision API:', visionResponse.status)
+
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text()
       console.error('خطأ في Vision API:', visionResponse.status, errorText)
@@ -82,9 +117,9 @@ serve(async (req) => {
     }
 
     const visionData = await visionResponse.json()
-    console.log('استجابة Google Vision API:', JSON.stringify(visionData, null, 2))
+    console.log('نتيجة Google Vision:', JSON.stringify(visionData, null, 2))
     
-    if (!visionData.responses?.[0]?.textAnnotations?.[0]) {
+    if (!visionData.responses || !visionData.responses[0] || !visionData.responses[0].textAnnotations || !visionData.responses[0].textAnnotations[0]) {
       console.error('لم يتم العثور على نص في الصورة')
       return new Response(
         JSON.stringify({ error: 'لم يتم العثور على نص في الصورة' }),
@@ -99,7 +134,8 @@ serve(async (req) => {
     const fullAccountNumber = "0913 0368 9929 0001"
     const shortAccountNumber = "3689929"
     
-    // البحث عن رقم الحساب بجميع الصيغ الممكنة
+    // البحث عن رقم الحساب
+    console.log('البحث عن رقم الحساب...')
     const fullAccountPattern = new RegExp(fullAccountNumber.replace(/\s/g, '\\s*'))
     const shortAccountPattern = new RegExp(shortAccountNumber)
     const accountWithSpacesPattern = /0913\s*0368\s*9929\s*0001/
@@ -112,27 +148,56 @@ serve(async (req) => {
     
     const hasAccountNumber = hasFullAccount || hasShortAccount || hasAccountWithSpaces || hasAccountWithoutSpaces
     
+    console.log('نتائج البحث عن رقم الحساب:')
+    console.log('- الحساب الكامل:', hasFullAccount)
+    console.log('- الحساب المختصر:', hasShortAccount)
+    console.log('- الحساب مع المسافات:', hasAccountWithSpaces)
+    console.log('- الحساب بدون مسافات:', hasAccountWithoutSpaces)
+    console.log('- وجود رقم الحساب:', hasAccountNumber)
+    
+    // البحث عن اسم المستفيد
+    console.log('البحث عن اسم المستفيد...')
     const beneficiaryPattern = /محمد الامين منتصر صالح عبدالقادر|محمد الامين|منتصر صالح|عبدالقادر/
     const hasBeneficiary = beneficiaryPattern.test(extractedText)
+    console.log('وجود اسم المستفيد:', hasBeneficiary)
     
+    // البحث عن المبلغ
+    console.log('البحث عن المبلغ...')
     const amountPattern = /25000|25,000|٢٥٠٠٠|٢٥،٠٠٠|25\.000/
     const hasAmount = amountPattern.test(extractedText)
+    console.log('وجود المبلغ:', hasAmount)
     
-    // البحث عن رقم العضوية
+    // البحث عن رقم العضوية في خانة التعليق
+    console.log('البحث عن رقم العضوية في خانة التعليق...')
     const membershipIdPattern = new RegExp(membershipId)
     const hasMembershipId = membershipIdPattern.test(extractedText)
+    console.log('وجود رقم العضوية:', hasMembershipId)
 
-    console.log('نتائج الفحص:', {
-      hasFullAccount,
-      hasShortAccount,
-      hasAccountWithSpaces,
-      hasAccountWithoutSpaces,
-      hasAccountNumber,
-      hasBeneficiary,
-      hasAmount,
-      hasMembershipId,
-      membershipId
+    // خطوات مطابقة user_id
+    console.log('=== خطوات مطابقة user_id ===')
+    console.log('رقم العضوية المطلوب:', membershipId)
+    console.log('البحث في النص المستخرج...')
+    
+    // البحث عن user_id في النص بطرق مختلفة
+    const userIdSearchResults = []
+    const userIdRegexes = [
+      new RegExp(membershipId, 'g'),
+      new RegExp(membershipId.replace(/\s/g, '\\s*'), 'g'),
+      new RegExp(membershipId.split('').join('\\s*'), 'g')
+    ]
+    
+    userIdRegexes.forEach((regex, index) => {
+      const matches = extractedText.match(regex)
+      if (matches) {
+        userIdSearchResults.push({
+          pattern: index,
+          matches: matches,
+          found: true
+        })
+      }
     })
+    
+    console.log('نتائج البحث عن user_id:', userIdSearchResults)
 
     // التحقق من وجود البيانات الأساسية
     if (!hasAccountNumber || !hasBeneficiary || !hasAmount) {
@@ -145,7 +210,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: `البيانات المطلوبة غير مكتملة: ${missingData.join(', ')}`,
-          status: 'rejected'
+          status: 'rejected',
+          extractedText: extractedText
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -199,7 +265,7 @@ serve(async (req) => {
         .update({
           membership_type: 'premium',
           credits: 130,
-          premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 يوم
+          premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         })
         .eq('user_id', submission.user_id)
 
@@ -213,32 +279,48 @@ serve(async (req) => {
 
       console.log('تم تفعيل الاشتراك المميز بنجاح')
 
+      // الرد النهائي
+      const finalResponse = {
+        message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
+        status: 'approved',
+        membershipId,
+        receiptType,
+        extractedText: extractedText
+      }
+      
+      console.log('الرد النهائي:', JSON.stringify(finalResponse, null, 2))
+      
       return new Response(
-        JSON.stringify({
-          message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
-          status: 'approved',
-          membershipId,
-          receiptType
-        }),
+        JSON.stringify(finalResponse),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // إذا لم يتم العثور على رقم العضوية
     console.log('لم يتم العثور على رقم العضوية في الإيصال')
+    const partialResponse = {
+      message: 'تم التحقق من بيانات الإيصال بنجاح، لكن لم يتم العثور على رقم العضوية',
+      status: 'partial_success',
+      receiptType,
+      extractedText: extractedText
+    }
+    
+    console.log('الرد الجزئي:', JSON.stringify(partialResponse, null, 2))
+    
     return new Response(
-      JSON.stringify({
-        message: 'تم التحقق من بيانات الإيصال بنجاح، لكن لم يتم العثور على رقم العضوية',
-        status: 'partial_success',
-        receiptType
-      }),
+      JSON.stringify(partialResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('خطأ في التحقق من الإيصال:', error)
+    console.error('خطأ عام في دالة verify-receipt:', error)
+    console.error('Stack trace:', error.stack)
+    
     return new Response(
-      JSON.stringify({ error: 'حدث خطأ أثناء التحقق من الإيصال' }),
+      JSON.stringify({ 
+        error: 'حدث خطأ أثناء التحقق من الإيصال',
+        details: error.message 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
