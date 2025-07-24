@@ -135,127 +135,124 @@ serve(async (req) => {
     const extractedText = visionData.responses[0].textAnnotations[0].description
     console.log('النص المستخرج من الصورة:', extractedText)
 
-    // البحث عن رقم المستخدم - تحسين البحث
-    console.log('البحث عن رقم المستخدم في البيانات...')
-    let foundUserId = null
+    // استخراج رقم العملية - نبحث عن أرقام مختلفة الأطوال
+    const transactionPatterns = [
+      /\b\d{11}\b/g,    // 11 رقم
+      /\b\d{10}\b/g,    // 10 أرقام
+      /\b\d{9}\b/g,     // 9 أرقام
+      /\b\d{8}\b/g,     // 8 أرقام
+      /\b\d{12}\b/g,    // 12 رقم
+      /\b\d{13}\b/g,    // 13 رقم
+    ]
+
+    let transactionNumber = null
     
-    // البحث عن رقم العضوية المرسل في النص أولاً
-    if (membershipId && extractedText.includes(membershipId)) {
-      foundUserId = membershipId
-      console.log('تم العثور على رقم المستخدم من معرف العضوية:', foundUserId)
-    } else {
-      // البحث عن أرقام 8 أرقام في النص
-      const userIdPatterns = [
-        /\b\d{8}\b/g,
-        /\b\d{7}\b/g,
-        /\b\d{6}\b/g
-      ]
-      
-      for (const pattern of userIdPatterns) {
-        const userIdMatches = [...extractedText.matchAll(pattern)]
-        if (userIdMatches.length > 0) {
-          foundUserId = userIdMatches[0][0]
-          console.log('تم العثور على رقم المستخدم من النص المستخرج:', foundUserId)
-          break
-        }
+    for (const pattern of transactionPatterns) {
+      const matches = extractedText.match(pattern)
+      if (matches && matches.length > 0) {
+        // نختار أول رقم نجده
+        transactionNumber = matches[0]
+        console.log(`رقم العملية المستخرج (${transactionNumber.length} رقم):`, transactionNumber)
+        break
       }
     }
 
-    if (!foundUserId) {
-      console.log('لم يتم العثور على رقم مستخدم صالح')
+    if (!transactionNumber) {
+      console.error('لم يتم العثور على رقم العملية في الإيصال')
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'تعذر التعرف على رقم المستخدم من الإيصال. تأكد من أن الرقم ظاهر بوضوح في التعليق.',
+          error: 'لم يتم العثور على رقم العملية في الإيصال. تأكد من وضوح الصورة',
           extractedText: extractedText.substring(0, 500)
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // التحقق من وجود المستخدم في قاعدة البيانات
-    console.log('البحث عن المستخدم في قاعدة البيانات...')
-    const { data: userProfile, error: userError } = await supabase
-      .from('profiles')
-      .select('user_id, display_name, membership_type')
-      .eq('user_id_display', foundUserId)
-      .single()
-
-    if (userError || !userProfile) {
-      console.error('المستخدم غير موجود:', userError)
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `المستخدم برقم ${foundUserId} غير موجود في النظام`,
-          foundUserId: foundUserId
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log('تم العثور على المستخدم:', userProfile)
-
-    // البحث عن رقم العملية - تحسين البحث لأنواع مختلفة من الإيصالات
-    console.log('البحث عن رقم العملية...')
-    const transactionPatterns = [
-      /\b\d{15,20}\b/g,    // أرقام طويلة جداً
-      /\b\d{12,14}\b/g,    // أرقام طويلة
-      /\b\d{10,11}\b/g,    // أرقام متوسطة
-      /\b\d{8,9}\b/g,      // أرقام قصيرة
-      /\b\d{6,7}\b/g,      // أرقام قصيرة جداً
+    // استخراج التاريخ بصيغ مختلفة
+    const datePatterns = [
+      /\b(\d{1,2})-([A-Za-z]{3})-(\d{4})\b/g,           // DD-MMM-YYYY
+      /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g,             // DD/MM/YYYY
+      /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g,               // YYYY-MM-DD
+      /\b(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\b/g,         // DD MMM YYYY
     ]
 
-    let transactionNumber = null
+    let receiptDate = null
     
-    for (const pattern of transactionPatterns) {
+    for (const pattern of datePatterns) {
       const matches = [...extractedText.matchAll(pattern)]
-      if (matches && matches.length > 0) {
-        // تجنب رقم المستخدم والتاريخ
-        for (const match of matches) {
-          const number = match[0]
-          // تجنب رقم المستخدم والتواريخ والأرقام الشائعة
-          if (number !== foundUserId && 
-              !number.startsWith('20') && 
-              !number.startsWith('19') &&
-              !number.startsWith('0') &&
-              number !== '25000' &&
-              number !== '250000' &&
-              number.length >= 6) {
-            transactionNumber = number
-            console.log(`رقم العملية المستخرج (${number.length} رقم):`, transactionNumber)
-            break
+      if (matches.length > 0) {
+        const match = matches[0]
+        
+        if (pattern.source.includes('([A-Za-z]{3})')) {
+          // تنسيق DD-MMM-YYYY
+          const day = match[1].padStart(2, '0')
+          const month = match[2]
+          const year = match[3]
+          
+          const monthMap: { [key: string]: string } = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
           }
+          
+          const monthNumber = monthMap[month]
+          if (monthNumber) {
+            receiptDate = `${year}-${monthNumber}-${day}`
+          }
+        } else if (pattern.source.includes('(\\d{1,2})\\/(\\d{1,2})')) {
+          // تنسيق DD/MM/YYYY
+          const day = match[1].padStart(2, '0')
+          const month = match[2].padStart(2, '0')
+          const year = match[3]
+          receiptDate = `${year}-${month}-${day}`
+        } else if (pattern.source.includes('(\\d{4})-(\\d{1,2})')) {
+          // تنسيق YYYY-MM-DD
+          receiptDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
         }
-        if (transactionNumber) break
-      }
-    }
-
-    // إذا لم نجد رقم العملية، نحاول البحث عن أي رقم طويل
-    if (!transactionNumber) {
-      console.log('لم يتم العثور على رقم العملية، محاولة البحث عن أي رقم طويل...')
-      const fallbackPattern = /\b\d{5,}\b/g
-      const fallbackMatches = [...extractedText.matchAll(fallbackPattern)]
-      
-      for (const match of fallbackMatches) {
-        const number = match[0]
-        if (number !== foundUserId && 
-            !number.startsWith('20') && 
-            !number.startsWith('19') &&
-            number !== '25000' &&
-            number !== '250000' &&
-            number.length >= 5) {
-          transactionNumber = number
-          console.log('رقم العملية المستخرج (احتياطي):', transactionNumber)
+        
+        if (receiptDate) {
+          console.log('تاريخ الإيصال المستخرج:', receiptDate)
           break
         }
       }
     }
 
-    // في حالة عدم وجود رقم العملية، نستخدم رقم عشوائي مع معرف المستخدم
-    if (!transactionNumber) {
-      const randomNum = Math.floor(Math.random() * 1000000)
-      transactionNumber = `${foundUserId}-${randomNum}`
-      console.log('إنشاء رقم عملية عشوائي:', transactionNumber)
+    // إذا لم نجد تاريخ، نستخدم تاريخ اليوم
+    if (!receiptDate) {
+      receiptDate = new Date().toISOString().split('T')[0]
+      console.log('لم يتم العثور على تاريخ الإيصال، استخدام تاريخ اليوم:', receiptDate)
+    }
+
+    // التحقق من أن التاريخ ليس في المستقبل وليس أقدم من 7 أيام
+    const today = new Date()
+    const receiptDateObj = new Date(receiptDate)
+    const daysDifference = Math.floor((today.getTime() - receiptDateObj.getTime()) / (1000 * 60 * 60 * 24))
+    
+    console.log('تاريخ اليوم:', today.toISOString().split('T')[0])
+    console.log('تاريخ الإيصال:', receiptDate)
+    console.log('الفرق بالأيام:', daysDifference)
+    
+    if (daysDifference > 7) {
+      console.error('الإيصال قديم جداً')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'الإيصال قديم جداً. يجب أن يكون الإيصال خلال آخر 7 أيام'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (daysDifference < 0) {
+      console.error('تاريخ الإيصال في المستقبل')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'تاريخ الإيصال غير صحيح. لا يمكن أن يكون التاريخ في المستقبل'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // التحقق من عدم استخدام رقم العملية مسبقاً
@@ -285,85 +282,67 @@ serve(async (req) => {
       )
     }
 
-    // استخراج التاريخ - تحسين البحث
-    console.log('البحث عن تاريخ الإيصال...')
-    const datePatterns = [
-      /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/g,           // DD/MM/YYYY or DD-MM-YYYY
-      /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/g,           // YYYY/MM/DD or YYYY-MM-DD
-      /(\d{1,2})\s+(\d{1,2})\s+(\d{4})/g,                 // DD MM YYYY
-      /(\d{2})[\/\-](\d{2})[\/\-](\d{4})/g,               // تنسيق ثابت
-    ]
-
-    let receiptDate = null
+    // البحث عن رقم المستخدم في النص المستخرج
+    console.log('البحث عن رقم المستخدم في البيانات...')
     
-    for (const pattern of datePatterns) {
-      const matches = [...extractedText.matchAll(pattern)]
-      if (matches.length > 0) {
-        const match = matches[0]
-        
-        if (pattern.source.includes('(\\d{4})')) {
-          // تنسيق يبدأ بالسنة
-          const year = match[1]
-          const month = match[2].padStart(2, '0')
-          const day = match[3].padStart(2, '0')
-          
-          if (year.length === 4 && parseInt(year) >= 2020 && parseInt(year) <= 2030) {
-            receiptDate = `${year}-${month}-${day}`
-            console.log('تاريخ الإيصال المستخرج (تنسيق السنة أولاً):', receiptDate)
-            break
-          }
-        } else {
-          // تنسيق يبدأ باليوم
-          const day = match[1].padStart(2, '0')
-          const month = match[2].padStart(2, '0')
-          const year = match[3]
-          
-          if (year.length === 4 && parseInt(year) >= 2020 && parseInt(year) <= 2030) {
-            receiptDate = `${year}-${month}-${day}`
-            console.log('تاريخ الإيصال المستخرج (تنسيق اليوم أولاً):', receiptDate)
-            break
-          }
-        }
+    let foundUserId = null
+    
+    // إذا كان رقم العضوية موجود ومكون من 8 أرقام، استخدمه مباشرة
+    if (membershipId && membershipId.length === 8 && /^\d{8}$/.test(membershipId)) {
+      // التحقق من وجود رقم العضوية في النص المستخرج
+      if (extractedText.includes(membershipId)) {
+        foundUserId = membershipId
+        console.log('تم العثور على رقم المستخدم من معرف العضوية:', foundUserId)
+      } else {
+        console.log('رقم العضوية غير موجود في النص المستخرج')
       }
     }
 
-    // إذا لم نجد تاريخ، نستخدم تاريخ اليوم
-    if (!receiptDate) {
-      receiptDate = new Date().toISOString().split('T')[0]
-      console.log('لم يتم العثور على تاريخ الإيصال، استخدام تاريخ اليوم:', receiptDate)
+    // إذا لم نجد رقم المستخدم، نبحث عن أرقام 8 أرقام في النص
+    if (!foundUserId) {
+      const userIdPattern = /\b\d{8}\b/g
+      const userIdMatches = [...extractedText.matchAll(userIdPattern)]
+      
+      if (userIdMatches.length > 0) {
+        foundUserId = userIdMatches[0][0]
+        console.log('تم العثور على رقم المستخدم من النص المستخرج:', foundUserId)
+      }
     }
 
-    // التحقق من صحة التاريخ
-    const today = new Date()
-    const receiptDateObj = new Date(receiptDate)
-    const daysDifference = Math.floor((today.getTime() - receiptDateObj.getTime()) / (1000 * 60 * 60 * 24))
-    
-    console.log('تاريخ اليوم:', today.toISOString().split('T')[0])
-    console.log('تاريخ الإيصال:', receiptDate)
-    console.log('الفرق بالأيام:', daysDifference)
-    
-    // السماح بالإيصالات لمدة 60 يوم
-    if (daysDifference > 60) {
-      console.error('الإيصال قديم جداً')
+    if (!foundUserId) {
+      console.log('لم يتم العثور على رقم مستخدم صالح')
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'الإيصال قديم جداً. يجب أن يكون الإيصال خلال آخر 60 يوماً'
+          error: 'تعذر التعرف على رقم المستخدم من الإيصال. تأكد من أن الرقم ظاهر بوضوح في خانة التعليق وأن الصورة عالية الجودة.',
+          membershipId: membershipId,
+          extractedText: extractedText.substring(0, 500)
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (daysDifference < -7) {
-      console.error('تاريخ الإيصال في المستقبل')
+    // التحقق من وجود المستخدم في قاعدة البيانات
+    console.log('البحث عن المستخدم في قاعدة البيانات...')
+    const { data: userProfile, error: userError } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, membership_type')
+      .eq('user_id_display', foundUserId)
+      .single()
+
+    if (userError || !userProfile) {
+      console.error('المستخدم غير موجود:', userError)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'تاريخ الإيصال غير صحيح. لا يمكن أن يكون التاريخ في المستقبل'
+          error: `المستخدم برقم ${foundUserId} غير موجود في النظام`,
+          foundUserId: foundUserId
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('تم العثور على المستخدم:', userProfile)
 
     // تسجيل رقم العملية كمستخدم
     console.log('تسجيل رقم العملية كمستخدم...')
@@ -430,7 +409,7 @@ serve(async (req) => {
         userName: userProfile.display_name,
         transactionNumber: transactionNumber,
         receiptDate: receiptDate,
-        extractedText: `رقم المستخدم: ${foundUserId}, رقم العملية: ${transactionNumber}`
+        extractedText: `رقم المستخدم: ${foundUserId}`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
