@@ -27,7 +27,7 @@ export function useUserPoints() {
         throw error;
       }
 
-      // تحويل البيانات من Json إلى النوع المطلوب مع type assertion آمن
+      // تحويل البيانات من Json إلى النوع المطلوب
       const result = data as any;
       return {
         total_points: result?.total_points || 0,
@@ -39,6 +39,6 @@ export function useUserPoints() {
       } as UserPointsData;
     },
     enabled: true,
-    refetchInterval: 30000,
+    refetchInterval: 60000, // تحديث كل دقيقة
   });
 }

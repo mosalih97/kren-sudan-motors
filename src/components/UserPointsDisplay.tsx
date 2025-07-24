@@ -32,7 +32,7 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Crown className="w-5 h-5 text-primary" />
+          <Coins className="w-5 h-5 text-primary" />
           <h3 className="font-semibold">النقاط والإعلانات المتاحة</h3>
         </div>
         
@@ -66,6 +66,21 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
             <span className="text-sm font-medium">{adsUsed}/{adsLimit}</span>
           </div>
         </div>
+        
+        {isPremium && (
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Crown className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-primary">مزايا العضوية المميزة</span>
+            </div>
+            <ul className="text-sm space-y-1 text-muted-foreground">
+              <li>• إعلانات تظهر في المقدمة</li>
+              <li>• شارة مميز على الإعلانات</li>
+              <li>• حتى 40 إعلان شهرياً</li>
+              <li>• 130 نقطة إضافية شهرياً</li>
+            </ul>
+          </div>
+        )}
       </div>
     );
   }

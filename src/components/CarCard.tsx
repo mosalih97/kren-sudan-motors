@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, Eye, MapPin, Calendar, Fuel, Settings, MessageCircle, Phone, Zap, Crown, Star } from "lucide-react";
+import { Heart, Eye, MapPin, Calendar, Fuel, Settings, MessageCircle, Phone, Crown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,12 +23,7 @@ interface CarCardProps {
   isFeatured?: boolean;
   isNew?: boolean;
   viewCount?: number;
-  creditsRequired?: number;
-  topSpot?: boolean;
-  topSpotUntil?: string | null;
-  displayTier?: number;
   userId: string;
-  showBoostButton?: boolean;
   seller?: {
     id: string;
     display_name: string;
@@ -59,12 +54,7 @@ export function CarCard({
   isFeatured,
   isNew,
   viewCount,
-  creditsRequired,
-  topSpot,
-  topSpotUntil,
-  displayTier,
   userId,
-  showBoostButton,
   seller,
   showSellerInfo = false,
   onFavoriteChange,
@@ -75,35 +65,13 @@ export function CarCard({
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
-  const [boostInfo, setBoostInfo] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       checkIfFavorite();
       setIsOwner(user.id === userId);
-      fetchBoostInfo();
     }
   }, [user, id, userId]);
-
-  const fetchBoostInfo = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ad_boosts')
-        .select('boost_plan, expires_at, tier_priority')
-        .eq('ad_id', id)
-        .eq('status', 'active')
-        .gt('expires_at', new Date().toISOString())
-        .order('tier_priority', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!error && data) {
-        setBoostInfo(data);
-      }
-    } catch (error) {
-      // تجاهل الخطأ إذا لم يكن هناك تعزيز نشط
-    }
-  };
 
   const checkIfFavorite = async () => {
     if (!user) return;
@@ -170,28 +138,8 @@ export function CarCard({
     }
   };
 
-  const getBoostIcon = (plan: string) => {
-    switch (plan) {
-      case 'basic': return <Zap className="w-3 h-3" />;
-      case 'premium': return <Crown className="w-3 h-3" />;
-      case 'ultimate': return <Star className="w-3 h-3" />;
-      default: return <Zap className="w-3 h-3" />;
-    }
-  };
-
-  const getBoostLabel = (plan: string) => {
-    switch (plan) {
-      case 'basic': return 'سريع';
-      case 'premium': return 'مميز';
-      case 'ultimate': return 'احترافي';
-      default: return 'معزز';
-    }
-  };
-
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-200 ${
-      topSpot ? 'ring-2 ring-primary/20 shadow-lg' : ''
-    }`}>
+    <Card className="group hover:shadow-lg transition-all duration-200">
       {/* صورة الإعلان */}
       <div className="relative overflow-hidden">
         <img 
@@ -209,13 +157,8 @@ export function CarCard({
           )}
           {(isFeatured || isPremium) && (
             <Badge className="bg-blue-500 hover:bg-blue-600">
+              <Crown className="w-3 h-3 mr-1" />
               مميز
-            </Badge>
-          )}
-          {boostInfo && (
-            <Badge className="bg-primary/90 hover:bg-primary flex items-center gap-1">
-              {getBoostIcon(boostInfo.boost_plan)}
-              {getBoostLabel(boostInfo.boost_plan)}
             </Badge>
           )}
         </div>

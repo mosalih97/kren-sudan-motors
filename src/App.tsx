@@ -1,6 +1,5 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -11,89 +10,73 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import AddAd from "./pages/AddAd";
 import Cars from "./pages/Cars";
-import AdDetails from "./pages/AdDetails";
-import SellerAds from "./pages/SellerAds";
 import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
-import BoostAd from "./pages/BoostAd";
+import AdDetails from "./pages/AdDetails";
+import SellerAds from "./pages/SellerAds";
 import UploadReceipt from "./pages/UploadReceipt";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/cars" element={<Cars />} />
-            <Route path="/ads/:id" element={<AdDetails />} />
-            <Route path="/seller/:sellerId" element={<SellerAds />} />
-            
-            {/* Redirect old paths to correct ones */}
-            <Route path="/ad/:id" element={<Navigate to="/ads/:id" replace />} />
-            <Route path="/boost/:id" element={<Navigate to="/boost-ad/:id" replace />} />
-            
-            <Route 
-              path="/profile" 
-              element={
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/cars" element={<Cars />} />
+              <Route path="/ads/:id" element={<AdDetails />} />
+              <Route path="/seller/:id" element={<SellerAds />} />
+              
+              <Route path="/profile" element={
                 <ProtectedRoute>
                   <Profile />
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/add-ad" 
-              element={
+              } />
+              <Route path="/add-ad" element={
                 <ProtectedRoute>
                   <AddAd />
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/messages" 
-              element={
+              } />
+              <Route path="/messages" element={
                 <ProtectedRoute>
                   <Messages />
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/notifications" 
-              element={
+              } />
+              <Route path="/notifications" element={
                 <ProtectedRoute>
                   <Notifications />
                 </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/boost-ad/:id" 
-              element={
-                <ProtectedRoute>
-                  <BoostAd />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/upload-receipt" 
-              element={
+              } />
+              <Route path="/upload-receipt" element={
                 <ProtectedRoute>
                   <UploadReceipt />
                 </ProtectedRoute>
-              } 
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+              } />
+              
+              {/* Redirect old boost routes */}
+              <Route path="/boost-ad/:id" element={<Navigate to="/profile" replace />} />
+              <Route path="/boost/:id" element={<Navigate to="/profile" replace />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

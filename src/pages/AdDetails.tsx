@@ -4,8 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Heart, Crown, Star, Zap, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Heart, Crown, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -291,14 +290,9 @@ export default function AdDetails() {
                   </Badge>
                 )}
                 {(ad.is_featured || ad.is_premium) && (
-                  <Badge className="bg-blue-500 hover:bg-blue-600">
+                  <Badge className="bg-blue-500 hover:bg-blue-600 flex items-center gap-1">
+                    <Crown className="w-3 h-3" />
                     مميز
-                  </Badge>
-                )}
-                {ad.top_spot && ad.top_spot_until && new Date(ad.top_spot_until) > new Date() && (
-                  <Badge className="bg-primary/90 hover:bg-primary flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    معزز
                   </Badge>
                 )}
               </div>
@@ -464,15 +458,6 @@ export default function AdDetails() {
                     {isFavorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}
                   </Button>
                 </>
-              )}
-              
-              {user && isOwner && (
-                <Link to={`/boost-ad/${ad.id}`}>
-                  <Button size="lg" className="w-full">
-                    <Zap className="ml-2 h-4 w-4" />
-                    تعزيز الإعلان
-                  </Button>
-                </Link>
               )}
             </div>
           </div>
