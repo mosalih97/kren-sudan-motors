@@ -9,43 +9,35 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-interface Ad {
+interface CarCardProps {
   id: string;
   title: string;
   price: number;
-  city?: string;
   location?: string;
   year: number;
-  fuel_type?: string;
+  mileage?: number;
   fuelType?: string;
   transmission: string;
-  images?: string[];
-  image?: string;
-  is_new?: boolean;
-  isNew?: boolean;
-  is_featured?: boolean;
-  isFeatured?: boolean;
+  image: string;
   isPremium?: boolean;
-  view_count?: number;
+  isFeatured?: boolean;
+  isNew?: boolean;
   viewCount?: number;
-  user_id: string;
-  top_spot?: boolean;
-  top_spot_until?: string | null;
-  mileage?: number;
   creditsRequired?: number;
+  topSpot?: boolean;
+  topSpotUntil?: string | null;
+  displayTier?: number;
+  userId: string;
+  showBoostButton?: boolean;
   seller?: {
     id: string;
     display_name: string;
     avatar_url: string;
     membership_type: string;
   };
-}
-
-interface CarCardProps {
-  ad: Ad;
+  showSellerInfo?: boolean;
   onFavoriteChange?: (adId: string, isFavorite: boolean) => void;
   showActions?: boolean;
-  showSellerInfo?: boolean;
   onContactClick?: () => void;
 }
 
@@ -53,7 +45,32 @@ const formatPrice = (price: number) => {
   return price.toLocaleString('ar-SD');
 };
 
-export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerInfo = false, onContactClick }: CarCardProps) {
+export function CarCard({
+  id,
+  title,
+  price,
+  location,
+  year,
+  mileage,
+  fuelType,
+  transmission,
+  image,
+  isPremium,
+  isFeatured,
+  isNew,
+  viewCount,
+  creditsRequired,
+  topSpot,
+  topSpotUntil,
+  displayTier,
+  userId,
+  showBoostButton,
+  seller,
+  showSellerInfo = false,
+  onFavoriteChange,
+  showActions = true,
+  onContactClick
+}: CarCardProps) {
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,17 +80,17 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
   useEffect(() => {
     if (user) {
       checkIfFavorite();
-      setIsOwner(user.id === ad.user_id);
+      setIsOwner(user.id === userId);
       fetchBoostInfo();
     }
-  }, [user, ad.id]);
+  }, [user, id, userId]);
 
   const fetchBoostInfo = async () => {
     try {
       const { data, error } = await supabase
         .from('ad_boosts')
         .select('boost_plan, expires_at, tier_priority')
-        .eq('ad_id', ad.id)
+        .eq('ad_id', id)
         .eq('status', 'active')
         .gt('expires_at', new Date().toISOString())
         .order('tier_priority', { ascending: false })
@@ -95,7 +112,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
         .from('favorites')
         .select('*')
         .eq('user_id', user.id)
-        .eq('ad_id', ad.id)
+        .eq('ad_id', id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -122,21 +139,21 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
-          .eq('ad_id', ad.id);
+          .eq('ad_id', id);
 
         if (error) throw error;
         setIsFavorite(false);
-        onFavoriteChange?.(ad.id, false);
+        onFavoriteChange?.(id, false);
         toast.success('تم حذف الإعلان من المفضلة');
       } else {
         // Add to favorites
         const { error } = await supabase
           .from('favorites')
-          .insert([{ user_id: user.id, ad_id: ad.id }]);
+          .insert([{ user_id: user.id, ad_id: id }]);
 
         if (error) throw error;
         setIsFavorite(true);
-        onFavoriteChange?.(ad.id, true);
+        onFavoriteChange?.(id, true);
         toast.success('تم حفظ الإعلان في المفضلة');
       }
     } catch (error) {
@@ -171,23 +188,15 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
     }
   };
 
-  // تحديد المدينة والصورة والخصائص مع مرونة في الأسماء
-  const city = ad.city || ad.location || 'غير محدد';
-  const mainImage = ad.images?.[0] || ad.image || "/placeholder.svg";
-  const isNew = ad.is_new || ad.isNew || false;
-  const isFeatured = ad.is_featured || ad.isFeatured || ad.isPremium || false;
-  const viewCount = ad.view_count || ad.viewCount || 0;
-  const fuelType = ad.fuel_type || ad.fuelType || 'غير محدد';
-
   return (
     <Card className={`group hover:shadow-lg transition-all duration-200 ${
-      ad.top_spot ? 'ring-2 ring-primary/20 shadow-lg' : ''
+      topSpot ? 'ring-2 ring-primary/20 shadow-lg' : ''
     }`}>
       {/* صورة الإعلان */}
       <div className="relative overflow-hidden">
         <img 
-          src={mainImage} 
-          alt={ad.title}
+          src={image || "/placeholder.svg"} 
+          alt={title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
         />
         
@@ -198,7 +207,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
               جديد
             </Badge>
           )}
-          {isFeatured && (
+          {(isFeatured || isPremium) && (
             <Badge className="bg-blue-500 hover:bg-blue-600">
               مميز
             </Badge>
@@ -227,7 +236,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
         {/* زر المشاهدة */}
         <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white px-2 py-1 rounded text-xs">
           <Eye className="h-3 w-3" />
-          <span>{viewCount}</span>
+          <span>{viewCount || 0}</span>
         </div>
       </div>
 
@@ -236,21 +245,21 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg font-semibold mb-1 line-clamp-1">
-              {ad.title}
+              {title}
             </CardTitle>
             <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
               <MapPin className="h-4 w-4" />
-              <span>{city}</span>
+              <span>{location || 'غير محدد'}</span>
             </div>
-            {showSellerInfo && ad.seller && (
+            {showSellerInfo && seller && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <img 
-                  src={ad.seller.avatar_url || "/placeholder.svg"} 
-                  alt={ad.seller.display_name}
+                  src={seller.avatar_url || "/placeholder.svg"} 
+                  alt={seller.display_name}
                   className="w-6 h-6 rounded-full"
                 />
-                <span>{ad.seller.display_name}</span>
-                {ad.seller.membership_type === 'premium' && (
+                <span>{seller.display_name}</span>
+                {seller.membership_type === 'premium' && (
                   <Crown className="w-4 h-4 text-primary" />
                 )}
               </div>
@@ -258,7 +267,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-primary">
-              {formatPrice(ad.price)}
+              {formatPrice(price)}
             </div>
             <div className="text-xs text-muted-foreground">
               جنيه سوداني
@@ -272,22 +281,22 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
         <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{ad.year}</span>
+            <span>{year}</span>
           </div>
           <div className="flex items-center gap-1">
             <Fuel className="h-4 w-4 text-muted-foreground" />
-            <span>{fuelType}</span>
+            <span>{fuelType || 'غير محدد'}</span>
           </div>
           <div className="flex items-center gap-1">
             <Settings className="h-4 w-4 text-muted-foreground" />
-            <span>{ad.transmission}</span>
+            <span>{transmission}</span>
           </div>
         </div>
 
         {/* إجراءات البطاقة */}
         {showActions && (
           <div className="flex gap-2">
-            <Link to={`/ad/${ad.id}`} className="flex-1">
+            <Link to={`/ad/${id}`} className="flex-1">
               <Button variant="outline" className="w-full">
                 عرض التفاصيل
               </Button>
@@ -308,8 +317,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerIn
               <Button 
                 variant="outline"
                 onClick={() => {
-                  // فتح نافذة الرسائل
-                  window.open(`/messages?to=${ad.user_id}&ad=${ad.id}`, '_blank');
+                  window.open(`/messages?to=${userId}&ad=${id}`, '_blank');
                 }}
                 className="flex items-center gap-2"
               >

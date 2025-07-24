@@ -172,6 +172,7 @@ const Index = () => {
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
                   creditsRequired={1}
+                  userId={car.user_id}
                   seller={car.profiles ? {
                     id: car.profiles.user_id,
                     display_name: car.profiles.display_name,
