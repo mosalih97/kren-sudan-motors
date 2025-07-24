@@ -46,6 +46,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     
     if (userError || !user) {
+      console.error('خطأ في المستخدم:', userError)
       return new Response(
         JSON.stringify({ success: false, message: 'مستخدم غير صالح' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -68,6 +69,7 @@ serve(async (req) => {
     // تحميل الصورة
     const imageResponse = await fetch(signedUrlData.signedUrl)
     if (!imageResponse.ok) {
+      console.error('فشل في تحميل الصورة:', imageResponse.status)
       return new Response(
         JSON.stringify({ success: false, message: 'فشل في تحميل صورة الجواز' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -81,8 +83,9 @@ serve(async (req) => {
     // استخدام Google Vision API
     const visionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY')
     if (!visionApiKey) {
+      console.error('Google Vision API key غير متوفر')
       return new Response(
-        JSON.stringify({ success: false, message: 'خدمة تحليل الصور غير متوفرة' }),
+        JSON.stringify({ success: false, message: 'خدمة تحليل الصور غير متوفرة حالياً' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -102,6 +105,7 @@ serve(async (req) => {
     )
 
     if (!visionResponse.ok) {
+      console.error('فشل في Google Vision API:', visionResponse.status)
       return new Response(
         JSON.stringify({ success: false, message: 'فشل في تحليل صورة الجواز' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -116,7 +120,8 @@ serve(async (req) => {
     // التحقق من أن الجواز سوداني
     const isSudanesePassport = extractedText.includes('جمهورية السودان') || 
                                extractedText.includes('Republic of Sudan') ||
-                               extractedText.includes('SUDAN')
+                               extractedText.includes('SUDAN') ||
+                               extractedText.includes('Sudan')
 
     if (!isSudanesePassport) {
       return new Response(
@@ -132,7 +137,7 @@ serve(async (req) => {
     const passportNumberMatch = extractedText.match(/(?:Passport\s*No\.?\s*:?\s*|رقم\s*الجواز\s*:?\s*)([A-Z]\d{7})/i)
     const passportNumber = passportNumberMatch ? passportNumberMatch[1] : null
 
-    // محاولة استخراج الاسم (تحسين أساسي)
+    // محاولة استخراج الاسم
     const nameMatch = extractedText.match(/(?:Name\s*:?\s*|الاسم\s*:?\s*)([A-Za-z\s\u0621-\u064A]+)/i)
     const fullName = nameMatch ? nameMatch[1].trim() : null
 
@@ -157,6 +162,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log('تم حفظ بيانات الجواز بنجاح')
 
     return new Response(
       JSON.stringify({

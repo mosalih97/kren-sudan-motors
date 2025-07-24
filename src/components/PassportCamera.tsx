@@ -30,7 +30,14 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onVerificationSu
   };
 
   const processPassportImage = async (file: File) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "خطأ في التحقق",
+        description: "يرجى تسجيل الدخول أولاً",
+      });
+      return;
+    }
 
     setIsProcessing(true);
     setVerificationResult(null);
@@ -47,7 +54,8 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onVerificationSu
         });
 
       if (uploadError) {
-        throw uploadError;
+        console.error('خطأ في رفع الصورة:', uploadError);
+        throw new Error('فشل في رفع الصورة');
       }
 
       // استدعاء Edge Function للتحقق من الجواز
@@ -60,16 +68,17 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onVerificationSu
         });
 
       if (verifyError) {
-        throw verifyError;
+        console.error('خطأ في التحقق:', verifyError);
+        throw new Error('فشل في التحقق من الجواز');
       }
 
       setVerificationResult({
-        success: verifyData.success,
-        message: verifyData.message,
+        success: verifyData?.success || false,
+        message: verifyData?.message || 'خطأ غير معروف',
         data: verifyData
       });
 
-      if (verifyData.success) {
+      if (verifyData?.success) {
         setIsVerified(true);
         toast({
           title: "تم التحقق من الجواز بنجاح",
@@ -81,23 +90,25 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onVerificationSu
         toast({
           variant: "destructive",
           title: "فشل التحقق من الجواز",
-          description: verifyData.message,
+          description: verifyData?.message || "الجواز غير صالح أو غير واضح",
         });
       }
 
     } catch (error) {
       console.error('خطأ في معالجة صورة الجواز:', error);
       
+      const errorMessage = error instanceof Error ? error.message : "حدث خطأ أثناء معالجة صورة الجواز";
+      
       setVerificationResult({
         success: false,
-        message: "حدث خطأ أثناء معالجة صورة الجواز"
+        message: errorMessage
       });
 
       setIsVerified(false);
       toast({
         variant: "destructive",
         title: "خطأ في معالجة الصورة",
-        description: "حدث خطأ أثناء معالجة صورة الجواز",
+        description: errorMessage,
       });
     } finally {
       setIsProcessing(false);
