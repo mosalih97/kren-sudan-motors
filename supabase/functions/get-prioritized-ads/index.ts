@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -28,8 +29,8 @@ serve(async (req) => {
       const min_price = url.searchParams.get('min_price');
       const max_price = url.searchParams.get('max_price');
 
-      // تنظيف الإعلانات المنتهية الصلاحية أولاً
-      const { error: cleanupError } = await supabaseClient.rpc('cleanup_expired_top_spots');
+      // تنظيف التعزيزات المنتهية أولاً
+      const { error: cleanupError } = await supabaseClient.rpc('cleanup_expired_boosts');
       if (cleanupError) {
         console.error('Cleanup error:', cleanupError);
       }
@@ -62,23 +63,8 @@ serve(async (req) => {
         query = query.lte('price', parseInt(max_price));
       }
 
-      // تحديث نقاط الأولوية للإعلانات النشطة
-      const { data: allActiveAds } = await supabaseClient
-        .from('ads')
-        .select('id')
-        .eq('status', 'active');
-
-      if (allActiveAds) {
-        for (const ad of allActiveAds) {
-          await supabaseClient.rpc('calculate_ad_priority_score', {
-            ad_id_param: ad.id
-          });
-        }
-      }
-
-      // تطبيق الترتيب والتصفح
+      // تطبيق الترتيب حسب الأولوية ثم التاريخ
       const { data: ads, error } = await query
-        .order('top_spot', { ascending: false })
         .order('priority_score', { ascending: false })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -112,21 +98,23 @@ serve(async (req) => {
         });
       }
 
-      // إضافة معلومات إضافية للإعلانات
-      const enrichedAds = (ads || []).map(ad => ({
-        ...ad,
-        display_tier: ad.top_spot && new Date(ad.top_spot_until || '') > new Date() 
-          ? 'top_spot'
-          : ad.is_premium 
-          ? 'premium' 
-          : ad.is_featured 
-          ? 'featured' 
-          : 'regular',
-        seller_name: ad.profiles?.display_name,
-        seller_avatar: ad.profiles?.avatar_url,
-        seller_membership: ad.profiles?.membership_type,
-        seller_id_display: ad.profiles?.user_id_display
-      }));
+      // إضافة معلومات التعزيز للإعلانات
+      const enrichedAds = (ads || []).map(ad => {
+        let boostType = 'عادي';
+        if (ad.priority_score >= 100) boostType = 'احترافي';
+        else if (ad.priority_score >= 50) boostType = 'مميز';
+        else if (ad.priority_score >= 10) boostType = 'سريع';
+
+        return {
+          ...ad,
+          boost_type: boostType,
+          is_boosted: ad.priority_score > 1,
+          seller_name: ad.profiles?.display_name,
+          seller_avatar: ad.profiles?.avatar_url,
+          seller_membership: ad.profiles?.membership_type,
+          seller_id_display: ad.profiles?.user_id_display
+        };
+      });
 
       return new Response(
         JSON.stringify({ 
