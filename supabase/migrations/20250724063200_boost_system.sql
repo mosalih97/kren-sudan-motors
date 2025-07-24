@@ -319,7 +319,7 @@ BEGIN
 END;
 $$;
 
--- تحديث trigger لحساب عدد الإعلانات الشهرية
+-- دالة محسنة لتحديث عدد الإعلانات الشهرية
 CREATE OR REPLACE FUNCTION public.update_monthly_ads_count()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -341,7 +341,7 @@ BEGIN
 END;
 $$;
 
--- إنشاء trigger لتحديث عدد الإعلانات
+-- إنشاء trigger لتحديث عدد الإعلانات (استخدام AFTER بدلاً من BEFORE لتجنب مشكلة التحديث)
 DROP TRIGGER IF EXISTS update_monthly_ads_count_trigger ON public.ads;
 CREATE TRIGGER update_monthly_ads_count_trigger
     AFTER INSERT ON public.ads

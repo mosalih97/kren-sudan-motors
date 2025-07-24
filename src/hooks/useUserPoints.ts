@@ -27,14 +27,15 @@ export function useUserPoints() {
         throw error;
       }
 
-      // تحويل البيانات إلى النوع المطلوب
+      // تحويل البيانات من Json إلى النوع المطلوب مع type assertion آمن
+      const result = data as any;
       return {
-        total_points: data?.total_points || 0,
-        base_points: data?.base_points || 0,
-        premium_credits: data?.premium_credits || 0,
-        membership_type: data?.membership_type || 'free',
-        monthly_ads_count: data?.monthly_ads_count || 0,
-        monthly_ads_limit: data?.monthly_ads_limit || 5
+        total_points: result?.total_points || 0,
+        base_points: result?.base_points || 0,
+        premium_credits: result?.premium_credits || 0,
+        membership_type: result?.membership_type || 'free',
+        monthly_ads_count: result?.monthly_ads_count || 0,
+        monthly_ads_limit: result?.monthly_ads_limit || 5
       } as UserPointsData;
     },
     enabled: true,

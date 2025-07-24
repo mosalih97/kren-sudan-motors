@@ -123,7 +123,14 @@ export default function BoostAd() {
         });
 
         if (!error && data) {
-          eligibilityResults[plan.id] = data;
+          // تحويل البيانات من Json إلى object مع type assertion آمن
+          const result = data as any;
+          eligibilityResults[plan.id] = {
+            can_boost: result?.can_boost || false,
+            reason: result?.reason || "خطأ في فحص الأهلية",
+            cost: result?.cost || plan.price,
+            user_points: result?.user_points || null
+          };
         } else {
           eligibilityResults[plan.id] = { can_boost: false, reason: "خطأ في فحص الأهلية" };
         }
@@ -148,14 +155,21 @@ export default function BoostAd() {
         boost_plan: plan.id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Boost error:', error);
+        toast.error("فشل في تعزيز الإعلان: " + error.message);
+        return;
+      }
 
-      if (data?.success) {
+      // تحويل البيانات من Json إلى object مع type assertion آمن
+      const result = data as any;
+      
+      if (result?.success) {
         toast.success("تم تعزيز الإعلان بنجاح!");
         await refetchPoints();
         navigate('/profile');
       } else {
-        toast.error(data?.message || "فشل في تعزيز الإعلان");
+        toast.error(result?.message || "فشل في تعزيز الإعلان");
       }
     } catch (error) {
       console.error('Error boosting ad:', error);
@@ -181,7 +195,7 @@ export default function BoostAd() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">الإعلان غير موجود</div>
+          <div className="text-center">الإعلان غير موجود أو غير مملوك لك</div>
         </div>
       </div>
     );
