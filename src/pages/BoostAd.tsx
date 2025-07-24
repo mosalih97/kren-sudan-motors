@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { UserPointsDisplay } from "@/components/UserPointsDisplay";
+import { AdBoostStatus } from "@/components/AdBoostStatus";
 import { useUserPoints } from "@/hooks/useUserPoints";
 
 interface BoostPlan {
@@ -123,7 +124,6 @@ export default function BoostAd() {
         });
 
         if (!error && data) {
-          // تحويل البيانات من Json إلى object مع type assertion آمن
           const result = data as any;
           eligibilityResults[plan.id] = {
             can_boost: result?.can_boost || false,
@@ -149,6 +149,9 @@ export default function BoostAd() {
     setBoosting(plan.id);
     
     try {
+      // تنظيف الإعلانات المنتهية أولاً
+      await supabase.rpc('cleanup_expired_top_spots');
+      
       const { data, error } = await supabase.rpc('boost_ad_enhanced', {
         ad_id_param: ad.id,
         user_id_param: user.id,
@@ -157,17 +160,31 @@ export default function BoostAd() {
 
       if (error) {
         console.error('Boost error:', error);
-        toast.error("فشل في تعزيز الإعلان: " + error.message);
+        toast.error("فشل في تعزيز الإعلان");
         return;
       }
 
-      // تحويل البيانات من Json إلى object مع type assertion آمن
       const result = data as any;
       
       if (result?.success) {
         toast.success("تم تعزيز الإعلان بنجاح!");
+        
+        // تحديث النقاط وحالة التعزيز
         await refetchPoints();
-        navigate('/profile');
+        
+        // تحديث حالة الإعلان محلياً
+        setAd(prev => ({
+          ...prev,
+          top_spot: true,
+          top_spot_until: result.expires_at
+        }));
+        
+        // تحديث حالة الأهلية
+        checkBoostEligibility();
+        
+        setTimeout(() => {
+          navigate('/profile');
+        }, 2000);
       } else {
         toast.error(result?.message || "فشل في تعزيز الإعلان");
       }
@@ -202,7 +219,6 @@ export default function BoostAd() {
   }
 
   const totalPoints = pointsData?.total_points || 0;
-  const isPremium = pointsData?.membership_type === 'premium';
 
   return (
     <div className="min-h-screen bg-background">
@@ -225,6 +241,9 @@ export default function BoostAd() {
           </p>
         </div>
 
+        {/* حالة التعزيز الحالية */}
+        <AdBoostStatus adId={ad.id} className="mb-6" />
+
         {/* معلومات الحساب والنقاط */}
         <Card className="mb-6">
           <CardHeader>
@@ -235,15 +254,6 @@ export default function BoostAd() {
           </CardHeader>
           <CardContent>
             <UserPointsDisplay variant="full" />
-            
-            {!isPremium && (
-              <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm text-amber-700">
-                  المستخدمون العاديون يستخدمون النقاط الأساسية فقط للتعزيز
-                </span>
-              </div>
-            )}
           </CardContent>
         </Card>
 
