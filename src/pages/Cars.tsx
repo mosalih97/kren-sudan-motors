@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
@@ -8,22 +9,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { SlidersHorizontal, Grid, List, Car } from "lucide-react";
+import { useSearchFilters, CarData } from "@/hooks/useSearchFilters";
 
 const Cars = () => {
-  const [cars, setCars] = useState<any[]>([]);
+  const [allCars, setAllCars] = useState<CarData[]>([]);
+  const [displayedCars, setDisplayedCars] = useState<CarData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("newest");
   const { toast } = useToast();
+  const { performSearch } = useSearchFilters();
 
   useEffect(() => {
     fetchCars();
-  }, [sortBy]);
+  }, []);
+
+  useEffect(() => {
+    applySorting();
+  }, [sortBy, allCars]);
 
   const fetchCars = async () => {
     setLoading(true);
     try {
-      // استخدام Edge Function للحصول على الإعلانات مرتبة حسب الأولوية
       const { data: response, error } = await supabase.functions.invoke('get-prioritized-ads', {
         method: 'GET'
       });
@@ -38,34 +45,9 @@ const Cars = () => {
         return;
       }
 
-      let cars = response?.ads || [];
-
-      // Apply sorting if not using prioritized ordering
-      switch (sortBy) {
-        case "newest":
-          cars = cars.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          break;
-        case "oldest":
-          cars = cars.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-          break;
-        case "price_low":
-          cars = cars.sort((a: any, b: any) => a.price - b.price);
-          break;
-        case "price_high":
-          cars = cars.sort((a: any, b: any) => b.price - a.price);
-          break;
-        case "year_new":
-          cars = cars.sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
-          break;
-        case "year_old":
-          cars = cars.sort((a: any, b: any) => (a.year || 0) - (b.year || 0));
-          break;
-        default:
-          // للترتيب الافتراضي، استخدم الترتيب حسب الأولوية
-          break;
-      }
-
-      setCars(cars);
+      const cars = response?.ads || [];
+      setAllCars(cars);
+      setDisplayedCars(cars);
     } catch (error) {
       console.error("Error fetching cars:", error);
       toast({
@@ -76,6 +58,45 @@ const Cars = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const applySorting = () => {
+    let sorted = [...allCars];
+
+    switch (sortBy) {
+      case "newest":
+        sorted = sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case "oldest":
+        sorted = sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case "price_low":
+        sorted = sorted.sort((a, b) => a.price - b.price);
+        break;
+      case "price_high":
+        sorted = sorted.sort((a, b) => b.price - a.price);
+        break;
+      case "year_new":
+        sorted = sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
+        break;
+      case "year_old":
+        sorted = sorted.sort((a, b) => (a.year || 0) - (b.year || 0));
+        break;
+      default:
+        break;
+    }
+
+    setDisplayedCars(sorted);
+  };
+
+  const handleSearch = (filters: any) => {
+    if (Object.keys(filters).length === 0) {
+      setDisplayedCars(allCars);
+      return;
+    }
+
+    const filtered = performSearch(allCars);
+    setDisplayedCars(filtered);
   };
 
   if (loading) {
@@ -106,7 +127,7 @@ const Cars = () => {
           </div>
           
           <div className="max-w-6xl mx-auto">
-            <SearchFilters />
+            <SearchFilters onSearch={handleSearch} />
           </div>
         </div>
       </section>
@@ -118,10 +139,10 @@ const Cars = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground">
-                النتائج ({cars.length} سيارة)
+                النتائج ({displayedCars.length} سيارة)
               </h2>
               <p className="text-muted-foreground">
-                عرض جميع السيارات المتاحة
+                عرض السيارات المتاحة
               </p>
             </div>
 
@@ -165,7 +186,7 @@ const Cars = () => {
           </div>
 
           {/* Results */}
-          {cars.length === 0 ? (
+          {displayedCars.length === 0 ? (
             <Card className="card-gradient border-0 shadow-lg">
               <CardContent className="p-12 text-center">
                 <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -184,7 +205,7 @@ const Cars = () => {
                 ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 : "space-y-4"
             }>
-              {cars.map((car) => (
+              {displayedCars.map((car) => (
                 <CarCard
                   key={car.id}
                   id={car.id}
@@ -218,7 +239,7 @@ const Cars = () => {
           )}
 
           {/* Load More Button */}
-          {cars.length > 0 && (
+          {displayedCars.length > 0 && allCars.length > displayedCars.length && (
             <div className="text-center mt-8">
               <Button variant="outline" size="lg">
                 عرض المزيد من السيارات

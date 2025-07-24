@@ -1,8 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, MapPin, Car, Calendar, DollarSign, Filter } from "lucide-react";
+import { useSearchFilters } from "@/hooks/useSearchFilters";
 
 const sudaneseStates = [
   "الخرطوم", "الجزيرة", "كسلا", "القضارف", "البحر الأحمر", "نهر النيل", 
@@ -20,7 +22,26 @@ const carTypes = [
   "صالون", "هاتشباك", "SUV", "بيك أب", "كوبيه", "حافلة صغيرة", "شاحنة"
 ];
 
-export function SearchFilters() {
+interface SearchFiltersProps {
+  onSearch?: (filters: any) => void;
+}
+
+export function SearchFilters({ onSearch }: SearchFiltersProps) {
+  const { filters, updateFilter, clearFilters, hasActiveFilters } = useSearchFilters();
+
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch(filters);
+    }
+  };
+
+  const handleClearFilters = () => {
+    clearFilters();
+    if (onSearch) {
+      onSearch({});
+    }
+  };
+
   return (
     <Card className="card-gradient border-0 shadow-lg">
       <CardContent className="p-6 space-y-6">
@@ -30,6 +51,8 @@ export function SearchFilters() {
           <Input
             placeholder="ابحث عن سيارة... (مثال: تويوتا كامري 2020)"
             className="pr-12 h-14 text-lg rounded-xl border-2 border-primary/20 focus:border-primary/50 transition-smooth"
+            value={filters.searchQuery}
+            onChange={(e) => updateFilter('searchQuery', e.target.value)}
           />
         </div>
 
@@ -41,7 +64,7 @@ export function SearchFilters() {
               <Car className="h-4 w-4 text-primary" />
               الماركة
             </label>
-            <Select>
+            <Select value={filters.brand} onValueChange={(value) => updateFilter('brand', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-primary/30 transition-smooth">
                 <SelectValue placeholder="اختر الماركة" />
               </SelectTrigger>
@@ -60,7 +83,7 @@ export function SearchFilters() {
               <Car className="h-4 w-4 text-secondary" />
               النوع
             </label>
-            <Select>
+            <Select value={filters.carType} onValueChange={(value) => updateFilter('carType', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-secondary/30 transition-smooth">
                 <SelectValue placeholder="نوع السيارة" />
               </SelectTrigger>
@@ -79,7 +102,7 @@ export function SearchFilters() {
               <MapPin className="h-4 w-4 text-accent" />
               الولاية
             </label>
-            <Select>
+            <Select value={filters.state} onValueChange={(value) => updateFilter('state', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 transition-smooth">
                 <SelectValue placeholder="اختر الولاية" />
               </SelectTrigger>
@@ -99,7 +122,7 @@ export function SearchFilters() {
               السنة
             </label>
             <div className="flex gap-2">
-              <Select>
+              <Select value={filters.minYear} onValueChange={(value) => updateFilter('minYear', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="من" />
                 </SelectTrigger>
@@ -109,7 +132,7 @@ export function SearchFilters() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select>
+              <Select value={filters.maxYear} onValueChange={(value) => updateFilter('maxYear', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="إلى" />
                 </SelectTrigger>
@@ -134,22 +157,32 @@ export function SearchFilters() {
               type="number"
               placeholder="السعر الأدنى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
+              value={filters.minPrice}
+              onChange={(e) => updateFilter('minPrice', e.target.value)}
             />
             <Input
               type="number"
               placeholder="السعر الأعلى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
+              value={filters.maxPrice}
+              onChange={(e) => updateFilter('maxPrice', e.target.value)}
             />
           </div>
         </div>
 
         {/* أزرار البحث */}
         <div className="flex gap-4 pt-2">
-          <Button variant="hero" size="lg" className="flex-1">
+          <Button variant="hero" size="lg" className="flex-1" onClick={handleSearch}>
             <Search className="h-5 w-5 ml-2" />
             بحث متقدم
           </Button>
-          <Button variant="outline" size="lg" className="px-8">
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="px-8" 
+            onClick={handleClearFilters}
+            disabled={!hasActiveFilters}
+          >
             <Filter className="h-5 w-5 ml-2" />
             مسح الفلاتر
           </Button>
