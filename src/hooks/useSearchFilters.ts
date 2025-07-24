@@ -7,16 +7,14 @@ import { useNavigate } from 'react-router-dom';
 export interface SearchFilters {
   searchQuery: string;
   city: string;
-  minPrice: string;
-  maxPrice: string;
+  price: string;
 }
 
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     searchQuery: '',
     city: '',
-    minPrice: '',
-    maxPrice: ''
+    price: ''
   });
   
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -27,7 +25,7 @@ export const useSearchFilters = () => {
 
   const performSearch = async () => {
     // Check if at least one filter is provided
-    if (!filters.searchQuery && !filters.city && !filters.minPrice && !filters.maxPrice) {
+    if (!filters.searchQuery && !filters.city && !filters.price) {
       toast({
         title: "تنبيه",
         description: "يرجى إدخال معايير البحث",
@@ -62,17 +60,10 @@ export const useSearchFilters = () => {
         query = query.ilike('city', `%${filters.city}%`);
       }
 
-      if (filters.minPrice) {
-        const minPriceNum = parseInt(filters.minPrice);
-        if (!isNaN(minPriceNum)) {
-          query = query.gte('price', minPriceNum);
-        }
-      }
-
-      if (filters.maxPrice) {
-        const maxPriceNum = parseInt(filters.maxPrice);
-        if (!isNaN(maxPriceNum)) {
-          query = query.lte('price', maxPriceNum);
+      if (filters.price) {
+        const priceNum = parseInt(filters.price);
+        if (!isNaN(priceNum)) {
+          query = query.lte('price', priceNum);
         }
       }
 
@@ -90,10 +81,13 @@ export const useSearchFilters = () => {
 
       setSearchResults(data || []);
       
-      // Navigate to search results page
-      navigate('/cars');
+      // Navigate to search results page with search params
+      const searchParams = new URLSearchParams();
+      if (filters.searchQuery) searchParams.set('q', filters.searchQuery);
+      if (filters.city) searchParams.set('city', filters.city);
+      if (filters.price) searchParams.set('price', filters.price);
       
-      // Don't show toast if no results, let the UI handle it
+      navigate(`/search-results?${searchParams.toString()}`);
       
     } catch (error) {
       console.error('Search error:', error);
@@ -111,8 +105,7 @@ export const useSearchFilters = () => {
     setFilters({
       searchQuery: '',
       city: '',
-      minPrice: '',
-      maxPrice: ''
+      price: ''
     });
     setSearchResults([]);
     setHasSearched(false);

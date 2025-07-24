@@ -48,7 +48,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
         </div>
 
         {/* الفلاتر */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* المدينة */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -64,34 +64,18 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
             />
           </div>
 
-          {/* السعر الأدنى */}
+          {/* السعر */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-success" />
-              السعر الأدنى
-            </label>
-            <Input
-              type="number"
-              placeholder="السعر الأدنى (جنيه سوداني)"
-              className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
-              value={filters.minPrice}
-              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-              onKeyPress={handleKeyPress}
-            />
-          </div>
-
-          {/* السعر الأعلى */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-success" />
-              السعر الأعلى
+              السعر الأعلى (جنيه سوداني)
             </label>
             <Input
               type="number"
               placeholder="السعر الأعلى (جنيه سوداني)"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
-              value={filters.maxPrice}
-              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+              value={filters.price}
+              onChange={(e) => handleFilterChange('price', e.target.value)}
               onKeyPress={handleKeyPress}
             />
           </div>

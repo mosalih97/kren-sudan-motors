@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import AddAd from "./pages/AddAd";
 import Cars from "./pages/Cars";
+import SearchResults from "./pages/SearchResults";
 import AdDetails from "./pages/AdDetails";
 import SellerAds from "./pages/SellerAds";
 import Messages from "./pages/Messages";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/cars" element={<Cars />} />
+            <Route path="/search-results" element={<SearchResults />} />
             <Route path="/ads/:id" element={<AdDetails />} />
             <Route path="/seller/:sellerId" element={<SellerAds />} />
             <Route 
