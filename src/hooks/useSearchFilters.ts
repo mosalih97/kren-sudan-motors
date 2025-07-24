@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 export interface SearchFilters {
   searchQuery: string;
@@ -22,8 +23,10 @@ export const useSearchFilters = () => {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const performSearch = async () => {
+    // Check if at least one filter is provided
     if (!filters.searchQuery && !filters.city && !filters.minPrice && !filters.maxPrice) {
       toast({
         title: "تنبيه",
@@ -50,7 +53,7 @@ export const useSearchFilters = () => {
         `)
         .eq('status', 'active');
 
-      // Apply filters
+      // Apply search filters
       if (filters.searchQuery) {
         query = query.or(`title.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%,model.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
       }
@@ -60,11 +63,17 @@ export const useSearchFilters = () => {
       }
 
       if (filters.minPrice) {
-        query = query.gte('price', parseInt(filters.minPrice));
+        const minPriceNum = parseInt(filters.minPrice);
+        if (!isNaN(minPriceNum)) {
+          query = query.gte('price', minPriceNum);
+        }
       }
 
       if (filters.maxPrice) {
-        query = query.lte('price', parseInt(filters.maxPrice));
+        const maxPriceNum = parseInt(filters.maxPrice);
+        if (!isNaN(maxPriceNum)) {
+          query = query.lte('price', maxPriceNum);
+        }
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -81,12 +90,11 @@ export const useSearchFilters = () => {
 
       setSearchResults(data || []);
       
-      toast({
-        title: "نتائج البحث",
-        description: `تم العثور على ${data?.length || 0} نتيجة`,
-        variant: "default"
-      });
-
+      // Navigate to search results page
+      navigate('/cars');
+      
+      // Don't show toast if no results, let the UI handle it
+      
     } catch (error) {
       console.error('Search error:', error);
       toast({

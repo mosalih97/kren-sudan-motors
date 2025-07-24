@@ -21,6 +21,15 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
   const handleSearch = async () => {
     await performSearch();
+    if (onSearch) {
+      onSearch([]);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   return (
@@ -34,6 +43,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
             className="pr-12 h-14 text-lg rounded-xl border-2 border-primary/20 focus:border-primary/50 transition-smooth"
             value={filters.searchQuery}
             onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
+            onKeyPress={handleKeyPress}
           />
         </div>
 
@@ -50,6 +60,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 focus:border-accent/50 transition-smooth"
               value={filters.city}
               onChange={(e) => handleFilterChange('city', e.target.value)}
+              onKeyPress={handleKeyPress}
             />
           </div>
 
@@ -65,6 +76,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.minPrice}
               onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+              onKeyPress={handleKeyPress}
             />
           </div>
 
@@ -80,6 +92,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.maxPrice}
               onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+              onKeyPress={handleKeyPress}
             />
           </div>
         </div>
