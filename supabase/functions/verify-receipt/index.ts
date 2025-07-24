@@ -20,18 +20,41 @@ serve(async (req) => {
     const requestBody = await req.json()
     console.log('استلام البيانات:', JSON.stringify(requestBody, null, 2))
     
-    const { imagePath, membershipId } = requestBody
+    const { user_id, white_image_url, green_image_url } = requestBody
     
-    if (!imagePath) {
-      console.error('مسار الصورة مفقود')
+    console.log('معرف المستخدم:', user_id)
+    console.log('رابط الإيصال الأبيض:', white_image_url)
+    console.log('رابط الإيصال الأخضر:', green_image_url)
+    
+    // التحقق من وجود جميع البيانات المطلوبة
+    if (!user_id || !white_image_url || !green_image_url) {
+      console.error('بيانات مفقودة')
       return new Response(
-        JSON.stringify({ success: false, error: 'مسار الصورة مطلوب' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'يرجى إدخال جميع البيانات المطلوبة' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    console.log('مسار الصورة:', imagePath)
-    console.log('رقم العضوية المرسل:', membershipId)
+    // التحقق من صحة معرف المستخدم (8 خانات)
+    if (!/^\d{8}$/.test(user_id)) {
+      console.error('معرف المستخدم غير صحيح')
+      return new Response(
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'معرف المستخدم يجب أن يكون مكون من 8 أرقام' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
     // إعداد Supabase client
     const supabase = createClient(
@@ -39,54 +62,58 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // إنشاء رابط موقع مؤقت للصورة
-    console.log('إنشاء رابط موقع مؤقت للصورة...')
-    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-      .from('bank-receipts')
-      .createSignedUrl(imagePath, 600)
-
-    if (signedUrlError || !signedUrlData) {
-      console.error('خطأ في إنشاء الرابط الموقع:', signedUrlError)
-      return new Response(
-        JSON.stringify({ success: false, error: 'فشل في إنشاء رابط الصورة الموقع' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const signedUrl = signedUrlData.signedUrl
-    console.log('تم إنشاء الرابط الموقع بنجاح')
-
-    // تحميل الصورة من الرابط الموقع
-    console.log('تحميل الصورة من الرابط الموقع...')
-    const imageResponse = await fetch(signedUrl)
+    console.log('تنزيل الصورتين...')
     
-    if (!imageResponse.ok) {
-      console.error('فشل في تحميل الصورة:', imageResponse.status, imageResponse.statusText)
+    // تنزيل الصورتين
+    const [whiteResponse, greenResponse] = await Promise.all([
+      fetch(white_image_url),
+      fetch(green_image_url)
+    ])
+
+    if (!whiteResponse.ok || !greenResponse.ok) {
+      console.error('فشل في تنزيل الصور')
       return new Response(
-        JSON.stringify({ success: false, error: 'فشل في تحميل الصورة من التخزين' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'فشل في تنزيل الصور. تأكد من صحة الروابط' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    // تحويل الصورة إلى base64
-    console.log('تحويل الصورة إلى base64...')
-    const imageBuffer = await imageResponse.arrayBuffer()
-    const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
-    console.log('تم تحويل الصورة إلى base64 بنجاح، الحجم:', imageBase64.length)
+    console.log('تحويل الصور إلى base64...')
+    
+    // تحويل الصور إلى base64
+    const whiteBuffer = await whiteResponse.arrayBuffer()
+    const greenBuffer = await greenResponse.arrayBuffer()
+    
+    const whiteBase64 = btoa(String.fromCharCode(...new Uint8Array(whiteBuffer)))
+    const greenBase64 = btoa(String.fromCharCode(...new Uint8Array(greenBuffer)))
 
-    // استخدام Google Vision API لاستخراج النص
-    console.log('بدء استخدام Google Vision API...')
+    console.log('استخدام Google Vision API...')
+    
+    // استخدام Google Vision API
     const visionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY')
     
     if (!visionApiKey) {
       console.error('Google Vision API Key مفقود')
       return new Response(
-        JSON.stringify({ success: false, error: 'Google Vision API Key غير متوفر' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'خطأ في الخادم: Google Vision API Key غير متوفر' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    const visionResponse = await fetch(
+    // تحليل الصورة البيضاء
+    const whiteVisionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
       {
         method: 'POST',
@@ -97,7 +124,7 @@ serve(async (req) => {
           requests: [
             {
               image: {
-                content: imageBase64,
+                content: whiteBase64,
               },
               features: [
                 {
@@ -111,84 +138,118 @@ serve(async (req) => {
       }
     )
 
-    if (!visionResponse.ok) {
-      console.error('فشل في استدعاء Google Vision API:', visionResponse.status, visionResponse.statusText)
-      const errorText = await visionResponse.text()
-      console.error('تفاصيل الخطأ:', errorText)
-      return new Response(
-        JSON.stringify({ success: false, error: 'فشل في تحليل الصورة' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const visionData = await visionResponse.json()
-    console.log('استجابة Google Vision API:', JSON.stringify(visionData, null, 2))
-
-    if (!visionData.responses?.[0]?.textAnnotations?.[0]?.description) {
-      console.error('لم يتم العثور على نص في الصورة')
-      return new Response(
-        JSON.stringify({ success: false, error: 'لم يتم العثور على نص في الصورة. تأكد من وضوح الصورة' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const extractedText = visionData.responses[0].textAnnotations[0].description
-    console.log('النص المستخرج من الصورة:', extractedText)
-
-    // استخراج رقم العملية - نبحث عن أرقام مختلفة الأطوال
-    const transactionPatterns = [
-      /\b\d{11}\b/g,    // 11 رقم
-      /\b\d{10}\b/g,    // 10 أرقام
-      /\b\d{9}\b/g,     // 9 أرقام
-      /\b\d{8}\b/g,     // 8 أرقام
-      /\b\d{12}\b/g,    // 12 رقم
-      /\b\d{13}\b/g,    // 13 رقم
-    ]
-
-    let transactionNumber = null
-    
-    for (const pattern of transactionPatterns) {
-      const matches = extractedText.match(pattern)
-      if (matches && matches.length > 0) {
-        // نختار أول رقم نجده
-        transactionNumber = matches[0]
-        console.log(`رقم العملية المستخرج (${transactionNumber.length} رقم):`, transactionNumber)
-        break
+    // تحليل الصورة الخضراء
+    const greenVisionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: {
+                content: greenBase64,
+              },
+              features: [
+                {
+                  type: 'TEXT_DETECTION',
+                  maxResults: 10,
+                },
+              ],
+            },
+          ],
+        }),
       }
-    }
+    )
 
-    if (!transactionNumber) {
-      console.error('لم يتم العثور على رقم العملية في الإيصال')
+    if (!whiteVisionResponse.ok || !greenVisionResponse.ok) {
+      console.error('فشل في تحليل الصور')
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'لم يتم العثور على رقم العملية في الإيصال. تأكد من وضوح الصورة',
-          extractedText: extractedText.substring(0, 500)
+          status: 'failed', 
+          message: 'فشل في تحليل الصور. تأكد من وضوح الصور' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    // استخراج التاريخ بصيغ مختلفة
+    const whiteVisionData = await whiteVisionResponse.json()
+    const greenVisionData = await greenVisionResponse.json()
+
+    console.log('نتيجة تحليل الصورة البيضاء:', JSON.stringify(whiteVisionData, null, 2))
+    console.log('نتيجة تحليل الصورة الخضراء:', JSON.stringify(greenVisionData, null, 2))
+
+    // استخراج النص من الصورتين
+    const whiteText = whiteVisionData.responses?.[0]?.textAnnotations?.[0]?.description || ''
+    const greenText = greenVisionData.responses?.[0]?.textAnnotations?.[0]?.description || ''
+    
+    console.log('النص المستخرج من الصورة البيضاء:', whiteText)
+    console.log('النص المستخرج من الصورة الخضراء:', greenText)
+
+    if (!whiteText && !greenText) {
+      console.error('لم يتم العثور على نص في الصور')
+      return new Response(
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'لم يتم العثور على نص في الصور. تأكد من وضوح الصور' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // دمج النصين للبحث
+    const combinedText = `${whiteText}\n${greenText}`
+    console.log('النص المدمج:', combinedText)
+
+    // استخراج رقم العملية (11 رقم)
+    const transactionMatches = combinedText.match(/\b\d{11}\b/g)
+    if (!transactionMatches || transactionMatches.length === 0) {
+      console.error('لم يتم العثور على رقم العملية')
+      return new Response(
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'لم يتم العثور على رقم العملية (11 رقم). تأكد من وضوح الصورة' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const transactionId = transactionMatches[0]
+    console.log('رقم العملية المستخرج:', transactionId)
+
+    // استخراج التاريخ بصيغة مختلفة
     const datePatterns = [
-      /\b(\d{1,2})-([A-Za-z]{3})-(\d{4})\b/g,           // DD-MMM-YYYY
-      /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g,             // DD/MM/YYYY
-      /\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g,               // YYYY-MM-DD
-      /\b(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\b/g,         // DD MMM YYYY
+      /\b(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\b/g,
+      /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\b/g,
+      /\b(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})\b/g,
     ]
 
-    let receiptDate = null
+    let transactionDate = null
     
     for (const pattern of datePatterns) {
-      const matches = [...extractedText.matchAll(pattern)]
+      const matches = [...combinedText.matchAll(pattern)]
       if (matches.length > 0) {
         const match = matches[0]
         
         if (pattern.source.includes('([A-Za-z]{3})')) {
-          // تنسيق DD-MMM-YYYY
-          const day = match[1].padStart(2, '0')
+          // تنسيق DD-MMM-YYYY HH:MM:SS
+          const day = match[1]
           const month = match[2]
           const year = match[3]
+          const hour = match[4]
+          const minute = match[5]
+          const second = match[6]
           
           const monthMap: { [key: string]: string } = {
             'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
@@ -198,220 +259,178 @@ serve(async (req) => {
           
           const monthNumber = monthMap[month]
           if (monthNumber) {
-            receiptDate = `${year}-${monthNumber}-${day}`
+            transactionDate = new Date(`${year}-${monthNumber}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second}`)
           }
-        } else if (pattern.source.includes('(\\d{1,2})\\/(\\d{1,2})')) {
-          // تنسيق DD/MM/YYYY
-          const day = match[1].padStart(2, '0')
-          const month = match[2].padStart(2, '0')
-          const year = match[3]
-          receiptDate = `${year}-${month}-${day}`
-        } else if (pattern.source.includes('(\\d{4})-(\\d{1,2})')) {
-          // تنسيق YYYY-MM-DD
-          receiptDate = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
+        } else {
+          // تنسيق آخر
+          transactionDate = new Date(match[0])
         }
         
-        if (receiptDate) {
-          console.log('تاريخ الإيصال المستخرج:', receiptDate)
+        if (transactionDate && !isNaN(transactionDate.getTime())) {
+          console.log('تاريخ العملية المستخرج:', transactionDate)
           break
         }
       }
     }
 
-    // إذا لم نجد تاريخ، نستخدم تاريخ اليوم
-    if (!receiptDate) {
-      receiptDate = new Date().toISOString().split('T')[0]
-      console.log('لم يتم العثور على تاريخ الإيصال، استخدام تاريخ اليوم:', receiptDate)
-    }
-
-    // التحقق من أن التاريخ ليس في المستقبل وليس أقدم من 7 أيام
-    const today = new Date()
-    const receiptDateObj = new Date(receiptDate)
-    const daysDifference = Math.floor((today.getTime() - receiptDateObj.getTime()) / (1000 * 60 * 60 * 24))
-    
-    console.log('تاريخ اليوم:', today.toISOString().split('T')[0])
-    console.log('تاريخ الإيصال:', receiptDate)
-    console.log('الفرق بالأيام:', daysDifference)
-    
-    if (daysDifference > 7) {
-      console.error('الإيصال قديم جداً')
+    if (!transactionDate) {
+      console.error('لم يتم العثور على تاريخ العملية')
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'الإيصال قديم جداً. يجب أن يكون الإيصال خلال آخر 7 أيام'
+          status: 'failed', 
+          message: 'لم يتم العثور على تاريخ العملية. تأكد من وضوح الصورة' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    if (daysDifference < 0) {
-      console.error('تاريخ الإيصال في المستقبل')
+    // التحقق من أن العملية خلال 24 ساعة
+    const now = new Date()
+    const timeDifference = now.getTime() - transactionDate.getTime()
+    const hoursDifference = timeDifference / (1000 * 60 * 60)
+
+    console.log('الوقت الحالي:', now)
+    console.log('وقت العملية:', transactionDate)
+    console.log('الفرق بالساعات:', hoursDifference)
+
+    if (hoursDifference > 24) {
+      console.error('العملية أقدم من 24 ساعة')
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'تاريخ الإيصال غير صحيح. لا يمكن أن يكون التاريخ في المستقبل'
+          status: 'failed', 
+          message: 'العملية أقدم من 24 ساعة. يجب أن تكون العملية خلال آخر 24 ساعة' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    // التحقق من عدم استخدام رقم العملية مسبقاً
+    // التحقق من رقم الحساب
+    const accountNumber = '0913036899290001'
+    if (!combinedText.includes(accountNumber)) {
+      console.error('رقم الحساب غير مطابق')
+      return new Response(
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'رقم الحساب غير مطابق. تأكد من التحويل إلى الحساب الصحيح' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     console.log('التحقق من عدم استخدام رقم العملية مسبقاً...')
+    
+    // التحقق من عدم استخدام رقم العملية مسبقاً
     const { data: existingTransaction, error: transactionError } = await supabase
-      .from('used_receipt_transactions')
+      .from('used_transaction_ids')
       .select('id')
-      .eq('transaction_number', transactionNumber)
+      .eq('transaction_id', transactionId)
       .single()
 
     if (transactionError && transactionError.code !== 'PGRST116') {
       console.error('خطأ في التحقق من رقم العملية:', transactionError)
       return new Response(
-        JSON.stringify({ success: false, error: 'خطأ في التحقق من رقم العملية' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'خطأ في التحقق من رقم العملية' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
     if (existingTransaction) {
-      console.error('رقم العملية مستخدم مسبقاً')
+      console.error('رقم العملية مكرر')
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'هذا الإيصال تم استخدامه مسبقاً. لا يمكن استخدام نفس الإيصال أكثر من مرة'
+          status: 'failed', 
+          message: 'رقم العملية مكرر. تم استخدام هذا الإيصال مسبقاً' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    // البحث عن رقم المستخدم في النص المستخرج
-    console.log('البحث عن رقم المستخدم في البيانات...')
+    console.log('إضافة رقم العملية إلى قاعدة البيانات...')
     
-    let foundUserId = null
-    
-    // إذا كان رقم العضوية موجود ومكون من 8 أرقام، استخدمه مباشرة
-    if (membershipId && membershipId.length === 8 && /^\d{8}$/.test(membershipId)) {
-      // التحقق من وجود رقم العضوية في النص المستخرج
-      if (extractedText.includes(membershipId)) {
-        foundUserId = membershipId
-        console.log('تم العثور على رقم المستخدم من معرف العضوية:', foundUserId)
-      } else {
-        console.log('رقم العضوية غير موجود في النص المستخرج')
-      }
-    }
-
-    // إذا لم نجد رقم المستخدم، نبحث عن أرقام 8 أرقام في النص
-    if (!foundUserId) {
-      const userIdPattern = /\b\d{8}\b/g
-      const userIdMatches = [...extractedText.matchAll(userIdPattern)]
-      
-      if (userIdMatches.length > 0) {
-        foundUserId = userIdMatches[0][0]
-        console.log('تم العثور على رقم المستخدم من النص المستخرج:', foundUserId)
-      }
-    }
-
-    if (!foundUserId) {
-      console.log('لم يتم العثور على رقم مستخدم صالح')
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'تعذر التعرف على رقم المستخدم من الإيصال. تأكد من أن الرقم ظاهر بوضوح في خانة التعليق وأن الصورة عالية الجودة.',
-          membershipId: membershipId,
-          extractedText: extractedText.substring(0, 500)
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // التحقق من وجود المستخدم في قاعدة البيانات
-    console.log('البحث عن المستخدم في قاعدة البيانات...')
-    const { data: userProfile, error: userError } = await supabase
-      .from('profiles')
-      .select('user_id, display_name, membership_type')
-      .eq('user_id_display', foundUserId)
-      .single()
-
-    if (userError || !userProfile) {
-      console.error('المستخدم غير موجود:', userError)
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `المستخدم برقم ${foundUserId} غير موجود في النظام`,
-          foundUserId: foundUserId
-        }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log('تم العثور على المستخدم:', userProfile)
-
-    // تسجيل رقم العملية كمستخدم
-    console.log('تسجيل رقم العملية كمستخدم...')
+    // إضافة رقم العملية إلى قاعدة البيانات
     const { error: insertTransactionError } = await supabase
-      .from('used_receipt_transactions')
+      .from('used_transaction_ids')
       .insert({
-        transaction_number: transactionNumber,
-        receipt_date: receiptDate,
-        user_id: userProfile.user_id
+        transaction_id: transactionId,
+        user_id: user_id
       })
 
     if (insertTransactionError) {
-      console.error('خطأ في تسجيل رقم العملية:', insertTransactionError)
+      console.error('خطأ في إضافة رقم العملية:', insertTransactionError)
       return new Response(
-        JSON.stringify({ success: false, error: 'خطأ في تسجيل رقم العملية' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'خطأ في حفظ رقم العملية' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    // تحديث حالة المستخدم إلى مميز
-    console.log('تحديث حالة المستخدم إلى مميز...')
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        membership_type: 'premium',
-        credits: 130,
-        premium_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    console.log('إضافة الإيصال إلى قاعدة البيانات...')
+    
+    // إضافة الإيصال إلى قاعدة البيانات
+    const { error: insertReceiptError } = await supabase
+      .from('payment_receipts')
+      .insert({
+        user_id: user_id,
+        transaction_id: transactionId,
+        white_image_url: white_image_url,
+        green_image_url: green_image_url,
+        date_of_payment: transactionDate.toISOString(),
+        verified: true
       })
-      .eq('user_id', userProfile.user_id)
 
-    if (updateError) {
-      console.error('خطأ في تحديث المستخدم:', updateError)
+    if (insertReceiptError) {
+      console.error('خطأ في إضافة الإيصال:', insertReceiptError)
       return new Response(
-        JSON.stringify({ success: false, error: 'خطأ في تحديث حالة المستخدم' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'failed', 
+          message: 'خطأ في حفظ الإيصال' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
     }
 
-    console.log('تم تحديث حالة المستخدم بنجاح')
-
-    // تسجيل عملية التحقق الناجحة
-    const { error: logError } = await supabase
-      .from('receipt_submissions')
-      .update({
-        status: 'approved',
-        verified_at: new Date().toISOString(),
-        extracted_text: `رقم المستخدم: ${foundUserId}`,
-        transaction_number: transactionNumber,
-        receipt_date: receiptDate
-      })
-      .eq('user_id', userProfile.user_id)
-      .eq('membership_id', membershipId)
-
-    if (logError) {
-      console.error('خطأ في تسجيل عملية التحقق:', logError)
-    }
-
-    // الرد النهائي
+    console.log('تم التحقق من الإيصال بنجاح')
+    
+    // إرجاع رد ناجح
     return new Response(
       JSON.stringify({
-        success: true,
-        message: 'تم التحقق من الإيصال وتفعيل الاشتراك بنجاح',
-        userId: foundUserId,
-        userName: userProfile.display_name,
-        transactionNumber: transactionNumber,
-        receiptDate: receiptDate,
-        extractedText: `رقم المستخدم: ${foundUserId}`
+        status: 'success',
+        message: 'تم التحقق من الإيصال بنجاح',
+        data: {
+          transaction_id: transactionId,
+          date_of_payment: transactionDate.toISOString(),
+          user_id: user_id
+        }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
 
   } catch (error) {
@@ -420,11 +439,14 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        success: false,
-        error: 'حدث خطأ أثناء التحقق من الإيصال',
+        status: 'failed',
+        message: 'حدث خطأ أثناء التحقق من الإيصال',
         details: error.message 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   }
 })
