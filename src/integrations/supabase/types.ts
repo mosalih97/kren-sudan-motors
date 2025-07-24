@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_boost_logs: {
-        Row: {
-          ad_id: string
-          boost_type_id: string
-          created_at: string
-          end_time: string
-          id: string
-          start_time: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          ad_id: string
-          boost_type_id: string
-          created_at?: string
-          end_time: string
-          id?: string
-          start_time?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          ad_id?: string
-          boost_type_id?: string
-          created_at?: string
-          end_time?: string
-          id?: string
-          start_time?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ad_boost_logs_ad_id_fkey"
-            columns: ["ad_id"]
-            isOneToOne: false
-            referencedRelation: "ads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ad_boost_logs_boost_type_id_fkey"
-            columns: ["boost_type_id"]
-            isOneToOne: false
-            referencedRelation: "boost_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ad_boosts: {
         Row: {
           ad_id: string
@@ -248,33 +200,6 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
-      }
-      boost_types: {
-        Row: {
-          created_at: string
-          duration_hours: number
-          features: Json
-          id: string
-          label: string
-          points_cost: number
-        }
-        Insert: {
-          created_at?: string
-          duration_hours: number
-          features: Json
-          id?: string
-          label: string
-          points_cost: number
-        }
-        Update: {
-          created_at?: string
-          duration_hours?: number
-          features?: Json
-          id?: string
-          label?: string
-          points_cost?: number
-        }
-        Relationships: []
       }
       favorites: {
         Row: {
@@ -575,14 +500,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      boost_ad: {
-        Args: {
-          ad_id_param: string
-          user_id_param: string
-          boost_type_id_param: string
-        }
-        Returns: Json
-      }
       boost_ad_enhanced: {
         Args: {
           ad_id_param: string
@@ -614,10 +531,6 @@ export type Database = {
           boost_plan?: string
         }
         Returns: Json
-      }
-      cleanup_expired_boosts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
       }
       cleanup_expired_top_spots: {
         Args: Record<PropertyKey, never>
