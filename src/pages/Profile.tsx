@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -175,6 +176,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
+        <BackButton to="/" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">جاري التحميل...</div>
         </div>
@@ -186,9 +188,20 @@ const Profile = () => {
     return null;
   }
 
+  // Calculate total points properly
+  const basePoints = profile.points || 0;
+  const premiumCredits = profile.credits || 0;
+  const totalPoints = profile.membership_type === 'premium' 
+    ? basePoints + premiumCredits 
+    : basePoints;
+
+  // Premium users get 40 ads per month
+  const monthlyAdsLimit = profile.membership_type === 'premium' ? 40 : 5;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <BackButton to="/" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -224,11 +237,16 @@ const Profile = () => {
                     )}
                     <Badge variant="accent" className="gap-1 text-sm">
                       <Coins className="h-4 w-4" />
-                      {profile.points || 0} نقطة
+                      {totalPoints} نقطة
+                      {profile.membership_type === 'premium' && (
+                        <span className="text-xs">
+                          ({basePoints} أساسي + {premiumCredits} مميز)
+                        </span>
+                      )}
                     </Badge>
                     <Badge variant="outline" className="gap-1 text-sm">
                       <Car className="h-4 w-4" />
-                      إعلانات شهرية: {profile.monthly_ads_count || 0}/5
+                      إعلانات شهرية: {profile.monthly_ads_count || 0}/{monthlyAdsLimit}
                     </Badge>
                   </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
+import { BackButton } from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -146,11 +147,14 @@ const AddAd = () => {
     e.preventDefault();
     if (!user || !profile) return;
 
-    // التحقق من تقييد الإعلانات للمستخدمين العاديين
-    if (profile.membership_type === 'free' && profile.monthly_ads_count >= 5) {
+    // التحقق من تقييد الإعلانات - Premium users get 40 ads, free users get 5
+    const monthlyLimit = profile.membership_type === 'premium' ? 40 : 5;
+    if (profile.monthly_ads_count >= monthlyLimit) {
       toast({
         title: "وصلت للحد الأقصى",
-        description: "يمكن للمستخدمين العاديين إضافة 5 إعلانات شهرياً فقط. قم بترقية عضويتك للمزيد",
+        description: profile.membership_type === 'premium' 
+          ? "يمكن للمستخدمين المميزين إضافة 40 إعلان شهرياً فقط"
+          : "يمكن للمستخدمين العاديين إضافة 5 إعلانات شهرياً فقط. قم بترقية عضويتك للمزيد",
         variant: "destructive"
       });
       return;
@@ -233,6 +237,7 @@ const AddAd = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <BackButton to="/profile" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -261,30 +266,34 @@ const AddAd = () => {
                       </Badge>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      <span className="font-medium text-primary">{profile.points || 0}</span> نقطة
+                      <span className="font-medium text-primary">
+                        {profile.membership_type === 'premium' 
+                          ? (profile.points || 0) + (profile.credits || 0)
+                          : (profile.points || 0)
+                        }
+                      </span> نقطة
                     </div>
                   </div>
                   
-                  {profile.membership_type === 'free' && (
-                    <div className="bg-background rounded-md p-3 border border-warning/20">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">الإعلانات المتاحة هذا الشهر: </span>
-                        <span className="font-medium text-primary">
-                          {Math.max(0, 5 - (profile.monthly_ads_count || 0))} من 5
-                        </span>
-                      </div>
-                      {(profile.monthly_ads_count || 0) >= 5 && (
-                        <p className="text-warning text-xs mt-1">
-                          وصلت للحد الأقصى من الإعلانات هذا الشهر. قم بترقية عضويتك للمزيد.
-                        </p>
-                      )}
+                  <div className="bg-background rounded-md p-3 border border-primary/20">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">الإعلانات المتاحة هذا الشهر: </span>
+                      <span className="font-medium text-primary">
+                        {Math.max(0, (profile.membership_type === 'premium' ? 40 : 5) - (profile.monthly_ads_count || 0))} من {profile.membership_type === 'premium' ? 40 : 5}
+                      </span>
                     </div>
-                  )}
+                    {(profile.monthly_ads_count || 0) >= (profile.membership_type === 'premium' ? 40 : 5) && (
+                      <p className="text-warning text-xs mt-1">
+                        وصلت للحد الأقصى من الإعلانات هذا الشهر. 
+                        {profile.membership_type !== 'premium' && " قم بترقية عضويتك للمزيد."}
+                      </p>
+                    )}
+                  </div>
                   
                   {profile.membership_type === 'premium' && (
                     <div className="bg-primary/10 rounded-md p-3 border border-primary/20">
                       <p className="text-sm text-primary">
-                        🎉 عضوية مميزة: إعلانات غير محدودة + عرض مجاني لمعلومات التواصل
+                        🎉 عضوية مميزة: 40 إعلان شهرياً + عرض مجاني لمعلومات التواصل + 130 نقطة إضافية
                       </p>
                     </div>
                   )}
