@@ -117,7 +117,8 @@ export default function AddAd() {
     try {
       const imageUrls = await uploadImages();
       
-      const { error } = await supabase
+      // First, insert the ad
+      const { error: adError } = await supabase
         .from('ads')
         .insert([
           {
@@ -140,10 +141,23 @@ export default function AddAd() {
           }
         ]);
 
-      if (error) throw error;
+      if (adError) throw adError;
+
+      // Then, update the monthly ads count
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          monthly_ads_count: (pointsData?.monthly_ads_count || 0) + 1
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating monthly ads count:', updateError);
+        // Don't fail the operation if this update fails
+      }
 
       toast.success("تم إضافة الإعلان بنجاح!");
-      await refetchPoints(); // إعادة تحميل بيانات النقاط والإعلانات
+      await refetchPoints(); // Refresh points data to show updated count
       navigate('/profile');
     } catch (error) {
       console.error('Error creating ad:', error);
