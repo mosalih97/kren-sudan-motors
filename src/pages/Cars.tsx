@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
@@ -14,7 +13,7 @@ const Cars = () => {
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = useState("priority");
+  const [sortBy, setSortBy] = useState("newest");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,9 +60,8 @@ const Cars = () => {
         case "year_old":
           cars = cars.sort((a: any, b: any) => (a.year || 0) - (b.year || 0));
           break;
-        case "priority":
         default:
-          // للترتيب حسب الأولوية، استخدم الترتيب الافتراضي من الخادم
+          // للترتيب الافتراضي، استخدم الترتيب حسب الأولوية
           break;
       }
 
@@ -135,7 +133,6 @@ const Cars = () => {
                   <SelectValue placeholder="ترتيب حسب" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="priority">الأولوية</SelectItem>
                   <SelectItem value="newest">الأحدث</SelectItem>
                   <SelectItem value="oldest">الأقدم</SelectItem>
                   <SelectItem value="price_low">السعر: الأقل</SelectItem>
@@ -203,6 +200,7 @@ const Cars = () => {
                   isFeatured={car.is_featured}
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
+                  creditsRequired={1}
                   topSpot={car.top_spot}
                   topSpotUntil={car.top_spot_until}
                   displayTier={car.display_tier}
