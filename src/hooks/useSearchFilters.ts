@@ -1,83 +1,131 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SearchFilters {
   searchQuery: string;
-  brand: string;
-  model: string;
-  city: string;
-  condition: string;
-  minPrice: string;
-  maxPrice: string;
-  fuelType: string;
-  transmission: string;
-  minYear: string;
-  maxYear: string;
   carType: string;
   state: string;
+  minPrice: string;
+  maxPrice: string;
+  yearFrom: string;
+  yearTo: string;
 }
 
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     searchQuery: '',
-    brand: '',
-    model: '',
-    city: '',
-    condition: '',
+    carType: '',
+    state: '',
     minPrice: '',
     maxPrice: '',
-    fuelType: '',
-    transmission: '',
-    minYear: '',
-    maxYear: '',
-    carType: '',
-    state: ''
+    yearFrom: '',
+    yearTo: ''
   });
 
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const updateFilter = useCallback((key: keyof SearchFilters, value: string) => {
+  const hasActiveFilters = () => {
+    return (
+      filters.searchQuery.trim() !== '' ||
+      filters.carType !== '' ||
+      filters.state !== '' ||
+      filters.minPrice !== '' ||
+      filters.maxPrice !== '' ||
+      filters.yearFrom !== '' ||
+      filters.yearTo !== ''
+    );
+  };
+
+  const updateFilter = (key: keyof SearchFilters, value: string) => {
     setFilters(prev => ({
       ...prev,
       [key]: value
     }));
-  }, []);
+  };
 
-  const clearFilters = useCallback(() => {
+  const clearFilters = () => {
     setFilters({
       searchQuery: '',
-      brand: '',
-      model: '',
-      city: '',
-      condition: '',
+      carType: '',
+      state: '',
       minPrice: '',
       maxPrice: '',
-      fuelType: '',
-      transmission: '',
-      minYear: '',
-      maxYear: '',
-      carType: '',
-      state: ''
+      yearFrom: '',
+      yearTo: ''
     });
+    setSearchResults([]);
     setHasSearched(false);
-  }, []);
+  };
 
-  const checkHasActiveFilters = useCallback(() => {
-    return Object.values(filters).some(value => value.trim() !== '');
-  }, [filters]);
+  const performSearch = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('cars')
+        .select('*')
+        .eq('status', 'active');
 
-  const applyFilters = useCallback(() => {
-    setHasSearched(true);
-  }, []);
+      if (filters.searchQuery.trim()) {
+        query = query.or(`title.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
+      }
 
-  const hasActiveFilters = checkHasActiveFilters();
+      if (filters.carType) {
+        query = query.eq('type', filters.carType);
+      }
+
+      if (filters.state) {
+        query = query.eq('state', filters.state);
+      }
+
+      if (filters.minPrice) {
+        query = query.gte('price', parseInt(filters.minPrice));
+      }
+
+      if (filters.maxPrice) {
+        query = query.lte('price', parseInt(filters.maxPrice));
+      }
+
+      if (filters.yearFrom) {
+        query = query.gte('year', parseInt(filters.yearFrom));
+      }
+
+      if (filters.yearTo) {
+        query = query.lte('year', parseInt(filters.yearTo));
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } else {
+        setSearchResults(data || []);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+      setHasSearched(true);
+    }
+  };
+
+  const applyFilters = () => {
+    performSearch();
+  };
 
   return {
     filters,
-    hasActiveFilters,
+    hasActiveFilters: hasActiveFilters(),
     hasSearched,
+    searchResults,
+    loading,
     updateFilter,
     clearFilters,
-    applyFilters
+    applyFilters,
+    performSearch
   };
 };

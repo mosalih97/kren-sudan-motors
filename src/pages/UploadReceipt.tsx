@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +22,7 @@ const UploadReceipt = () => {
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [currentReceiptId, setCurrentReceiptId] = useState<string | null>(null);
+  const [isPassportVerified, setIsPassportVerified] = useState(false);
 
   const displayAccountNumber = "3689929";
 
@@ -56,6 +58,10 @@ const UploadReceipt = () => {
     });
   };
 
+  const handlePassportVerificationSuccess = () => {
+    setIsPassportVerified(true);
+  };
+
   const handleGreenReceiptSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -71,6 +77,15 @@ const UploadReceipt = () => {
   };
 
   const uploadReceipt = async () => {
+    if (!isPassportVerified) {
+      toast({
+        variant: "destructive",
+        title: "التحقق من الجواز مطلوب",
+        description: "يجب التحقق من الجواز السوداني أولاً قبل رفع الإيصالات",
+      });
+      return;
+    }
+
     if (!greenReceiptFile || !whiteReceiptFile || !user || !membershipId) {
       toast({
         variant: "destructive",
@@ -343,6 +358,12 @@ const UploadReceipt = () => {
               </AlertDescription>
             </Alert>
 
+            {/* قسم تصوير الجواز الإجباري */}
+            <PassportCamera 
+              receiptId={currentReceiptId}
+              onVerificationSuccess={handlePassportVerificationSuccess}
+            />
+
             {/* رفع الإيصال الأخضر */}
             <div className="space-y-4">
               <Label htmlFor="green-receipt-upload" className="text-sm font-medium text-gray-700">
@@ -356,15 +377,19 @@ const UploadReceipt = () => {
                   accept="image/*"
                   onChange={handleGreenReceiptSelect}
                   className="hidden"
+                  disabled={!isPassportVerified}
                 />
                 <label
                   htmlFor="green-receipt-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2"
+                  className={`cursor-pointer flex flex-col items-center space-y-2 ${!isPassportVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Upload className="h-8 w-8 text-green-600" />
                   <p className="text-sm text-green-700">
                     {greenReceiptFile ? greenReceiptFile.name : 'اختر صورة الإيصال الأخضر'}
                   </p>
+                  {!isPassportVerified && (
+                    <p className="text-xs text-red-600">يجب التحقق من الجواز أولاً</p>
+                  )}
                 </label>
               </div>
 
@@ -392,15 +417,19 @@ const UploadReceipt = () => {
                   accept="image/*"
                   onChange={handleWhiteReceiptSelect}
                   className="hidden"
+                  disabled={!isPassportVerified}
                 />
                 <label
                   htmlFor="white-receipt-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2"
+                  className={`cursor-pointer flex flex-col items-center space-y-2 ${!isPassportVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <Upload className="h-8 w-8 text-gray-600" />
                   <p className="text-sm text-gray-700">
                     {whiteReceiptFile ? whiteReceiptFile.name : 'اختر صورة الإيصال الأبيض'}
                   </p>
+                  {!isPassportVerified && (
+                    <p className="text-xs text-red-600">يجب التحقق من الجواز أولاً</p>
+                  )}
                 </label>
               </div>
 
@@ -415,21 +444,10 @@ const UploadReceipt = () => {
               )}
             </div>
 
-            {/* إضافة مكون كاميرا الجواز */}
-            <PassportCamera 
-              receiptId={currentReceiptId}
-              onSuccess={() => {
-                toast({
-                  title: "تم التحقق من الجواز",
-                  description: "تمت إضافة طبقة أمان إضافية لطلبك",
-                });
-              }}
-            />
-
             {/* زر الرفع */}
             <Button
               onClick={uploadReceipt}
-              disabled={!greenReceiptFile || !whiteReceiptFile || uploading || verifying || !membershipId}
+              disabled={!greenReceiptFile || !whiteReceiptFile || uploading || verifying || !membershipId || !isPassportVerified}
               className="w-full bg-orange-600 hover:bg-orange-700 text-white"
             >
               {uploading ? (
@@ -442,10 +460,21 @@ const UploadReceipt = () => {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   جاري التحقق...
                 </>
+              ) : !isPassportVerified ? (
+                'يجب التحقق من الجواز أولاً'
               ) : (
                 'رفع الإيصالات والتحقق'
               )}
             </Button>
+
+            {!isPassportVerified && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  <strong>⚠️ تنبيه:</strong> يجب التحقق من الجواز السوداني أولاً قبل رفع الإيصالات. هذا شرط إجباري لضمان أمان العملية.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       </div>

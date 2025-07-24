@@ -8,13 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface PassportCameraProps {
-  onSuccess?: () => void;
+  onVerificationSuccess: () => void;
   receiptId?: string;
 }
 
-export const PassportCamera: React.FC<PassportCameraProps> = ({ onSuccess, receiptId }) => {
-  const [isCapturing, setIsCapturing] = useState(false);
+export const PassportCamera: React.FC<PassportCameraProps> = ({ onVerificationSuccess, receiptId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     success: boolean;
     message: string;
@@ -70,12 +70,14 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onSuccess, recei
       });
 
       if (verifyData.success) {
+        setIsVerified(true);
         toast({
           title: "تم التحقق من الجواز بنجاح",
           description: "تم حفظ بيانات الجواز بنجاح",
         });
-        onSuccess?.();
+        onVerificationSuccess();
       } else {
+        setIsVerified(false);
         toast({
           variant: "destructive",
           title: "فشل التحقق من الجواز",
@@ -91,6 +93,7 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onSuccess, recei
         message: "حدث خطأ أثناء معالجة صورة الجواز"
       });
 
+      setIsVerified(false);
       toast({
         variant: "destructive",
         title: "خطأ في معالجة الصورة",
@@ -130,23 +133,39 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onSuccess, recei
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <h3 className="font-semibold text-blue-800 mb-2">تصوير الجواز السوداني</h3>
-        <p className="text-sm text-blue-700 mb-4">
-          كإجراء أمان إضافي، يرجى تصوير الصفحة الأولى من الجواز السوداني الخاص بك
-        </p>
+      <div className={`p-4 rounded-lg border ${isVerified ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+        <h3 className={`font-semibold mb-2 ${isVerified ? 'text-green-800' : 'text-red-800'}`}>
+          {isVerified ? '✅ تم التحقق من الجواز' : '📋 تصوير الجواز السوداني (إجباري)'}
+        </h3>
         
-        <Alert className="mb-4">
-          <AlertDescription className="text-sm">
-            <strong>تعليمات مهمة:</strong>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>تأكد من وضوح الصورة تماماً</li>
-              <li>الجواز يجب أن يكون سودانياً</li>
-              <li>يجب أن تكون جميع البيانات مقروءة</li>
-              <li>تأكد من ظهور كلمة "جمهورية السودان" أو "Republic of Sudan"</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
+        {!isVerified && (
+          <>
+            <p className="text-sm text-red-700 mb-4">
+              <strong>⚠️ خطوة إجبارية:</strong> يجب تصوير الجواز السوداني قبل رفع الإيصالات
+            </p>
+            
+            <Alert className="mb-4 border-red-200 bg-red-50">
+              <AlertDescription className="text-sm">
+                <strong>تعليمات مهمة:</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>تأكد من وضوح الصورة تماماً</li>
+                  <li>الجواز يجب أن يكون سودانياً</li>
+                  <li>يجب أن تكون جميع البيانات مقروءة</li>
+                  <li>تأكد من ظهور كلمة "جمهورية السودان" أو "Republic of Sudan"</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          </>
+        )}
+
+        {isVerified && (
+          <Alert className="mb-4 border-green-200 bg-green-50">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-700">
+              تم التحقق من الجواز السوداني بنجاح. يمكنك الآن رفع الإيصالات.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <input
           ref={fileInputRef}
@@ -159,30 +178,35 @@ export const PassportCamera: React.FC<PassportCameraProps> = ({ onSuccess, recei
 
         <Button
           onClick={handleCameraClick}
-          disabled={isProcessing}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          disabled={isProcessing || isVerified}
+          className={`w-full text-white ${
+            isVerified 
+              ? 'bg-green-600 hover:bg-green-700' 
+              : 'bg-red-600 hover:bg-red-700'
+          }`}
         >
           {isProcessing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               جاري المعالجة...
             </>
+          ) : isVerified ? (
+            <>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              تم التحقق من الجواز
+            </>
           ) : (
             <>
               <Camera className="mr-2 h-4 w-4" />
-              تصوير الجواز
+              تصوير الجواز (إجباري)
             </>
           )}
         </Button>
 
-        {verificationResult && (
-          <Alert className={`mt-4 ${verificationResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            {verificationResult.success ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            ) : (
-              <XCircle className="h-4 w-4 text-red-600" />
-            )}
-            <AlertDescription className={verificationResult.success ? 'text-green-700' : 'text-red-700'}>
+        {verificationResult && !isVerified && (
+          <Alert className="mt-4 border-red-200 bg-red-50">
+            <XCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-700">
               {verificationResult.message}
             </AlertDescription>
           </Alert>
