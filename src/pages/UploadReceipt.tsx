@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Upload, Copy, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, Copy, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const UploadReceipt = () => {
@@ -21,6 +21,7 @@ const UploadReceipt = () => {
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [verificationProgress, setVerificationProgress] = useState<string>('');
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
 
   const displayAccountNumber = "3689929";
 
@@ -82,6 +83,7 @@ const UploadReceipt = () => {
 
     setUploading(true);
     setVerificationProgress('جاري رفع الإيصالات...');
+    setVerificationSuccess(false);
     
     try {
       console.log('بدء رفع الإيصالات...');
@@ -155,13 +157,13 @@ const UploadReceipt = () => {
       setVerificationProgress('بدء التحقق من الإيصالات...');
       console.log('بدء التحقق من الإيصالات...');
       
-      let verificationSuccess = false;
+      let verificationSuccessful = false;
       let lastError = '';
 
-      // التحقق من الإيصال الأول
+      // التحقق من الإيصال الأول (الأخضر)
       try {
-        setVerificationProgress('التحقق من الإيصال الأول...');
-        console.log(`التحقق من الإيصال الأول:`, receiptPaths[0]);
+        setVerificationProgress('التحقق من الإيصال الأخضر...');
+        console.log(`التحقق من الإيصال الأخضر:`, receiptPaths[0]);
         
         const { data: verifyData, error: verifyError } = await supabase.functions
           .invoke('verify-receipt', {
@@ -171,25 +173,25 @@ const UploadReceipt = () => {
             }
           });
 
-        console.log(`نتيجة التحقق من الإيصال الأول:`, verifyData);
+        console.log(`نتيجة التحقق من الإيصال الأخضر:`, verifyData);
 
         if (verifyData?.success) {
-          verificationSuccess = true;
-          setVerificationProgress('تم التحقق بنجاح من الإيصال الأول');
+          verificationSuccessful = true;
+          setVerificationProgress('تم التحقق بنجاح من الإيصال الأخضر ✓');
         } else {
-          lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأول';
-          console.error(`خطأ في التحقق من الإيصال الأول:`, verifyData?.error);
+          lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأخضر';
+          console.error(`خطأ في التحقق من الإيصال الأخضر:`, verifyData?.error);
         }
       } catch (error) {
-        console.error(`خطأ في التحقق من الإيصال الأول:`, error);
-        lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأول';
+        console.error(`خطأ في التحقق من الإيصال الأخضر:`, error);
+        lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأخضر';
       }
 
-      // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني
-      if (!verificationSuccess && receiptPaths[1]) {
+      // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني (الأبيض)
+      if (!verificationSuccessful && receiptPaths[1]) {
         try {
-          setVerificationProgress('التحقق من الإيصال الثاني...');
-          console.log(`التحقق من الإيصال الثاني:`, receiptPaths[1]);
+          setVerificationProgress('التحقق من الإيصال الأبيض...');
+          console.log(`التحقق من الإيصال الأبيض:`, receiptPaths[1]);
           
           const { data: verifyData, error: verifyError } = await supabase.functions
             .invoke('verify-receipt', {
@@ -199,23 +201,24 @@ const UploadReceipt = () => {
               }
             });
 
-          console.log(`نتيجة التحقق من الإيصال الثاني:`, verifyData);
+          console.log(`نتيجة التحقق من الإيصال الأبيض:`, verifyData);
 
           if (verifyData?.success) {
-            verificationSuccess = true;
-            setVerificationProgress('تم التحقق بنجاح من الإيصال الثاني');
+            verificationSuccessful = true;
+            setVerificationProgress('تم التحقق بنجاح من الإيصال الأبيض ✓');
           } else {
-            lastError = verifyData?.error || 'فشل في التحقق من الإيصال الثاني';
-            console.error(`خطأ في التحقق من الإيصال الثاني:`, verifyData?.error);
+            lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأبيض';
+            console.error(`خطأ في التحقق من الإيصال الأبيض:`, verifyData?.error);
           }
         } catch (error) {
-          console.error(`خطأ في التحقق من الإيصال الثاني:`, error);
-          lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الثاني';
+          console.error(`خطأ في التحقق من الإيصال الأبيض:`, error);
+          lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأبيض';
         }
       }
 
-      if (verificationSuccess) {
-        setVerificationProgress('تم تفعيل الاشتراك المميز بنجاح!');
+      if (verificationSuccessful) {
+        setVerificationSuccess(true);
+        setVerificationProgress('تم تفعيل الاشتراك المميز بنجاح! ✓');
         toast({
           title: "تم التحقق بنجاح",
           description: "تم تفعيل الاشتراك المميز بنجاح",
@@ -223,7 +226,7 @@ const UploadReceipt = () => {
         
         setTimeout(() => {
           navigate('/profile');
-        }, 2000);
+        }, 3000);
       } else {
         setVerificationProgress('فشل في التحقق من الإيصالات');
         toast({
@@ -290,11 +293,17 @@ const UploadReceipt = () => {
           <CardContent className="space-y-6">
             {/* عرض تقدم العملية */}
             {(uploading || verifying) && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <Alert className={`border-blue-200 ${verificationSuccess ? 'bg-green-50 border-green-200' : 'bg-blue-50'}`}>
+                {verificationSuccess ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                )}
                 <AlertDescription>
                   <div className="space-y-2">
-                    <p className="font-bold text-blue-800">جاري المعالجة...</p>
+                    <p className={`font-bold ${verificationSuccess ? 'text-green-800' : 'text-blue-800'}`}>
+                      {verificationSuccess ? 'تمت العملية بنجاح!' : 'جاري المعالجة...'}
+                    </p>
                     <p className="text-sm">{verificationProgress}</p>
                   </div>
                 </AlertDescription>
@@ -333,31 +342,13 @@ const UploadReceipt = () => {
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-2 text-sm">
-                  <p className="font-bold text-orange-800">📢 تنبيه هام قبل رفع إيصال التحويل:</p>
-                  <p>لضمان تفعيل اشتراكك المميز تلقائيًا في تطبيق "الكرين"، يجب اتباع التعليمات التالية بدقة:</p>
-                  
-                  <ol className="list-decimal list-inside space-y-1 mt-2">
-                    <li>قم بالتحويل إلى رقم الحساب: <strong>{displayAccountNumber}</strong></li>
-                    <li>اسم المستفيد: <strong>محمد الامين منتصر صالح عبدالقادر</strong></li>
-                    <li>يجب كتابة رقم عضويتك (ID المكون من 8 أرقام) في خانة التعليق</li>
+                  <p className="font-bold text-orange-800">📢 تعليمات مهمة:</p>
+                  <ul className="list-disc list-inside space-y-1 mt-2">
+                    <li>تأكد من كتابة رقم العضوية <strong>{membershipId}</strong> في خانة التعليق</li>
+                    <li>تأكد من وضوح الصورة عالية الجودة</li>
+                    <li>تأكد من ظهور رقم العملية بوضوح</li>
                     <li>المبلغ المطلوب: <strong>25,000 جنيه سوداني</strong></li>
-                    <li>بعد التحويل، تأكد من رفع الصورتين التاليتين:</li>
-                  </ol>
-                  
-                  <div className="bg-white p-3 rounded-md mt-2">
-                    <p>✅ إيصال بنكك الأخضر</p>
-                    <p>✅ إيصال بنكك الأبيض</p>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <p className="font-bold text-red-600">⚠️ ملاحظات مهمة:</p>
-                    <ul className="list-disc list-inside space-y-1 mt-1">
-                      <li>تأكد أن الصور واضحة تمامًا وعالية الجودة</li>
-                      <li>تأكد من ظهور رقم العضوية بوضوح في خانة التعليق</li>
-                      <li>تأكد من ظهور رقم العملية بوضوح في الإيصال</li>
-                      <li>في حال عدم وضوح الإيصال، لن يتم تفعيل الاشتراك</li>
-                    </ul>
-                  </div>
+                  </ul>
                 </div>
               </AlertDescription>
             </Alert>
