@@ -1,151 +1,147 @@
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
 
 export interface SearchFilters {
-  searchQuery: string;
+  searchTerm: string;
   brand: string;
-  carType: string;
-  state: string;
+  type: string;
+  location: string;
   yearFrom: string;
   yearTo: string;
-  minPrice: string;
-  maxPrice: string;
+  priceFrom: string;
+  priceTo: string;
 }
 
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
-    searchQuery: '',
+    searchTerm: '',
     brand: '',
-    carType: '',
-    state: '',
+    type: '',
+    location: '',
     yearFrom: '',
     yearTo: '',
-    minPrice: '',
-    maxPrice: ''
+    priceFrom: '',
+    priceTo: ''
   });
-  
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const { toast } = useToast();
 
-  const performSearch = async () => {
-    if (!filters.searchQuery && !filters.brand && !filters.carType && !filters.state && !filters.yearFrom && !filters.yearTo && !filters.minPrice && !filters.maxPrice) {
-      toast({
-        title: "تنبيه",
-        description: "يرجى إدخال معايير البحث",
-        variant: "destructive"
-      });
-      return;
-    }
+  const [isSearching, setIsSearching] = useState(false);
 
-    setLoading(true);
-    setHasSearched(true);
+  const { data: searchResults = [], isLoading, error } = useQuery({
+    queryKey: ['searchAds', filters],
+    queryFn: async () => {
+      if (!hasActiveFilters(filters)) {
+        return [];
+      }
 
-    try {
       let query = supabase
         .from('ads')
         .select(`
           *,
-          profiles!ads_user_id_fkey(
-            display_name,
-            avatar_url,
-            membership_type,
-            user_id_display
-          )
+          profiles!ads_user_id_fkey(display_name, phone, whatsapp)
         `)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
-      // Apply filters
-      if (filters.searchQuery) {
-        query = query.or(`title.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%,model.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
+      // Apply search term filter
+      if (filters.searchTerm) {
+        query = query.or(`title.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
       }
 
-      if (filters.brand && filters.brand !== 'all') {
+      // Apply brand filter
+      if (filters.brand) {
         query = query.eq('brand', filters.brand);
       }
 
-      if (filters.carType && filters.carType !== 'all') {
-        // Assuming car type is stored in a field, adjust as needed
-        query = query.eq('car_type', filters.carType);
+      // Apply type filter
+      if (filters.type) {
+        query = query.eq('type', filters.type);
       }
 
-      if (filters.state && filters.state !== 'all') {
-        query = query.eq('city', filters.state);
+      // Apply location filter
+      if (filters.location) {
+        query = query.eq('location', filters.location);
       }
 
+      // Apply year range filter
       if (filters.yearFrom) {
         query = query.gte('year', parseInt(filters.yearFrom));
       }
-
       if (filters.yearTo) {
         query = query.lte('year', parseInt(filters.yearTo));
       }
 
-      if (filters.minPrice) {
-        query = query.gte('price', parseInt(filters.minPrice));
+      // Apply price range filter
+      if (filters.priceFrom) {
+        query = query.gte('price', parseFloat(filters.priceFrom));
+      }
+      if (filters.priceTo) {
+        query = query.lte('price', parseFloat(filters.priceTo));
       }
 
-      if (filters.maxPrice) {
-        query = query.lte('price', parseInt(filters.maxPrice));
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Search error:', error);
-        toast({
-          title: "خطأ في البحث",
-          description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setSearchResults(data || []);
+      const { data, error } = await query;
       
-      toast({
-        title: "نتائج البحث",
-        description: `تم العثور على ${data?.length || 0} نتيجة`,
-        variant: "default"
-      });
+      if (error) {
+        console.error('خطأ في البحث:', error);
+        throw error;
+      }
 
-    } catch (error) {
-      console.error('Search error:', error);
-      toast({
-        title: "خطأ في البحث",
-        description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+      return data || [];
+    },
+    enabled: hasActiveFilters(filters)
+  });
+
+  const hasActiveFilters = (currentFilters: SearchFilters): boolean => {
+    return Object.values(currentFilters).some(value => value.trim() !== '');
+  };
+
+  const updateFilter = (key: keyof SearchFilters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
   const clearFilters = () => {
     setFilters({
-      searchQuery: '',
+      searchTerm: '',
       brand: '',
-      carType: '',
-      state: '',
+      type: '',
+      location: '',
       yearFrom: '',
       yearTo: '',
-      minPrice: '',
-      maxPrice: ''
+      priceFrom: '',
+      priceTo: ''
     });
-    setSearchResults([]);
-    setHasSearched(false);
   };
+
+  const startSearch = () => {
+    setIsSearching(true);
+  };
+
+  const stopSearch = () => {
+    setIsSearching(false);
+  };
+
+  useEffect(() => {
+    if (hasActiveFilters(filters)) {
+      setIsSearching(true);
+    } else {
+      setIsSearching(false);
+    }
+  }, [filters]);
 
   return {
     filters,
-    setFilters,
+    updateFilter,
+    clearFilters,
     searchResults,
-    loading,
-    hasSearched,
-    performSearch,
-    clearFilters
+    isLoading,
+    error,
+    isSearching,
+    startSearch,
+    stopSearch,
+    hasActiveFilters: hasActiveFilters(filters)
   };
 };
