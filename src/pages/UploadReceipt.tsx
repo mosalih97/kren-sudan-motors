@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Upload, Copy, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const UploadReceipt = () => {
@@ -16,44 +16,15 @@ const UploadReceipt = () => {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [greenReceiptFile, setGreenReceiptFile] = useState<File | null>(null);
   const [whiteReceiptFile, setWhiteReceiptFile] = useState<File | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [verificationProgress, setVerificationProgress] = useState<string>('');
+  const [greenReceiptFile, setGreenReceiptFile] = useState<File | null>(null);
+  const [userId, setUserId] = useState('');
 
-  const displayAccountNumber = "3689929";
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id_display, display_name')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        console.error('خطأ في جلب بيانات المستخدم:', error);
-      } else {
-        setUserProfile(data);
-      }
-    };
-
-    fetchUserProfile();
-  }, [user]);
-
-  const membershipId = userProfile?.user_id_display || '';
-
-  const copyMembershipId = () => {
-    navigator.clipboard.writeText(membershipId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({
-      title: "تم النسخ",
-      description: "تم نسخ رقم العضوية بنجاح",
-    });
+  const handleWhiteReceiptSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setWhiteReceiptFile(file);
+    }
   };
 
   const handleGreenReceiptSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,59 +34,26 @@ const UploadReceipt = () => {
     }
   };
 
-  const handleWhiteReceiptSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setWhiteReceiptFile(file);
-    }
-  };
-
-  const uploadReceipt = async () => {
-    if (!greenReceiptFile || !whiteReceiptFile || !user || !membershipId) {
+  const uploadAndVerifyReceipts = async () => {
+    if (!whiteReceiptFile || !greenReceiptFile || !userId || !user) {
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "يرجى رفع كلا الإيصالين (الأخضر والأبيض) أولاً",
+        description: "يرجى رفع الإيصالين وإدخال رقم المستخدم",
       });
       return;
     }
 
     setUploading(true);
-    setVerificationProgress('جاري رفع الإيصالات...');
     
     try {
       console.log('بدء رفع الإيصالات...');
       
-      const receiptPaths = [];
-
-      // رفع الإيصال الأخضر
-      const greenFileExt = greenReceiptFile.name.split('.').pop();
-      const greenFileName = `${user.id}/${Date.now()}-${membershipId}-green.${greenFileExt}`;
-      
-      console.log('رفع الإيصال الأخضر:', greenFileName);
-      
-      const { error: greenUploadError } = await supabase.storage
-        .from('bank-receipts')
-        .upload(greenFileName, greenReceiptFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (greenUploadError) {
-        console.error('خطأ في رفع الإيصال الأخضر:', greenUploadError);
-        throw greenUploadError;
-      }
-
-      receiptPaths.push(greenFileName);
-      console.log('تم رفع الإيصال الأخضر بنجاح');
-
       // رفع الإيصال الأبيض
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
-      const whiteFileName = `${user.id}/${Date.now()}-${membershipId}-white.${whiteFileExt}`;
+      const whiteFileName = `${user.id}/${Date.now()}-white.${whiteFileExt}`;
       
-      console.log('رفع الإيصال الأبيض:', whiteFileName);
-      
-      const { error: whiteUploadError } = await supabase.storage
+      const { data: whiteUploadData, error: whiteUploadError } = await supabase.storage
         .from('bank-receipts')
         .upload(whiteFileName, whiteReceiptFile, {
           cacheControl: '3600',
@@ -127,114 +65,73 @@ const UploadReceipt = () => {
         throw whiteUploadError;
       }
 
-      receiptPaths.push(whiteFileName);
-      console.log('تم رفع الإيصال الأبيض بنجاح');
-
-      // حفظ الطلب في قاعدة البيانات
-      setVerificationProgress('حفظ الطلب في قاعدة البيانات...');
-      console.log('حفظ الطلب في قاعدة البيانات...');
+      // رفع الإيصال الأخضر
+      const greenFileExt = greenReceiptFile.name.split('.').pop();
+      const greenFileName = `${user.id}/${Date.now()}-green.${greenFileExt}`;
       
-      const { error: insertError } = await supabase
-        .from('receipt_submissions')
-        .insert({
-          user_id: user.id,
-          membership_id: membershipId,
-          receipt_url: JSON.stringify(receiptPaths)
+      const { data: greenUploadData, error: greenUploadError } = await supabase.storage
+        .from('bank-receipts')
+        .upload(greenFileName, greenReceiptFile, {
+          cacheControl: '3600',
+          upsert: false
         });
 
-      if (insertError) {
-        console.error('خطأ في حفظ الطلب:', insertError);
-        throw insertError;
+      if (greenUploadError) {
+        console.error('خطأ في رفع الإيصال الأخضر:', greenUploadError);
+        throw greenUploadError;
       }
 
-      console.log('تم حفظ الطلب بنجاح');
+      // الحصول على الروابط العامة
+      const { data: whiteUrlData } = supabase.storage
+        .from('bank-receipts')
+        .getPublicUrl(whiteFileName);
 
-      // بدء التحقق من الإيصالات
+      const { data: greenUrlData } = supabase.storage
+        .from('bank-receipts')
+        .getPublicUrl(greenFileName);
+
+      console.log('تم رفع الإيصالات بنجاح');
       setUploading(false);
       setVerifying(true);
-      setVerificationProgress('بدء التحقق من الإيصالات...');
+
+      // التحقق من الإيصالات
       console.log('بدء التحقق من الإيصالات...');
       
-      let verificationSuccess = false;
-      let lastError = '';
-
-      // التحقق من الإيصال الأول
-      try {
-        setVerificationProgress('التحقق من الإيصال الأول...');
-        console.log(`التحقق من الإيصال الأول:`, receiptPaths[0]);
-        
-        const { data: verifyData, error: verifyError } = await supabase.functions
-          .invoke('verify-receipt', {
-            body: { 
-              imagePath: receiptPaths[0],
-              membershipId
-            }
-          });
-
-        console.log(`نتيجة التحقق من الإيصال الأول:`, verifyData);
-
-        if (verifyData?.success) {
-          verificationSuccess = true;
-          setVerificationProgress('تم التحقق بنجاح من الإيصال الأول');
-        } else {
-          lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأول';
-          console.error(`خطأ في التحقق من الإيصال الأول:`, verifyData?.error);
-        }
-      } catch (error) {
-        console.error(`خطأ في التحقق من الإيصال الأول:`, error);
-        lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأول';
-      }
-
-      // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني
-      if (!verificationSuccess && receiptPaths[1]) {
-        try {
-          setVerificationProgress('التحقق من الإيصال الثاني...');
-          console.log(`التحقق من الإيصال الثاني:`, receiptPaths[1]);
-          
-          const { data: verifyData, error: verifyError } = await supabase.functions
-            .invoke('verify-receipt', {
-              body: { 
-                imagePath: receiptPaths[1],
-                membershipId
-              }
-            });
-
-          console.log(`نتيجة التحقق من الإيصال الثاني:`, verifyData);
-
-          if (verifyData?.success) {
-            verificationSuccess = true;
-            setVerificationProgress('تم التحقق بنجاح من الإيصال الثاني');
-          } else {
-            lastError = verifyData?.error || 'فشل في التحقق من الإيصال الثاني';
-            console.error(`خطأ في التحقق من الإيصال الثاني:`, verifyData?.error);
+      const { data: verifyData, error: verifyError } = await supabase.functions
+        .invoke('verify-receipt', {
+          body: { 
+            user_id: userId,
+            white_image_url: whiteUrlData.publicUrl,
+            green_image_url: greenUrlData.publicUrl
           }
-        } catch (error) {
-          console.error(`خطأ في التحقق من الإيصال الثاني:`, error);
-          lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الثاني';
-        }
+        });
+
+      console.log('نتيجة التحقق:', verifyData);
+
+      if (verifyError) {
+        console.error('خطأ في التحقق:', verifyError);
+        throw verifyError;
       }
 
-      if (verificationSuccess) {
-        setVerificationProgress('تم تفعيل الاشتراك المميز بنجاح!');
+      if (verifyData?.status === 'success') {
         toast({
           title: "تم التحقق بنجاح",
-          description: "تم تفعيل الاشتراك المميز بنجاح",
+          description: "تم التحقق من الإيصالات وتسجيل الدفع بنجاح",
         });
         
         setTimeout(() => {
           navigate('/profile');
         }, 2000);
       } else {
-        setVerificationProgress('فشل في التحقق من الإيصالات');
         toast({
           variant: "destructive",
           title: "فشل في التحقق",
-          description: lastError || "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات ووضوحها",
+          description: verifyData?.error || "فشل في التحقق من الإيصالات",
         });
       }
 
     } catch (error) {
-      console.error('خطأ في رفع الإيصال:', error);
+      console.error('خطأ في العملية:', error);
       
       let errorMessage = "حدث خطأ غير متوقع";
       
@@ -248,10 +145,9 @@ const UploadReceipt = () => {
         }
       }
       
-      setVerificationProgress('فشل في العملية');
       toast({
         variant: "destructive",
-        title: "خطأ في رفع الإيصال",
+        title: "خطأ في العملية",
         description: errorMessage,
       });
     } finally {
@@ -280,10 +176,10 @@ const UploadReceipt = () => {
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-orange-800">
-              تفعيل الاشتراك المميز
+              رفع إيصال الدفع
             </CardTitle>
             <CardDescription className="text-gray-600">
-              ارفع صورتي إيصال التحويل البنكي (الأخضر والأبيض) لتفعيل الاشتراك المميز
+              ارفع صورتي إيصال التحويل البنكي (الأبيض والأخضر) للتحقق من صحة الدفع
             </CardDescription>
           </CardHeader>
           
@@ -295,37 +191,27 @@ const UploadReceipt = () => {
                 <AlertDescription>
                   <div className="space-y-2">
                     <p className="font-bold text-blue-800">جاري المعالجة...</p>
-                    <p className="text-sm">{verificationProgress}</p>
+                    <p className="text-sm">
+                      {uploading ? 'جاري رفع الإيصالات...' : 'جاري التحقق من الإيصالات...'}
+                    </p>
                   </div>
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* رقم العضوية */}
+            {/* رقم المستخدم */}
             <div className="space-y-2">
-              <Label htmlFor="membership-id" className="text-sm font-medium text-gray-700">
-                رقم العضوية المميز
+              <Label htmlFor="user-id" className="text-sm font-medium text-gray-700">
+                رقم المستخدم (8 أرقام)
               </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="membership-id"
-                  value={membershipId}
-                  readOnly
-                  className="bg-gray-50 font-mono text-lg"
-                />
-                <Button
-                  onClick={copyMembershipId}
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  disabled={!membershipId}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500">
-                استخدم هذا الرقم في خانة التعليق عند التحويل البنكي
-              </p>
+              <Input
+                id="user-id"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="أدخل رقم المستخدم المكون من 8 أرقام"
+                className="font-mono text-lg"
+                maxLength={8}
+              />
             </div>
 
             {/* النص التنبيهي */}
@@ -333,82 +219,16 @@ const UploadReceipt = () => {
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-2 text-sm">
-                  <p className="font-bold text-orange-800">📢 تنبيه هام قبل رفع إيصال التحويل:</p>
-                  <p>لضمان تفعيل اشتراكك المميز تلقائيًا في تطبيق "الكرين"، يجب اتباع التعليمات التالية بدقة:</p>
-                  
-                  <ol className="list-decimal list-inside space-y-1 mt-2">
-                    <li>قم بالتحويل إلى رقم الحساب: <strong>{displayAccountNumber}</strong></li>
-                    <li>اسم المستفيد: <strong>محمد الامين منتصر صالح عبدالقادر</strong></li>
-                    <li>يجب كتابة رقم عضويتك (ID المكون من 8 أرقام) في خانة التعليق</li>
-                    <li>المبلغ المطلوب: <strong>25,000 جنيه سوداني</strong></li>
-                    <li>بعد التحويل، تأكد من رفع الصورتين التاليتين:</li>
-                  </ol>
-                  
-                  <div className="bg-white p-3 rounded-md mt-2">
-                    <p>✅ إيصال بنكك الأخضر</p>
-                    <p>✅ إيصال بنكك الأبيض</p>
-                  </div>
-                  
-                  <div className="mt-3">
-                    <p className="font-bold text-red-600">⚠️ ملاحظات مهمة:</p>
-                    <ul className="list-disc list-inside space-y-1 mt-1">
-                      <li>تأكد أن الصور واضحة تمامًا وعالية الجودة</li>
-                      <li>تأكد من ظهور رقم العضوية بوضوح في خانة التعليق</li>
-                      <li>تأكد من ظهور رقم العملية بوضوح في الإيصال</li>
-                      <li>في حال عدم وضوح الإيصال، لن يتم تفعيل الاشتراك</li>
-                    </ul>
-                  </div>
+                  <p className="font-bold text-orange-800">📢 متطلبات التحقق:</p>
+                  <ul className="list-disc list-inside space-y-1 mt-2">
+                    <li>رقم الحساب يجب أن يكون: <strong>0913036899290001</strong></li>
+                    <li>العملية يجب أن تكون خلال آخر 24 ساعة</li>
+                    <li>رقم العملية يجب أن يكون مكون من 11 رقم</li>
+                    <li>الصور يجب أن تكون واضحة وعالية الجودة</li>
+                  </ul>
                 </div>
               </AlertDescription>
             </Alert>
-
-            {/* معلومات التحويل البنكي */}
-            <Alert>
-              <AlertDescription>
-                <div className="space-y-2 text-sm">
-                  <p><strong>رقم الحساب:</strong> {displayAccountNumber}</p>
-                  <p><strong>اسم المستفيد:</strong> محمد الامين منتصر صالح عبدالقادر</p>
-                  <p><strong>المبلغ:</strong> 25,000 جنيه سوداني</p>
-                  <p><strong>التعليق:</strong> {membershipId}</p>
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            {/* رفع الإيصال الأخضر */}
-            <div className="space-y-4">
-              <Label htmlFor="green-receipt-upload" className="text-sm font-medium text-gray-700">
-                صورة الإيصال الأخضر
-              </Label>
-              
-              <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors bg-green-50">
-                <Input
-                  id="green-receipt-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleGreenReceiptSelect}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="green-receipt-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2"
-                >
-                  <Upload className="h-8 w-8 text-green-600" />
-                  <p className="text-sm text-green-700">
-                    {greenReceiptFile ? greenReceiptFile.name : 'اختر صورة الإيصال الأخضر'}
-                  </p>
-                </label>
-              </div>
-
-              {greenReceiptFile && (
-                <div className="mt-4">
-                  <img
-                    src={URL.createObjectURL(greenReceiptFile)}
-                    alt="معاينة الإيصال الأخضر"
-                    className="max-h-60 mx-auto rounded-lg shadow-md"
-                  />
-                </div>
-              )}
-            </div>
 
             {/* رفع الإيصال الأبيض */}
             <div className="space-y-4">
@@ -446,10 +266,46 @@ const UploadReceipt = () => {
               )}
             </div>
 
+            {/* رفع الإيصال الأخضر */}
+            <div className="space-y-4">
+              <Label htmlFor="green-receipt-upload" className="text-sm font-medium text-gray-700">
+                صورة الإيصال الأخضر
+              </Label>
+              
+              <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors bg-green-50">
+                <Input
+                  id="green-receipt-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGreenReceiptSelect}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="green-receipt-upload"
+                  className="cursor-pointer flex flex-col items-center space-y-2"
+                >
+                  <Upload className="h-8 w-8 text-green-600" />
+                  <p className="text-sm text-green-700">
+                    {greenReceiptFile ? greenReceiptFile.name : 'اختر صورة الإيصال الأخضر'}
+                  </p>
+                </label>
+              </div>
+
+              {greenReceiptFile && (
+                <div className="mt-4">
+                  <img
+                    src={URL.createObjectURL(greenReceiptFile)}
+                    alt="معاينة الإيصال الأخضر"
+                    className="max-h-60 mx-auto rounded-lg shadow-md"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* زر الرفع */}
             <Button
-              onClick={uploadReceipt}
-              disabled={!greenReceiptFile || !whiteReceiptFile || uploading || verifying || !membershipId}
+              onClick={uploadAndVerifyReceipts}
+              disabled={!whiteReceiptFile || !greenReceiptFile || !userId || uploading || verifying}
               className="w-full bg-orange-600 hover:bg-orange-700 text-white"
             >
               {uploading ? (
