@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CarCard } from "@/components/CarCard";
 import { UserPointsDisplay } from "@/components/UserPointsDisplay";
 import { Header } from "@/components/Header";
+import { useUserPoints } from "@/hooks/useUserPoints";
 import { 
   Heart, 
   Plus, 
@@ -53,6 +55,7 @@ export default function Profile() {
   const [city, setCity] = useState('');
   const [updating, setUpdating] = useState(false);
   const { user, signOut } = useAuth();
+  const { data: pointsData } = useUserPoints();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -119,17 +122,17 @@ export default function Profile() {
     setUpdating(true);
 
     const updates = {
-      user_id: user?.id,
       display_name: displayName,
       phone: phone,
       whatsapp: whatsapp,
       city: city,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(),
     };
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(updates, { returning: 'minimal' });
+      .update(updates)
+      .eq('user_id', user?.id);
 
     if (error) {
       toast.error('Failed to update profile.');
@@ -143,14 +146,13 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
-      toast.error('Failed to sign out.');
-      console.error('Sign out error:', error);
-    } else {
-      navigate('/login');
-    }
+    await signOut();
+    navigate('/login');
   };
+
+  const adsUsed = pointsData?.monthly_ads_count || 0;
+  const adsLimit = pointsData?.monthly_ads_limit || 5;
+  const remainingAds = adsLimit - adsUsed;
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,6 +192,31 @@ export default function Profile() {
               </CardContent>
             </Card>
 
+            {/* عرض حالة الإعلانات */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>حالة الإعلانات الشهرية</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">الإعلانات المستخدمة</p>
+                    <p className="text-2xl font-bold">{adsUsed}/{adsLimit}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">الإعلانات المتبقية</p>
+                    <p className="text-2xl font-bold text-primary">{remainingAds}</p>
+                  </div>
+                </div>
+                <div className="mt-4 bg-muted rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(adsUsed / adsLimit) * 100}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* معلومات الحساب */}
             <Card className="mb-6">
               <CardHeader>
@@ -220,7 +247,6 @@ export default function Profile() {
             </Card>
           </div>
 
-          {/* باقي الكود يبقى كما هو */}
           <Tabs defaultValue="ads" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ads">إعلاناتي ({userAds.length})</TabsTrigger>
@@ -231,10 +257,10 @@ export default function Profile() {
             <TabsContent value="ads" className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-bold">إعلاناتي</h2>
-                <Button asChild>
+                <Button asChild disabled={remainingAds <= 0}>
                   <Link to="/add-ad">
                     <Plus className="w-4 h-4 mr-2" />
-                    إضافة إعلان جديد
+                    إضافة إعلان جديد ({remainingAds} متبقي)
                   </Link>
                 </Button>
               </div>
@@ -243,7 +269,7 @@ export default function Profile() {
                 <Card>
                   <CardContent className="py-8 text-center">
                     <p className="text-muted-foreground">لم تقم بإنشاء أي إعلانات بعد</p>
-                    <Button asChild className="mt-4">
+                    <Button asChild className="mt-4" disabled={remainingAds <= 0}>
                       <Link to="/add-ad">إنشاء إعلان جديد</Link>
                     </Button>
                   </CardContent>
@@ -319,7 +345,7 @@ export default function Profile() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {favorites.map((favorite) => (
-                    <CarCard key={favorite.ad_id} ad={favorite.ads} />
+                    <CarCard key={favorite.ad_id} {...favorite.ads} />
                   ))}
                 </div>
               )}
