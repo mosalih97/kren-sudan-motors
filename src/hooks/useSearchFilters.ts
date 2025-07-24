@@ -5,28 +5,43 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface SearchFilters {
   searchTerm: string;
+  searchQuery: string;
   brand: string;
   type: string;
+  carType: string;
   location: string;
+  state: string;
   yearFrom: string;
   yearTo: string;
   priceFrom: string;
   priceTo: string;
+  minPrice: string;
+  maxPrice: string;
 }
+
+const hasActiveFilters = (currentFilters: SearchFilters): boolean => {
+  return Object.values(currentFilters).some(value => value.trim() !== '');
+};
 
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     searchTerm: '',
+    searchQuery: '',
     brand: '',
     type: '',
+    carType: '',
     location: '',
+    state: '',
     yearFrom: '',
     yearTo: '',
     priceFrom: '',
-    priceTo: ''
+    priceTo: '',
+    minPrice: '',
+    maxPrice: ''
   });
 
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const { data: searchResults = [], isLoading, error } = useQuery({
     queryKey: ['searchAds', filters],
@@ -45,23 +60,32 @@ export const useSearchFilters = () => {
         .order('created_at', { ascending: false });
 
       // Apply search term filter
-      if (filters.searchTerm) {
-        query = query.or(`title.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`);
+      if (filters.searchTerm || filters.searchQuery) {
+        const searchTerm = filters.searchTerm || filters.searchQuery;
+        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
       }
 
       // Apply brand filter
-      if (filters.brand) {
+      if (filters.brand && filters.brand !== 'all') {
         query = query.eq('brand', filters.brand);
       }
 
       // Apply type filter
-      if (filters.type) {
+      if (filters.type && filters.type !== 'all') {
         query = query.eq('type', filters.type);
+      }
+
+      if (filters.carType && filters.carType !== 'all') {
+        query = query.eq('type', filters.carType);
       }
 
       // Apply location filter
       if (filters.location) {
         query = query.eq('location', filters.location);
+      }
+
+      if (filters.state && filters.state !== 'all') {
+        query = query.eq('city', filters.state);
       }
 
       // Apply year range filter
@@ -73,11 +97,14 @@ export const useSearchFilters = () => {
       }
 
       // Apply price range filter
-      if (filters.priceFrom) {
-        query = query.gte('price', parseFloat(filters.priceFrom));
+      const minPrice = filters.priceFrom || filters.minPrice;
+      const maxPrice = filters.priceTo || filters.maxPrice;
+      
+      if (minPrice) {
+        query = query.gte('price', parseFloat(minPrice));
       }
-      if (filters.priceTo) {
-        query = query.lte('price', parseFloat(filters.priceTo));
+      if (maxPrice) {
+        query = query.lte('price', parseFloat(maxPrice));
       }
 
       const { data, error } = await query;
@@ -92,10 +119,6 @@ export const useSearchFilters = () => {
     enabled: hasActiveFilters(filters)
   });
 
-  const hasActiveFilters = (currentFilters: SearchFilters): boolean => {
-    return Object.values(currentFilters).some(value => value.trim() !== '');
-  };
-
   const updateFilter = (key: keyof SearchFilters, value: string) => {
     setFilters(prev => ({
       ...prev,
@@ -106,18 +129,30 @@ export const useSearchFilters = () => {
   const clearFilters = () => {
     setFilters({
       searchTerm: '',
+      searchQuery: '',
       brand: '',
       type: '',
+      carType: '',
       location: '',
+      state: '',
       yearFrom: '',
       yearTo: '',
       priceFrom: '',
-      priceTo: ''
+      priceTo: '',
+      minPrice: '',
+      maxPrice: ''
     });
+    setHasSearched(false);
+  };
+
+  const performSearch = async () => {
+    setIsSearching(true);
+    setHasSearched(true);
   };
 
   const startSearch = () => {
     setIsSearching(true);
+    setHasSearched(true);
   };
 
   const stopSearch = () => {
@@ -127,6 +162,7 @@ export const useSearchFilters = () => {
   useEffect(() => {
     if (hasActiveFilters(filters)) {
       setIsSearching(true);
+      setHasSearched(true);
     } else {
       setIsSearching(false);
     }
@@ -134,14 +170,18 @@ export const useSearchFilters = () => {
 
   return {
     filters,
+    setFilters,
     updateFilter,
     clearFilters,
     searchResults,
     isLoading,
+    loading: isLoading,
     error,
     isSearching,
+    hasSearched,
     startSearch,
     stopSearch,
+    performSearch,
     hasActiveFilters: hasActiveFilters(filters)
   };
 };

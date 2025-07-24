@@ -27,13 +27,10 @@ interface SearchFiltersProps {
 }
 
 export function SearchFilters({ onSearch }: SearchFiltersProps) {
-  const { filters, setFilters, performSearch, clearFilters, loading } = useSearchFilters();
+  const { filters, updateFilter, performSearch, clearFilters, loading } = useSearchFilters();
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    updateFilter(key as keyof typeof filters, value);
   };
 
   const handleSearch = async () => {
