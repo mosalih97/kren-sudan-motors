@@ -98,8 +98,13 @@ export default function BoostAd() {
     }
     
     fetchAd();
-    checkBoostEligibility();
   }, [user, id, navigate]);
+
+  useEffect(() => {
+    if (ad) {
+      checkBoostEligibility();
+    }
+  }, [ad]);
 
   const fetchAd = async () => {
     if (!id || !user) return;
@@ -108,6 +113,8 @@ export default function BoostAd() {
       setLoading(true);
       setError(null);
       
+      console.log('Fetching ad for boost, ID:', id);
+      
       const { data: adData, error: adError } = await supabase
         .from('ads')
         .select('*')
@@ -115,8 +122,11 @@ export default function BoostAd() {
         .eq('user_id', user.id)
         .single();
 
+      console.log('Ad data for boost:', adData);
+      console.log('Ad error for boost:', adError);
+
       if (adError) {
-        console.error('Error fetching ad:', adError);
+        console.error('Error fetching ad for boost:', adError);
         if (adError.code === 'PGRST116') {
           setError("الإعلان غير موجود أو لا تملك صلاحية الوصول إليه");
         } else {
@@ -130,9 +140,14 @@ export default function BoostAd() {
         return;
       }
 
+      if (adData.status !== 'active') {
+        setError("لا يمكن تعزيز إعلان غير نشط");
+        return;
+      }
+
       setAd(adData);
     } catch (error) {
-      console.error('Error fetching ad:', error);
+      console.error('Error fetching ad for boost:', error);
       setError("حدث خطأ في جلب بيانات الإعلان");
     } finally {
       setLoading(false);
@@ -142,34 +157,47 @@ export default function BoostAd() {
   const checkBoostEligibility = async () => {
     if (!id || !user) return;
     
+    console.log('Checking boost eligibility for ad:', id);
+    
     const eligibilityResults: {[key: string]: any} = {};
     
     for (const plan of boostPlans) {
       try {
-        const { data, error } = await supabase.rpc('can_boost_ad_enhanced', {
-          ad_id_param: id,
-          user_id_param: user.id,
-          boost_plan: plan.id
+        const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
+          method: 'GET',
+          query: {
+            ad_id: id,
+            boost_plan: plan.id
+          }
         });
 
-        if (!error && data) {
-          const result = data as any;
-          eligibilityResults[plan.id] = {
-            can_boost: result?.can_boost || false,
-            reason: result?.reason || "خطأ في فحص الأهلية",
-            cost: result?.cost || plan.price,
-            user_points: result?.user_points || null
-          };
-        } else {
+        console.log(`Eligibility check for ${plan.id}:`, data, error);
+
+        if (error) {
           console.error(`Error checking eligibility for ${plan.id}:`, error);
           eligibilityResults[plan.id] = { 
             can_boost: false, 
-            reason: error?.message || "خطأ في فحص الأهلية" 
+            reason: error.message || "خطأ في فحص الأهلية" 
+          };
+        } else if (data) {
+          eligibilityResults[plan.id] = {
+            can_boost: data.can_boost || false,
+            reason: data.reason || "خطأ في فحص الأهلية",
+            cost: data.cost || plan.price,
+            user_points: data.user_points || null
+          };
+        } else {
+          eligibilityResults[plan.id] = { 
+            can_boost: false, 
+            reason: "لا يمكن فحص الأهلية" 
           };
         }
       } catch (error) {
         console.error(`Error checking eligibility for ${plan.id}:`, error);
-        eligibilityResults[plan.id] = { can_boost: false, reason: "خطأ في فحص الأهلية" };
+        eligibilityResults[plan.id] = { 
+          can_boost: false, 
+          reason: "خطأ في فحص الأهلية" 
+        };
       }
     }
     
@@ -178,6 +206,8 @@ export default function BoostAd() {
 
   const handleBoost = async (plan: BoostPlan) => {
     if (!user || !ad) return;
+
+    console.log('Starting boost process for plan:', plan.id);
 
     // التحقق من الأهلية مرة أخرى
     const eligibility = boostEligibility[plan.id];
@@ -189,14 +219,15 @@ export default function BoostAd() {
     setBoosting(plan.id);
     
     try {
-      // تنظيف الإعلانات المنتهية أولاً
-      await supabase.rpc('cleanup_expired_top_spots');
-      
-      const { data, error } = await supabase.rpc('boost_ad_enhanced', {
-        ad_id_param: ad.id,
-        user_id_param: user.id,
-        boost_plan: plan.id
+      const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
+        method: 'POST',
+        body: {
+          ad_id: ad.id,
+          boost_plan: plan.id
+        }
       });
+
+      console.log('Boost result:', data, error);
 
       if (error) {
         console.error('Boost error:', error);
@@ -204,9 +235,7 @@ export default function BoostAd() {
         return;
       }
 
-      const result = data as any;
-      
-      if (result?.success) {
+      if (data?.success) {
         toast.success("تم تعزيز الإعلان بنجاح!");
         
         // تحديث النقاط وحالة التعزيز
@@ -216,7 +245,7 @@ export default function BoostAd() {
         setAd(prev => ({
           ...prev,
           top_spot: true,
-          top_spot_until: result.expires_at
+          top_spot_until: data.expires_at
         }));
         
         // تحديث حالة الأهلية
@@ -227,7 +256,7 @@ export default function BoostAd() {
           navigate('/profile');
         }, 2000);
       } else {
-        toast.error(result?.message || "فشل في تعزيز الإعلان");
+        toast.error(data?.message || "فشل في تعزيز الإعلان");
       }
     } catch (error) {
       console.error('Error boosting ad:', error);

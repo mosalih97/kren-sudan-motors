@@ -36,6 +36,8 @@ export default function AdDetails() {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching ad details for ID:', id);
 
       // جلب تفاصيل الإعلان مع معلومات البائع
       const { data: adData, error: adError } = await supabase
@@ -53,8 +55,10 @@ export default function AdDetails() {
           )
         `)
         .eq('id', id)
-        .eq('status', 'active')
         .single();
+
+      console.log('Ad data received:', adData);
+      console.log('Ad error:', adError);
 
       if (adError) {
         console.error('Error fetching ad:', adError);
@@ -71,15 +75,26 @@ export default function AdDetails() {
         return;
       }
 
+      // التحقق من حالة الإعلان
+      if (adData.status !== 'active') {
+        setError('هذا الإعلان غير متاح حالياً');
+        return;
+      }
+
       setAd(adData);
       setIsOwner(user?.id === adData.user_id);
 
-      // تسجيل مشاهدة الإعلان
+      // تسجيل مشاهدة الإعلان فقط إذا لم يكن المستخدم هو صاحب الإعلان
       if (user?.id !== adData.user_id) {
-        await supabase.rpc('record_ad_view', {
-          ad_id_param: id,
-          viewer_user_id: user?.id || null
-        });
+        try {
+          await supabase.rpc('record_ad_view', {
+            ad_id_param: id,
+            viewer_user_id: user?.id || null
+          });
+        } catch (viewError) {
+          console.error('Error recording view:', viewError);
+          // لا نعرض خطأ للمستخدم هنا لأن هذا ليس حرجاً
+        }
       }
 
     } catch (error) {
@@ -99,9 +114,9 @@ export default function AdDetails() {
         .select('id')
         .eq('user_id', user.id)
         .eq('ad_id', id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error checking favorite:', error);
         return;
       }
@@ -148,21 +163,24 @@ export default function AdDetails() {
     return price.toLocaleString('ar-SD');
   };
 
-  const getBoostIcon = (plan: string) => {
-    switch (plan) {
-      case 'basic': return <Zap className="w-4 h-4" />;
-      case 'premium': return <Crown className="w-4 h-4" />;
-      case 'ultimate': return <Star className="w-4 h-4" />;
-      default: return <Zap className="w-4 h-4" />;
+  const handleContactClick = (type: 'phone' | 'whatsapp') => {
+    if (!ad?.profiles) {
+      toast.error('معلومات البائع غير متوفرة');
+      return;
     }
-  };
 
-  const getBoostLabel = (plan: string) => {
-    switch (plan) {
-      case 'basic': return 'تعزيز سريع';
-      case 'premium': return 'تعزيز مميز';
-      case 'ultimate': return 'تعزيز احترافي';
-      default: return 'معزز';
+    if (type === 'phone') {
+      if (ad.profiles.phone) {
+        window.open(`tel:${ad.profiles.phone}`, '_self');
+      } else {
+        toast.error('رقم الهاتف غير متوفر');
+      }
+    } else if (type === 'whatsapp') {
+      if (ad.profiles.whatsapp) {
+        window.open(`https://wa.me/${ad.profiles.whatsapp}`, '_blank');
+      } else {
+        toast.error('رقم الواتساب غير متوفر');
+      }
     }
   };
 
@@ -256,9 +274,13 @@ export default function AdDetails() {
           <div className="space-y-4">
             <div className="relative">
               <img
-                src={images[currentImageIndex]}
+                src={images[currentImageIndex] || '/placeholder.svg'}
                 alt={ad.title}
                 className="w-full h-96 object-cover rounded-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
               />
               
               {/* الشارات */}
@@ -294,12 +316,16 @@ export default function AdDetails() {
                 {images.map((image, index) => (
                   <img
                     key={index}
-                    src={image}
+                    src={image || '/placeholder.svg'}
                     alt={`${ad.title} - ${index + 1}`}
                     className={`w-20 h-20 object-cover rounded cursor-pointer ${
                       index === currentImageIndex ? 'ring-2 ring-primary' : ''
                     }`}
                     onClick={() => setCurrentImageIndex(index)}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                    }}
                   />
                 ))}
               </div>
@@ -312,7 +338,7 @@ export default function AdDetails() {
               <h1 className="text-3xl font-bold mb-2">{ad.title}</h1>
               <div className="flex items-center gap-2 text-muted-foreground mb-4">
                 <MapPin className="h-4 w-4" />
-                <span>{ad.city}</span>
+                <span>{ad.city || 'غير محدد'}</span>
               </div>
               <div className="text-4xl font-bold text-primary">
                 {formatPrice(ad.price)} جنيه سوداني
@@ -332,7 +358,7 @@ export default function AdDetails() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Fuel className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">نوع الوقود: {ad.fuel_type}</span>
+                    <span className="text-sm">نوع الوقود: {ad.fuel_type || 'غير محدد'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Settings className="h-4 w-4 text-muted-foreground" />
@@ -379,6 +405,10 @@ export default function AdDetails() {
                       src={ad.profiles.avatar_url || '/placeholder.svg'}
                       alt={ad.profiles.display_name}
                       className="w-12 h-12 rounded-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/placeholder.svg';
+                      }}
                     />
                     <div>
                       <div className="flex items-center gap-2">
@@ -388,7 +418,7 @@ export default function AdDetails() {
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {ad.profiles.city}
+                        {ad.profiles.city || 'غير محدد'}
                       </p>
                     </div>
                   </div>
@@ -408,13 +438,7 @@ export default function AdDetails() {
                   <Button 
                     size="lg" 
                     className="w-full"
-                    onClick={() => {
-                      if (ad.profiles?.phone) {
-                        window.open(`tel:${ad.profiles.phone}`, '_self');
-                      } else {
-                        toast.error('رقم الهاتف غير متوفر');
-                      }
-                    }}
+                    onClick={() => handleContactClick('phone')}
                   >
                     <Phone className="ml-2 h-4 w-4" />
                     اتصل بالبائع
@@ -424,13 +448,7 @@ export default function AdDetails() {
                     variant="outline" 
                     size="lg" 
                     className="w-full"
-                    onClick={() => {
-                      if (ad.profiles?.whatsapp) {
-                        window.open(`https://wa.me/${ad.profiles.whatsapp}`, '_blank');
-                      } else {
-                        toast.error('رقم الواتساب غير متوفر');
-                      }
-                    }}
+                    onClick={() => handleContactClick('whatsapp')}
                   >
                     <MessageCircle className="ml-2 h-4 w-4" />
                     محادثة واتساب
