@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
-import { SearchResults } from "@/components/SearchResults";
 import { CarCard } from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, Shield, Star, ArrowLeft, Zap, Target, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useSearchFilters } from "@/hooks/useSearchFilters";
+
 
 const Index = () => {
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { searchResults, loading: searchLoading, hasSearched, filters } = useSearchFilters();
 
   useEffect(() => {
     fetchFeaturedCars();
@@ -42,12 +40,12 @@ const Index = () => {
       setFeaturedCars(data || []);
     } catch (error) {
       console.error("Error fetching featured cars:", error);
+      // استخدام البيانات التجريبية في حالة الخطأ
       setFeaturedCars([]);
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -125,91 +123,82 @@ const Index = () => {
         </div>
       </section>
 
-      {/* نتائج البحث */}
-      <SearchResults 
-        results={searchResults}
-        loading={searchLoading}
-        hasSearched={hasSearched}
-        searchQuery={filters.searchQuery}
-      />
-
-      {/* السيارات المميزة - تظهر فقط إذا لم يتم البحث */}
-      {!hasSearched && (
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-3xl font-bold text-foreground mb-2">
-                  السيارات المميزة
-                </h2>
-                <p className="text-lg text-muted-foreground">
-                  اكتشف أفضل العروض والسيارات المختارة بعناية
-                </p>
-              </div>
-              <Button variant="outline" className="hidden md:flex">
-                عرض الكل
-                <ArrowLeft className="h-4 w-4 mr-2" />
-              </Button>
+      {/* السيارات المميزة */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-foreground mb-2">
+                السيارات المميزة
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                اكتشف أفضل العروض والسيارات المختارة بعناية
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {loading ? (
-                // Loading skeleton
-                Array.from({ length: 4 }).map((_, i) => (
-                  <Card key={i} className="card-gradient border-0 shadow-lg">
-                    <div className="h-48 bg-muted animate-pulse rounded-t-lg"></div>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="h-4 bg-muted animate-pulse rounded"></div>
-                      <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
-                      <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : featuredCars.length > 0 ? (
-                featuredCars.map((car) => (
-                   <CarCard 
-                    key={car.id} 
-                    id={car.id}
-                    title={car.title}
-                    price={car.price}
-                    location={car.city}
-                    year={car.year}
-                    mileage={car.mileage}
-                    fuelType={car.fuel_type}
-                    transmission={car.transmission}
-                    image={car.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
-                    isPremium={car.is_premium}
-                    isFeatured={car.is_featured}
-                    isNew={car.condition === "جديدة"}
-                    viewCount={car.view_count}
-                    creditsRequired={1}
-                    seller={car.profiles ? {
-                      id: car.profiles.user_id,
-                      display_name: car.profiles.display_name,
-                      avatar_url: car.profiles.avatar_url,
-                      membership_type: car.profiles.membership_type
-                    } : undefined}
-                    showSellerInfo={true}
-                  />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">لا توجد سيارات مميزة حالياً</p>
-                </div>
-              )}
-            </div>
-
-            <div className="text-center mt-8">
-              <Link to="/cars">
-                <Button variant="default" size="lg">
-                  عرض المزيد من السيارات
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                </Button>
-              </Link>
-            </div>
+            <Button variant="outline" className="hidden md:flex">
+              عرض الكل
+              <ArrowLeft className="h-4 w-4 mr-2" />
+            </Button>
           </div>
-        </section>
-      )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="card-gradient border-0 shadow-lg">
+                  <div className="h-48 bg-muted animate-pulse rounded-t-lg"></div>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="h-4 bg-muted animate-pulse rounded"></div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : featuredCars.length > 0 ? (
+              featuredCars.map((car) => (
+                 <CarCard 
+                  key={car.id} 
+                  id={car.id}
+                  title={car.title}
+                  price={car.price}
+                  location={car.city}
+                  year={car.year}
+                  mileage={car.mileage}
+                  fuelType={car.fuel_type}
+                  transmission={car.transmission}
+                  image={car.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
+                  isPremium={car.is_premium}
+                  isFeatured={car.is_featured}
+                  isNew={car.condition === "جديدة"}
+                  viewCount={car.view_count}
+                  creditsRequired={1}
+                  seller={car.profiles ? {
+                    id: car.profiles.user_id,
+                    display_name: car.profiles.display_name,
+                    avatar_url: car.profiles.avatar_url,
+                    membership_type: car.profiles.membership_type
+                  } : undefined}
+                  showSellerInfo={true}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">لا توجد سيارات مميزة حالياً</p>
+              </div>
+            )}
+          </div>
+
+          <div className="text-center mt-8">
+            <Link to="/cars">
+              <Button variant="default" size="lg">
+                عرض المزيد من السيارات
+                <ArrowLeft className="h-5 w-5 mr-2" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
 
       {/* دعوة للعمل */}
       <section className="py-20 primary-gradient">
