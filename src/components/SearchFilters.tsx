@@ -1,11 +1,10 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, MapPin, Car, Calendar, DollarSign, Filter } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useSearchFilters } from "@/hooks/useSearchFilters";
 
 const sudaneseStates = [
   "الخرطوم", "الجزيرة", "كسلا", "القضارف", "البحر الأحمر", "نهر النيل", 
@@ -28,85 +27,14 @@ interface SearchFiltersProps {
 }
 
 export function SearchFilters({ onSearch }: SearchFiltersProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [carBrand, setCarBrand] = useState("");
-  const [carType, setCarType] = useState("");
-  const [state, setState] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [yearFrom, setYearFrom] = useState("");
-  const [yearTo, setYearTo] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { filters, updateFilter, performSearch, clearFilters, loading } = useSearchFilters();
 
-  const handleSearch = async () => {
-    setLoading(true);
-    console.log('بدء البحث...');
-    
-    try {
-      let query = supabase
-        .from('ads')
-        .select('*')
-        .eq('status', 'active');
-
-      if (searchQuery.trim()) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
-      }
-
-      if (carBrand) {
-        query = query.eq('brand', carBrand);
-      }
-
-      if (carType) {
-        query = query.eq('type', carType);
-      }
-
-      if (state) {
-        query = query.eq('state', state);
-      }
-
-      if (minPrice) {
-        query = query.gte('price', parseInt(minPrice));
-      }
-
-      if (maxPrice) {
-        query = query.lte('price', parseInt(maxPrice));
-      }
-
-      if (yearFrom) {
-        query = query.gte('year', parseInt(yearFrom));
-      }
-
-      if (yearTo) {
-        query = query.lte('year', parseInt(yearTo));
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('خطأ في البحث:', error);
-        onSearch?.([]);
-      } else {
-        console.log('نتائج البحث:', data);
-        onSearch?.(data || []);
-      }
-    } catch (error) {
-      console.error('خطأ في البحث:', error);
-      onSearch?.([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleFilterChange = (key: string, value: string) => {
+    updateFilter(key as keyof typeof filters, value);
   };
 
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setCarBrand("");
-    setCarType("");
-    setState("");
-    setMinPrice("");
-    setMaxPrice("");
-    setYearFrom("");
-    setYearTo("");
-    onSearch?.([]);
+  const handleSearch = async () => {
+    await performSearch();
   };
 
   return (
@@ -118,8 +46,8 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
           <Input
             placeholder="ابحث عن سيارة... (مثال: تويوتا كامري 2020)"
             className="pr-12 h-14 text-lg rounded-xl border-2 border-primary/20 focus:border-primary/50 transition-smooth"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={filters.searchQuery}
+            onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
           />
         </div>
 
@@ -131,11 +59,12 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <Car className="h-4 w-4 text-primary" />
               الماركة
             </label>
-            <Select value={carBrand} onValueChange={setCarBrand}>
+            <Select value={filters.brand} onValueChange={(value) => handleFilterChange('brand', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-primary/30 transition-smooth">
                 <SelectValue placeholder="اختر الماركة" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">جميع الماركات</SelectItem>
                 {carBrands.map((brand) => (
                   <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                 ))}
@@ -149,11 +78,12 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <Car className="h-4 w-4 text-secondary" />
               النوع
             </label>
-            <Select value={carType} onValueChange={setCarType}>
+            <Select value={filters.carType} onValueChange={(value) => handleFilterChange('carType', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-secondary/30 transition-smooth">
                 <SelectValue placeholder="نوع السيارة" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">جميع الأنواع</SelectItem>
                 {carTypes.map((type) => (
                   <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
@@ -167,13 +97,14 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <MapPin className="h-4 w-4 text-accent" />
               الولاية
             </label>
-            <Select value={state} onValueChange={setState}>
+            <Select value={filters.state} onValueChange={(value) => handleFilterChange('state', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 transition-smooth">
                 <SelectValue placeholder="اختر الولاية" />
               </SelectTrigger>
               <SelectContent>
-                {sudaneseStates.map((stateItem) => (
-                  <SelectItem key={stateItem} value={stateItem}>{stateItem}</SelectItem>
+                <SelectItem value="all">جميع الولايات</SelectItem>
+                {sudaneseStates.map((state) => (
+                  <SelectItem key={state} value={state}>{state}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -186,7 +117,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               السنة
             </label>
             <div className="flex gap-2">
-              <Select value={yearFrom} onValueChange={setYearFrom}>
+              <Select value={filters.yearFrom} onValueChange={(value) => handleFilterChange('yearFrom', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="من" />
                 </SelectTrigger>
@@ -196,7 +127,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={yearTo} onValueChange={setYearTo}>
+              <Select value={filters.yearTo} onValueChange={(value) => handleFilterChange('yearTo', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="إلى" />
                 </SelectTrigger>
@@ -221,15 +152,15 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               type="number"
               placeholder="السعر الأدنى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              value={filters.minPrice}
+              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
             />
             <Input
               type="number"
               placeholder="السعر الأعلى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
             />
           </div>
         </div>
@@ -237,7 +168,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
         {/* أزرار البحث */}
         <div className="flex gap-4 pt-2">
           <Button 
-            variant="default" 
+            variant="hero" 
             size="lg" 
             className="flex-1" 
             onClick={handleSearch}
@@ -250,7 +181,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
             variant="outline" 
             size="lg" 
             className="px-8"
-            onClick={handleClearFilters}
+            onClick={clearFilters}
             disabled={loading}
           >
             <Filter className="h-5 w-5 ml-2" />
