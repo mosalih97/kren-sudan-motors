@@ -142,18 +142,6 @@ export default function AddAd() {
 
       if (error) throw error;
 
-      // تحديث عداد الإعلانات الشهرية
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          monthly_ads_count: (pointsData?.monthly_ads_count || 0) + 1 
-        })
-        .eq('user_id', user.id);
-
-      if (updateError) {
-        console.error('Error updating monthly ads count:', updateError);
-      }
-
       toast.success("تم إضافة الإعلان بنجاح!");
       await refetchPoints(); // إعادة تحميل بيانات النقاط والإعلانات
       navigate('/profile');
