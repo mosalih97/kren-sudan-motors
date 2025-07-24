@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,7 @@ const UploadReceipt = () => {
   const [whiteReceiptFile, setWhiteReceiptFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [verificationProgress, setVerificationProgress] = useState<string>('');
 
   const displayAccountNumber = "3689929";
 
@@ -79,12 +81,14 @@ const UploadReceipt = () => {
     }
 
     setUploading(true);
+    setVerificationProgress('جاري رفع الإيصالات...');
+    
     try {
       console.log('بدء رفع الإيصالات...');
       
       const receiptPaths = [];
 
-      // رفع الإيصال الأخضر مع إدراج رقم العضوية في اسم الملف
+      // رفع الإيصال الأخضر
       const greenFileExt = greenReceiptFile.name.split('.').pop();
       const greenFileName = `${user.id}/${Date.now()}-${membershipId}-green.${greenFileExt}`;
       
@@ -105,7 +109,7 @@ const UploadReceipt = () => {
       receiptPaths.push(greenFileName);
       console.log('تم رفع الإيصال الأخضر بنجاح');
 
-      // رفع الإيصال الأبيض مع إدراج رقم العضوية في اسم الملف
+      // رفع الإيصال الأبيض
       const whiteFileExt = whiteReceiptFile.name.split('.').pop();
       const whiteFileName = `${user.id}/${Date.now()}-${membershipId}-white.${whiteFileExt}`;
       
@@ -127,7 +131,9 @@ const UploadReceipt = () => {
       console.log('تم رفع الإيصال الأبيض بنجاح');
 
       // حفظ الطلب في قاعدة البيانات
+      setVerificationProgress('حفظ الطلب في قاعدة البيانات...');
       console.log('حفظ الطلب في قاعدة البيانات...');
+      
       const { error: insertError } = await supabase
         .from('receipt_submissions')
         .insert({
@@ -144,13 +150,17 @@ const UploadReceipt = () => {
       console.log('تم حفظ الطلب بنجاح');
 
       // بدء التحقق من الإيصالات
+      setUploading(false);
       setVerifying(true);
+      setVerificationProgress('بدء التحقق من الإيصالات...');
       console.log('بدء التحقق من الإيصالات...');
       
       let verificationSuccess = false;
+      let lastError = '';
 
       // التحقق من الإيصال الأول
       try {
+        setVerificationProgress('التحقق من الإيصال الأول...');
         console.log(`التحقق من الإيصال الأول:`, receiptPaths[0]);
         
         const { data: verifyData, error: verifyError } = await supabase.functions
@@ -165,16 +175,20 @@ const UploadReceipt = () => {
 
         if (verifyData?.success) {
           verificationSuccess = true;
-        } else if (verifyError) {
-          console.error(`خطأ في التحقق من الإيصال الأول:`, verifyError);
+          setVerificationProgress('تم التحقق بنجاح من الإيصال الأول');
+        } else {
+          lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأول';
+          console.error(`خطأ في التحقق من الإيصال الأول:`, verifyData?.error);
         }
       } catch (error) {
         console.error(`خطأ في التحقق من الإيصال الأول:`, error);
+        lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأول';
       }
 
       // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني
       if (!verificationSuccess && receiptPaths[1]) {
         try {
+          setVerificationProgress('التحقق من الإيصال الثاني...');
           console.log(`التحقق من الإيصال الثاني:`, receiptPaths[1]);
           
           const { data: verifyData, error: verifyError } = await supabase.functions
@@ -189,25 +203,33 @@ const UploadReceipt = () => {
 
           if (verifyData?.success) {
             verificationSuccess = true;
-          } else if (verifyError) {
-            console.error(`خطأ في التحقق من الإيصال الثاني:`, verifyError);
+            setVerificationProgress('تم التحقق بنجاح من الإيصال الثاني');
+          } else {
+            lastError = verifyData?.error || 'فشل في التحقق من الإيصال الثاني';
+            console.error(`خطأ في التحقق من الإيصال الثاني:`, verifyData?.error);
           }
         } catch (error) {
           console.error(`خطأ في التحقق من الإيصال الثاني:`, error);
+          lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الثاني';
         }
       }
 
       if (verificationSuccess) {
+        setVerificationProgress('تم تفعيل الاشتراك المميز بنجاح!');
         toast({
           title: "تم التحقق بنجاح",
           description: "تم تفعيل الاشتراك المميز بنجاح",
         });
-        navigate('/profile');
+        
+        setTimeout(() => {
+          navigate('/profile');
+        }, 2000);
       } else {
+        setVerificationProgress('فشل في التحقق من الإيصالات');
         toast({
           variant: "destructive",
-          title: "الإيصالات خاطئة",
-          description: "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات",
+          title: "فشل في التحقق",
+          description: lastError || "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات ووضوحها",
         });
       }
 
@@ -226,6 +248,7 @@ const UploadReceipt = () => {
         }
       }
       
+      setVerificationProgress('فشل في العملية');
       toast({
         variant: "destructive",
         title: "خطأ في رفع الإيصال",
@@ -265,6 +288,19 @@ const UploadReceipt = () => {
           </CardHeader>
           
           <CardContent className="space-y-6">
+            {/* عرض تقدم العملية */}
+            {(uploading || verifying) && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-bold text-blue-800">جاري المعالجة...</p>
+                    <p className="text-sm">{verificationProgress}</p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* رقم العضوية */}
             <div className="space-y-2">
               <Label htmlFor="membership-id" className="text-sm font-medium text-gray-700">
@@ -316,9 +352,10 @@ const UploadReceipt = () => {
                   <div className="mt-3">
                     <p className="font-bold text-red-600">⚠️ ملاحظات مهمة:</p>
                     <ul className="list-disc list-inside space-y-1 mt-1">
-                      <li>تأكد أن الصور واضحة تمامًا</li>
-                      <li>لا تقم بأي تعديل في تصميم أو تنسيق واجهة التطبيق</li>
-                      <li>في حال وجود خطأ في تفاصيل الإيصال، لن يتم تفعيل الاشتراك ولن تُسترد المبالغ المدفوعة</li>
+                      <li>تأكد أن الصور واضحة تمامًا وعالية الجودة</li>
+                      <li>تأكد من ظهور رقم العضوية بوضوح في خانة التعليق</li>
+                      <li>تأكد من ظهور رقم العملية بوضوح في الإيصال</li>
+                      <li>في حال عدم وضوح الإيصال، لن يتم تفعيل الاشتراك</li>
                     </ul>
                   </div>
                 </div>
