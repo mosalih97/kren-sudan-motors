@@ -22,6 +22,7 @@ const UploadReceipt = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [verificationProgress, setVerificationProgress] = useState<string>('');
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [useGreenReceiptOnly, setUseGreenReceiptOnly] = useState(false);
 
   const displayAccountNumber = "3689929";
 
@@ -71,12 +72,63 @@ const UploadReceipt = () => {
     }
   };
 
+  const verifyReceipt = async (receiptPath: string, receiptType: string) => {
+    try {
+      setVerificationProgress(`التحقق من الإيصال ${receiptType}...`);
+      console.log(`التحقق من الإيصال ${receiptType}:`, receiptPath);
+      
+      const { data: verifyData, error: verifyError } = await supabase.functions
+        .invoke('verify-receipt', {
+          body: { 
+            imagePath: receiptPath,
+            membershipId
+          }
+        });
+
+      console.log(`نتيجة التحقق من الإيصال ${receiptType}:`, verifyData);
+
+      if (verifyData?.success) {
+        setVerificationSuccess(true);
+        setVerificationProgress(`تم التحقق بنجاح من الإيصال ${receiptType} ✓`);
+        return true;
+      } else {
+        console.error(`خطأ في التحقق من الإيصال ${receiptType}:`, verifyData?.error);
+        return false;
+      }
+    } catch (error) {
+      console.error(`خطأ في التحقق من الإيصال ${receiptType}:`, error);
+      return false;
+    }
+  };
+
   const uploadReceipt = async () => {
-    if (!greenReceiptFile || !whiteReceiptFile || !user || !membershipId) {
+    if (!user || !membershipId) {
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "يرجى رفع كلا الإيصالين (الأخضر والأبيض) أولاً",
+        description: "يرجى تسجيل الدخول أولاً",
+      });
+      return;
+    }
+
+    // التحقق من وجود الإيصال الأخضر على الأقل
+    if (!greenReceiptFile) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "يرجى رفع الإيصال الأخضر على الأقل",
+      });
+      return;
+    }
+
+    // إذا كان الوضع "استخدام الإيصال الأخضر فقط" مفعل
+    if (useGreenReceiptOnly && !whiteReceiptFile) {
+      // السماح بالمتابعة بالإيصال الأخضر فقط
+    } else if (!useGreenReceiptOnly && (!greenReceiptFile || !whiteReceiptFile)) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "يرجى رفع كلا الإيصالين (الأخضر والأبيض)",
       });
       return;
     }
@@ -111,26 +163,28 @@ const UploadReceipt = () => {
       receiptPaths.push(greenFileName);
       console.log('تم رفع الإيصال الأخضر بنجاح');
 
-      // رفع الإيصال الأبيض
-      const whiteFileExt = whiteReceiptFile.name.split('.').pop();
-      const whiteFileName = `${user.id}/${Date.now()}-${membershipId}-white.${whiteFileExt}`;
-      
-      console.log('رفع الإيصال الأبيض:', whiteFileName);
-      
-      const { error: whiteUploadError } = await supabase.storage
-        .from('bank-receipts')
-        .upload(whiteFileName, whiteReceiptFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // رفع الإيصال الأبيض إذا كان متوفراً
+      if (whiteReceiptFile) {
+        const whiteFileExt = whiteReceiptFile.name.split('.').pop();
+        const whiteFileName = `${user.id}/${Date.now()}-${membershipId}-white.${whiteFileExt}`;
+        
+        console.log('رفع الإيصال الأبيض:', whiteFileName);
+        
+        const { error: whiteUploadError } = await supabase.storage
+          .from('bank-receipts')
+          .upload(whiteFileName, whiteReceiptFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-      if (whiteUploadError) {
-        console.error('خطأ في رفع الإيصال الأبيض:', whiteUploadError);
-        throw whiteUploadError;
+        if (whiteUploadError) {
+          console.error('خطأ في رفع الإيصال الأبيض:', whiteUploadError);
+          throw whiteUploadError;
+        }
+
+        receiptPaths.push(whiteFileName);
+        console.log('تم رفع الإيصال الأبيض بنجاح');
       }
-
-      receiptPaths.push(whiteFileName);
-      console.log('تم رفع الإيصال الأبيض بنجاح');
 
       // حفظ الطلب في قاعدة البيانات
       setVerificationProgress('حفظ الطلب في قاعدة البيانات...');
@@ -158,66 +212,18 @@ const UploadReceipt = () => {
       console.log('بدء التحقق من الإيصالات...');
       
       let verificationSuccessful = false;
-      let lastError = '';
 
-      // التحقق من الإيصال الأول (الأخضر)
-      try {
-        setVerificationProgress('التحقق من الإيصال الأخضر...');
-        console.log(`التحقق من الإيصال الأخضر:`, receiptPaths[0]);
-        
-        const { data: verifyData, error: verifyError } = await supabase.functions
-          .invoke('verify-receipt', {
-            body: { 
-              imagePath: receiptPaths[0],
-              membershipId
-            }
-          });
-
-        console.log(`نتيجة التحقق من الإيصال الأخضر:`, verifyData);
-
-        if (verifyData?.success) {
-          verificationSuccessful = true;
-          setVerificationProgress('تم التحقق بنجاح من الإيصال الأخضر ✓');
-        } else {
-          lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأخضر';
-          console.error(`خطأ في التحقق من الإيصال الأخضر:`, verifyData?.error);
-        }
-      } catch (error) {
-        console.error(`خطأ في التحقق من الإيصال الأخضر:`, error);
-        lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأخضر';
+      // التحقق من الإيصال الأخضر أولاً
+      if (receiptPaths[0]) {
+        verificationSuccessful = await verifyReceipt(receiptPaths[0], 'الأخضر');
       }
 
-      // إذا لم ينجح التحقق من الإيصال الأول، جرب الثاني (الأبيض)
+      // إذا لم ينجح التحقق من الإيصال الأخضر وكان هناك إيصال أبيض
       if (!verificationSuccessful && receiptPaths[1]) {
-        try {
-          setVerificationProgress('التحقق من الإيصال الأبيض...');
-          console.log(`التحقق من الإيصال الأبيض:`, receiptPaths[1]);
-          
-          const { data: verifyData, error: verifyError } = await supabase.functions
-            .invoke('verify-receipt', {
-              body: { 
-                imagePath: receiptPaths[1],
-                membershipId
-              }
-            });
-
-          console.log(`نتيجة التحقق من الإيصال الأبيض:`, verifyData);
-
-          if (verifyData?.success) {
-            verificationSuccessful = true;
-            setVerificationProgress('تم التحقق بنجاح من الإيصال الأبيض ✓');
-          } else {
-            lastError = verifyData?.error || 'فشل في التحقق من الإيصال الأبيض';
-            console.error(`خطأ في التحقق من الإيصال الأبيض:`, verifyData?.error);
-          }
-        } catch (error) {
-          console.error(`خطأ في التحقق من الإيصال الأبيض:`, error);
-          lastError = 'خطأ في الاتصال أثناء التحقق من الإيصال الأبيض';
-        }
+        verificationSuccessful = await verifyReceipt(receiptPaths[1], 'الأبيض');
       }
 
       if (verificationSuccessful) {
-        setVerificationSuccess(true);
         setVerificationProgress('تم تفعيل الاشتراك المميز بنجاح! ✓');
         toast({
           title: "تم التحقق بنجاح",
@@ -232,7 +238,7 @@ const UploadReceipt = () => {
         toast({
           variant: "destructive",
           title: "فشل في التحقق",
-          description: lastError || "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات ووضوحها",
+          description: "لم يتم تفعيل الاشتراك المميز. يرجى التأكد من صحة الإيصالات ووضوحها",
         });
       }
 
@@ -286,7 +292,7 @@ const UploadReceipt = () => {
               تفعيل الاشتراك المميز
             </CardTitle>
             <CardDescription className="text-gray-600">
-              ارفع صورتي إيصال التحويل البنكي (الأخضر والأبيض) لتفعيل الاشتراك المميز
+              ارفع صورة إيصال التحويل البنكي لتفعيل الاشتراك المميز
             </CardDescription>
           </CardHeader>
           
@@ -365,10 +371,24 @@ const UploadReceipt = () => {
               </AlertDescription>
             </Alert>
 
+            {/* خيار استخدام الإيصال الأخضر فقط */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="green-only"
+                checked={useGreenReceiptOnly}
+                onChange={(e) => setUseGreenReceiptOnly(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="green-only" className="text-sm text-gray-700">
+                استخدام الإيصال الأخضر فقط (في حالة عدم توفر الإيصال الأبيض)
+              </label>
+            </div>
+
             {/* رفع الإيصال الأخضر */}
             <div className="space-y-4">
               <Label htmlFor="green-receipt-upload" className="text-sm font-medium text-gray-700">
-                صورة الإيصال الأخضر
+                صورة الإيصال الأخضر *
               </Label>
               
               <div className="border-2 border-dashed border-green-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors bg-green-50">
@@ -402,45 +422,47 @@ const UploadReceipt = () => {
             </div>
 
             {/* رفع الإيصال الأبيض */}
-            <div className="space-y-4">
-              <Label htmlFor="white-receipt-upload" className="text-sm font-medium text-gray-700">
-                صورة الإيصال الأبيض
-              </Label>
-              
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors bg-gray-50">
-                <Input
-                  id="white-receipt-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleWhiteReceiptSelect}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="white-receipt-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2"
-                >
-                  <Upload className="h-8 w-8 text-gray-600" />
-                  <p className="text-sm text-gray-700">
-                    {whiteReceiptFile ? whiteReceiptFile.name : 'اختر صورة الإيصال الأبيض'}
-                  </p>
-                </label>
-              </div>
-
-              {whiteReceiptFile && (
-                <div className="mt-4">
-                  <img
-                    src={URL.createObjectURL(whiteReceiptFile)}
-                    alt="معاينة الإيصال الأبيض"
-                    className="max-h-60 mx-auto rounded-lg shadow-md"
+            {!useGreenReceiptOnly && (
+              <div className="space-y-4">
+                <Label htmlFor="white-receipt-upload" className="text-sm font-medium text-gray-700">
+                  صورة الإيصال الأبيض *
+                </Label>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors bg-gray-50">
+                  <Input
+                    id="white-receipt-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWhiteReceiptSelect}
+                    className="hidden"
                   />
+                  <label
+                    htmlFor="white-receipt-upload"
+                    className="cursor-pointer flex flex-col items-center space-y-2"
+                  >
+                    <Upload className="h-8 w-8 text-gray-600" />
+                    <p className="text-sm text-gray-700">
+                      {whiteReceiptFile ? whiteReceiptFile.name : 'اختر صورة الإيصال الأبيض'}
+                    </p>
+                  </label>
                 </div>
-              )}
-            </div>
+
+                {whiteReceiptFile && (
+                  <div className="mt-4">
+                    <img
+                      src={URL.createObjectURL(whiteReceiptFile)}
+                      alt="معاينة الإيصال الأبيض"
+                      className="max-h-60 mx-auto rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* زر الرفع */}
             <Button
               onClick={uploadReceipt}
-              disabled={!greenReceiptFile || !whiteReceiptFile || uploading || verifying || !membershipId}
+              disabled={!greenReceiptFile || uploading || verifying || !membershipId || (!useGreenReceiptOnly && !whiteReceiptFile)}
               className="w-full bg-orange-600 hover:bg-orange-700 text-white"
             >
               {uploading ? (
