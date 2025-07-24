@@ -1,14 +1,17 @@
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, Plus, User, Heart, MessageCircle, Crown, Menu, LogOut, Settings } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserPoints } from "@/hooks/useUserPoints";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function Header() {
   const { user, signOut } = useAuth();
+  const { pointsData } = useUserPoints();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -128,9 +131,9 @@ export function Header() {
                 <div className="hidden sm:flex items-center gap-2 bg-primary-light rounded-full px-3 py-2">
                   <Crown className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">
-                    {profile?.points || 0} نقطة
+                    {pointsData?.totalPoints || 0} نقطة
                   </span>
-                  {profile?.membership_type === 'premium' && (
+                  {pointsData?.membershipType === 'premium' && (
                     <Badge variant="premium" className="text-xs px-2 py-0">مميز</Badge>
                   )}
                 </div>
@@ -177,7 +180,7 @@ export function Header() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full relative">
                       <User className="h-5 w-5" />
-                      {profile?.membership_type === 'premium' && (
+                      {pointsData?.membershipType === 'premium' && (
                         <Crown className="h-3 w-3 text-primary absolute -top-1 -right-1" />
                       )}
                     </Button>
@@ -190,13 +193,13 @@ export function Header() {
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Crown className="h-4 w-4 text-primary" />
-                        <span className="text-sm">{profile?.points || 0} نقطة</span>
-                        {profile?.membership_type === 'premium' && (
+                        <span className="text-sm">{pointsData?.totalPoints || 0} نقطة</span>
+                        {pointsData?.membershipType === 'premium' && (
                           <Badge variant="premium" className="text-xs">مميز</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        إعلانات شهرية: {profile?.monthly_ads_count || 0}/5
+                        إعلانات شهرية: {pointsData?.monthlyAdsCount || 0}/{pointsData?.monthlyAdsLimit || 5}
                       </p>
                     </div>
                     <DropdownMenuSeparator />

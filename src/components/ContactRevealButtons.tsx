@@ -8,6 +8,7 @@ import { useUserPoints } from '@/hooks/useUserPoints';
 import { PointsConfirmDialog } from './PointsConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ContactRevealButtonsProps {
   adId: string;
@@ -32,6 +33,7 @@ export const ContactRevealButtons = ({
   const [pendingAction, setPendingAction] = useState<'phone' | 'whatsapp' | null>(null);
   const { pointsData, deductPoints } = useUserPoints();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleRevealContact = async (type: 'phone' | 'whatsapp') => {
     if (!pointsData) return;
@@ -47,7 +49,7 @@ export const ContactRevealButtons = ({
       // Record interaction for premium users (no points deducted)
       await supabase.from('ad_interactions').insert({
         ad_id: adId,
-        user_id: sellerId,
+        user_id: user?.id,
         interaction_type: type === 'phone' ? 'phone_view' : 'whatsapp_view',
         points_spent: 0
       });
@@ -71,7 +73,7 @@ export const ContactRevealButtons = ({
   };
 
   const confirmReveal = async () => {
-    if (!pendingAction || !pointsData) return;
+    if (!pendingAction || !pointsData || !user) return;
 
     const success = await deductPoints(1);
     if (success) {
@@ -84,7 +86,7 @@ export const ContactRevealButtons = ({
       // Record interaction
       await supabase.from('ad_interactions').insert({
         ad_id: adId,
-        user_id: sellerId,
+        user_id: user.id,
         interaction_type: pendingAction === 'phone' ? 'phone_view' : 'whatsapp_view',
         points_spent: 1
       });
@@ -129,24 +131,28 @@ export const ContactRevealButtons = ({
   };
 
   const handleFavorite = async () => {
+    if (!user) return;
+    
     try {
       // Check if already favorited
       const { data: existing } = await supabase
         .from('favorites')
         .select('id')
         .eq('ad_id', adId)
+        .eq('user_id', user.id)
         .single();
 
       if (existing) {
         // Remove from favorites
-        await supabase.from('favorites').delete().eq('ad_id', adId);
+        await supabase.from('favorites').delete().eq('ad_id', adId).eq('user_id', user.id);
         toast({
           title: "تم إزالة الإعلان من المفضلة",
         });
       } else {
         // Add to favorites
         await supabase.from('favorites').insert({
-          ad_id: adId
+          ad_id: adId,
+          user_id: user.id
         });
         toast({
           title: "تم إضافة الإعلان للمفضلة",

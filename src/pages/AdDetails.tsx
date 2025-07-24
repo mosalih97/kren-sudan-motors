@@ -1,11 +1,13 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { BackButton } from "@/components/BackButton";
 import { ContactRevealButtons } from "@/components/ContactRevealButtons";
+import { ImageGallery } from "@/components/ImageGallery";
 import { CarCard } from "@/components/CarCard";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Gauge, Fuel, Settings, MapPin, Phone, MessageSquare } from "lucide-react";
+import { Calendar, Gauge, Fuel, Settings, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -109,27 +111,10 @@ const AdDetails = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Image Gallery */}
           <div>
-            <div className="relative w-full h-96 rounded-lg overflow-hidden">
-              <img
-                src={ad.images?.[0] || "https://via.placeholder.com/600x400"}
-                alt={ad.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="mt-4 flex gap-2 overflow-x-auto">
-              {ad.images?.map((image: string, index: number) => (
-                <div
-                  key={index}
-                  className="relative w-24 h-20 rounded-lg overflow-hidden flex-shrink-0"
-                >
-                  <img
-                    src={image}
-                    alt={`${ad.title} - ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
+            <ImageGallery 
+              images={ad.images || []} 
+              title={ad.title} 
+            />
           </div>
 
           {/* Ad Information */}
@@ -178,15 +163,17 @@ const AdDetails = () => {
           </div>
         </div>
         
-        {/* Replace the existing seller info section with ContactRevealButtons */}
-        <ContactRevealButtons
-          adId={ad.id}
-          phone={ad.phone}
-          whatsapp={ad.whatsapp}
-          sellerId={ad.user_id}
-          sellerName={sellerProfile?.display_name || "مستخدم"}
-          adTitle={ad.title}
-        />
+        {/* Contact Information */}
+        <div className="mt-8">
+          <ContactRevealButtons
+            adId={ad.id}
+            phone={ad.phone}
+            whatsapp={ad.whatsapp}
+            sellerId={ad.user_id}
+            sellerName={sellerProfile?.display_name || "مستخدم"}
+            adTitle={ad.title}
+          />
+        </div>
 
         {/* Seller's Other Ads */}
         {sellerAds.length > 0 && (
@@ -194,7 +181,7 @@ const AdDetails = () => {
             <h2 className="text-2xl font-bold mb-4">إعلانات أخرى للبائع</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sellerAds.map(
-                (otherAd: { id: any; title: any; price: any; city: any; year: any; mileage: any; fuel_type: any; transmission: any; images: any; is_premium: any; is_featured: any; view_count: any; }, index: any) =>
+                (otherAd: any) =>
                   otherAd.id !== ad.id && (
                     <CarCard
                       key={otherAd.id}
@@ -213,7 +200,6 @@ const AdDetails = () => {
                       isPremium={otherAd.is_premium}
                       isFeatured={otherAd.is_featured}
                       viewCount={otherAd.view_count}
-                      creditsRequired={1}
                     />
                   )
               )}

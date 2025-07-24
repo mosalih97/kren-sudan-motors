@@ -1,3 +1,4 @@
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Crown } from "lucide-react";
+import { Phone, MessageSquare, Coins } from "lucide-react";
 
 interface PointsConfirmDialogProps {
   open: boolean;
@@ -18,42 +19,67 @@ interface PointsConfirmDialogProps {
   userPoints: number;
 }
 
-export function PointsConfirmDialog({
+export const PointsConfirmDialog = ({
   open,
   onOpenChange,
   onConfirm,
   actionType,
   userPoints
-}: PointsConfirmDialogProps) {
-  const actionText = actionType === 'phone' ? 'عرض رقم الهاتف' : 'عرض رقم واتساب';
-  
+}: PointsConfirmDialogProps) => {
+  const getIcon = () => {
+    return actionType === 'phone' ? <Phone className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />;
+  };
+
+  const getTitle = () => {
+    return actionType === 'phone' ? 'عرض رقم الهاتف' : 'عرض رقم الواتساب';
+  };
+
+  const getDescription = () => {
+    return actionType === 'phone' 
+      ? 'سيتم خصم نقطة واحدة من رصيدك لعرض رقم الهاتف'
+      : 'سيتم خصم نقطة واحدة من رصيدك لعرض رقم الواتساب';
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-sm mx-auto">
-        <AlertDialogHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <Crown className="h-8 w-8 text-primary" />
-          </div>
-          <AlertDialogTitle className="text-lg">تأكيد استخدام النقاط</AlertDialogTitle>
-          <AlertDialogDescription className="text-center">
-            سيتم خصم <span className="font-bold text-primary">1 نقطة</span> من رصيدك لـ{actionText}
-            <br />
-            <span className="text-sm text-muted-foreground">
-              رصيدك الحالي: {userPoints} نقطة
-            </span>
+      <AlertDialogContent className="card-gradient border-0 shadow-xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-xl">
+            {getIcon()}
+            {getTitle()}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-base">
+            {getDescription()}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex gap-2">
-          <AlertDialogCancel className="flex-1">إلغاء</AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={onConfirm}
-            className="flex-1 bg-primary hover:bg-primary/90"
-            disabled={userPoints < 1}
-          >
-            موافق
+        
+        <div className="py-4">
+          <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" />
+              <span className="font-medium">رصيدك الحالي:</span>
+            </div>
+            <span className="text-lg font-bold text-primary">{userPoints} نقطة</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg mt-2">
+            <span className="font-medium text-red-800">التكلفة:</span>
+            <span className="text-lg font-bold text-red-600">1 نقطة</span>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg mt-2">
+            <span className="font-medium text-green-800">الرصيد بعد الخصم:</span>
+            <span className="text-lg font-bold text-green-600">{userPoints - 1} نقطة</span>
+          </div>
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-primary hover:bg-primary/90">
+            تأكيد العملية
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
-}
+};
