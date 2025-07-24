@@ -4,32 +4,70 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Heart, Crown, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Heart, Crown, AlertTriangle, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Link } from "react-router-dom";
+import { PointsConfirmDialog } from "@/components/PointsConfirmDialog";
+import { useUserPoints } from "@/hooks/useUserPoints";
+
+const WhatsAppIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.51 3.516"/>
+  </svg>
+);
 
 export default function AdDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: userPoints } = useUserPoints();
   const [ad, setAd] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showPointsDialog, setShowPointsDialog] = useState(false);
+  const [actionType, setActionType] = useState<'phone' | 'whatsapp'>('phone');
+  const [revealedContacts, setRevealedContacts] = useState({
+    phone: false,
+    whatsapp: false
+  });
 
   useEffect(() => {
     if (id) {
       fetchAdDetails();
       if (user) {
         checkIfFavorite();
+        fetchUserInteractions();
       }
     }
   }, [id, user]);
+
+  const fetchUserInteractions = async () => {
+    if (!user || !id) return;
+    
+    try {
+      const { data } = await supabase
+        .from('ad_interactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ad_id', id)
+        .eq('interaction_type', 'contact_view');
+      
+      // Check if user has already revealed contacts
+      const hasRevealedContacts = data && data.length > 0;
+      setRevealedContacts({
+        phone: hasRevealedContacts,
+        whatsapp: hasRevealedContacts
+      });
+    } catch (error) {
+      console.error('Error fetching interactions:', error);
+    }
+  };
 
   const fetchAdDetails = async () => {
     try {
@@ -158,8 +196,77 @@ export default function AdDetails() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('ar-SD');
+  const handleContactRequest = (type: 'phone' | 'whatsapp') => {
+    if (!user) {
+      toast.error('يجب تسجيل الدخول أولاً لعرض معلومات التواصل');
+      navigate('/auth');
+      return;
+    }
+
+    // إذا كان المستخدم نفسه البائع
+    if (user.id === ad.user_id) {
+      return;
+    }
+
+    // إذا كان الرقم مكشوف بالفعل
+    if (revealedContacts[type]) {
+      return;
+    }
+
+    // إذا كان مستخدم مميز، لا يحتاج نقاط
+    if (userPoints?.membership_type === 'premium') {
+      revealContact(type);
+      return;
+    }
+
+    // إظهار نافذة النقاط
+    setActionType(type);
+    setShowPointsDialog(true);
+  };
+
+  const handlePointsConfirm = async () => {
+    try {
+      // خصم النقاط
+      const { data, error } = await supabase.rpc('deduct_points', {
+        user_id_param: user.id,
+        points_to_deduct: 1
+      });
+
+      if (error) throw error;
+
+      if (!data) {
+        toast.error('ليس لديك نقاط كافية لهذا الإجراء');
+        return;
+      }
+
+      // تسجيل التفاعل
+      await supabase
+        .from('ad_interactions')
+        .insert({
+          user_id: user.id,
+          ad_id: id,
+          interaction_type: 'contact_view',
+          points_spent: 1
+        });
+
+      // كشف الرقم
+      revealContact(actionType);
+
+      toast.success(`تم خصم نقطة واحدة وكشف ${actionType === 'phone' ? 'رقم الهاتف' : 'رقم واتساب'}`);
+
+    } catch (error) {
+      console.error('Error deducting points:', error);
+      toast.error('حدث خطأ أثناء العملية');
+    } finally {
+      setShowPointsDialog(false);
+    }
+  };
+
+  const revealContact = (type: 'phone' | 'whatsapp') => {
+    setRevealedContacts(prev => ({
+      ...prev,
+      [type]: true
+    }));
   };
 
   const handleContactClick = (type: 'phone' | 'whatsapp') => {
@@ -181,6 +288,31 @@ export default function AdDetails() {
         toast.error('رقم الواتساب غير متوفر');
       }
     }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: ad.title,
+      text: `شاهد هذا الإعلان: ${ad.title}`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // fallback للمتصفحات التي لا تدعم Web Share API
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('تم نسخ الرابط إلى الحافظة');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error('حدث خطأ في المشاركة');
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('ar-SD');
   };
 
   if (loading) {
@@ -416,53 +548,91 @@ export default function AdDetails() {
                       </p>
                     </div>
                   </div>
+                  
+                  {/* أزرار الاتصال */}
+                  {user && !isOwner && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleContactRequest('phone')}
+                          disabled={!ad.profiles.phone}
+                          className="flex items-center gap-2"
+                        >
+                          <Phone className="h-4 w-4" />
+                          {revealedContacts.phone ? 
+                            (ad.profiles.phone || 'غير متوفر') : 
+                            'عرض الهاتف'
+                          }
+                        </Button>
+                        
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleContactRequest('whatsapp')}
+                          disabled={!ad.profiles.whatsapp}
+                          className="flex items-center gap-2 text-green-600 border-green-600 hover:bg-green-50"
+                        >
+                          <WhatsAppIcon />
+                          {revealedContacts.whatsapp ? 
+                            (ad.profiles.whatsapp || 'غير متوفر') : 
+                            'واتساب'
+                          }
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            window.open(`/messages?to=${ad.user_id}&ad=${id}`, '_blank');
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          رسالة
+                        </Button>
+                        
+                        <Button 
+                          variant="outline"
+                          onClick={toggleFavorite}
+                          className="flex items-center gap-2"
+                        >
+                          <Heart className={`h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                          {isFavorite ? 'حفظ' : 'حفظ'}
+                        </Button>
+                      </div>
+                      
+                      <Button 
+                        variant="outline"
+                        onClick={handleShare}
+                        className="w-full flex items-center gap-2"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        مشاركة
+                      </Button>
+                    </div>
+                  )}
+                  
                   <Link to={`/seller/${ad.profiles.user_id}`}>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full mt-4">
                       عرض جميع إعلانات البائع
                     </Button>
                   </Link>
                 </CardContent>
               </Card>
             )}
-
-            {/* أزرار الإجراءات */}
-            <div className="flex flex-col gap-3">
-              {user && !isOwner && (
-                <>
-                  <Button 
-                    size="lg" 
-                    className="w-full"
-                    onClick={() => handleContactClick('phone')}
-                  >
-                    <Phone className="ml-2 h-4 w-4" />
-                    اتصل بالبائع
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full"
-                    onClick={() => handleContactClick('whatsapp')}
-                  >
-                    <MessageCircle className="ml-2 h-4 w-4" />
-                    محادثة واتساب
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full"
-                    onClick={toggleFavorite}
-                  >
-                    <Heart className={`ml-2 h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                    {isFavorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}
-                  </Button>
-                </>
-              )}
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Points Confirmation Dialog */}
+      <PointsConfirmDialog
+        open={showPointsDialog}
+        onOpenChange={setShowPointsDialog}
+        onConfirm={handlePointsConfirm}
+        actionType={actionType}
+        userPoints={userPoints?.total_points || 0}
+      />
     </div>
   );
 }

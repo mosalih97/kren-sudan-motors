@@ -11,6 +11,7 @@ import { PointsConfirmDialog } from "@/components/PointsConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserPoints } from "@/hooks/useUserPoints";
 import { 
   ArrowRight, 
   Phone, 
@@ -32,8 +33,8 @@ const SellerAds = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: userPoints } = useUserPoints();
   const [sellerProfile, setSellerProfile] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [sellerAds, setSellerAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPointsDialog, setShowPointsDialog] = useState(false);
@@ -49,25 +50,9 @@ const SellerAds = () => {
     }
     
     if (user) {
-      fetchUserProfile();
       fetchUserInteractions();
     }
   }, [sellerId, user]);
-
-  const fetchUserProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      setUserProfile(data);
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
-  };
 
   const fetchUserInteractions = async () => {
     if (!user || !sellerId) return;
@@ -156,7 +141,7 @@ const SellerAds = () => {
     }
 
     // إذا كان مستخدم مميز، لا يحتاج نقاط
-    if (userProfile?.membership_type === 'premium') {
+    if (userPoints?.membership_type === 'premium') {
       revealContact(type);
       return;
     }
@@ -197,9 +182,6 @@ const SellerAds = () => {
 
       // كشف الرقم
       revealContact(actionType);
-
-      // تحديث النقاط
-      fetchUserProfile();
 
       toast({
         title: "تم بنجاح",
@@ -400,7 +382,7 @@ const SellerAds = () => {
         onOpenChange={setShowPointsDialog}
         onConfirm={handlePointsConfirm}
         actionType={actionType}
-        userPoints={userProfile?.points || 0}
+        userPoints={userPoints?.total_points || 0}
       />
     </div>
   );
