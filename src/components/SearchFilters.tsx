@@ -39,6 +39,8 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
   const handleSearch = async () => {
     setLoading(true);
+    console.log('بدء البحث...');
+    
     try {
       let query = supabase
         .from('ads')
@@ -76,13 +78,14 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Search error:', error);
+        console.error('خطأ في البحث:', error);
         onSearch?.([]);
       } else {
+        console.log('نتائج البحث:', data);
         onSearch?.(data || []);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('خطأ في البحث:', error);
       onSearch?.([]);
     } finally {
       setLoading(false);
@@ -166,8 +169,8 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">جميع الولايات</SelectItem>
-                {sudaneseStates.map((state) => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
+                {sudaneseStates.map((stateItem) => (
+                  <SelectItem key={stateItem} value={stateItem}>{stateItem}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
