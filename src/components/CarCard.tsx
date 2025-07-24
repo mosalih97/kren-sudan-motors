@@ -296,7 +296,7 @@ export function CarCard({
         {/* إجراءات البطاقة */}
         {showActions && (
           <div className="flex gap-2">
-            <Link to={`/ad/${id}`} className="flex-1">
+            <Link to={`/ads/${id}`} className="flex-1">
               <Button variant="outline" className="w-full">
                 عرض التفاصيل
               </Button>

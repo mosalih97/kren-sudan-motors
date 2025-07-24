@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -34,6 +34,11 @@ const App = () => (
             <Route path="/cars" element={<Cars />} />
             <Route path="/ads/:id" element={<AdDetails />} />
             <Route path="/seller/:sellerId" element={<SellerAds />} />
+            
+            {/* Redirect old paths to correct ones */}
+            <Route path="/ad/:id" element={<Navigate to="/ads/:id" replace />} />
+            <Route path="/boost/:id" element={<Navigate to="/boost-ad/:id" replace />} />
+            
             <Route 
               path="/profile" 
               element={

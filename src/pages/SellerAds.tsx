@@ -370,6 +370,7 @@ const SellerAds = () => {
                   isFeatured={ad.is_featured}
                   isNew={ad.is_new}
                   viewCount={ad.view_count}
+                  userId={ad.user_id}
                   seller={{
                     id: ad.profiles?.user_id || "",
                     display_name: ad.profiles?.display_name || "",
