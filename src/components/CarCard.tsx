@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,23 +13,39 @@ interface Ad {
   id: string;
   title: string;
   price: number;
-  city: string;
+  city?: string;
+  location?: string;
   year: number;
-  fuel_type: string;
+  fuel_type?: string;
+  fuelType?: string;
   transmission: string;
-  images: string[];
-  is_new: boolean;
-  is_featured: boolean;
-  view_count: number;
+  images?: string[];
+  image?: string;
+  is_new?: boolean;
+  isNew?: boolean;
+  is_featured?: boolean;
+  isFeatured?: boolean;
+  isPremium?: boolean;
+  view_count?: number;
+  viewCount?: number;
   user_id: string;
-  top_spot: boolean;
-  top_spot_until: string | null;
+  top_spot?: boolean;
+  top_spot_until?: string | null;
+  mileage?: number;
+  creditsRequired?: number;
+  seller?: {
+    id: string;
+    display_name: string;
+    avatar_url: string;
+    membership_type: string;
+  };
 }
 
 interface CarCardProps {
   ad: Ad;
   onFavoriteChange?: (adId: string, isFavorite: boolean) => void;
   showActions?: boolean;
+  showSellerInfo?: boolean;
   onContactClick?: () => void;
 }
 
@@ -36,7 +53,7 @@ const formatPrice = (price: number) => {
   return price.toLocaleString('ar-SD');
 };
 
-export function CarCard({ ad, onFavoriteChange, showActions = true, onContactClick }: CarCardProps) {
+export function CarCard({ ad, onFavoriteChange, showActions = true, showSellerInfo = false, onContactClick }: CarCardProps) {
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -154,6 +171,14 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, onContactCli
     }
   };
 
+  // تحديد المدينة والصورة والخصائص مع مرونة في الأسماء
+  const city = ad.city || ad.location || 'غير محدد';
+  const mainImage = ad.images?.[0] || ad.image || "/placeholder.svg";
+  const isNew = ad.is_new || ad.isNew || false;
+  const isFeatured = ad.is_featured || ad.isFeatured || ad.isPremium || false;
+  const viewCount = ad.view_count || ad.viewCount || 0;
+  const fuelType = ad.fuel_type || ad.fuelType || 'غير محدد';
+
   return (
     <Card className={`group hover:shadow-lg transition-all duration-200 ${
       ad.top_spot ? 'ring-2 ring-primary/20 shadow-lg' : ''
@@ -161,19 +186,19 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, onContactCli
       {/* صورة الإعلان */}
       <div className="relative overflow-hidden">
         <img 
-          src={ad.images?.[0] || "/placeholder.svg"} 
+          src={mainImage} 
           alt={ad.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
         />
         
         {/* الشارات */}
         <div className="absolute top-2 right-2 flex flex-col gap-1">
-          {ad.is_new && (
+          {isNew && (
             <Badge className="bg-green-500 hover:bg-green-600">
               جديد
             </Badge>
           )}
-          {ad.is_featured && (
+          {isFeatured && (
             <Badge className="bg-blue-500 hover:bg-blue-600">
               مميز
             </Badge>
@@ -202,7 +227,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, onContactCli
         {/* زر المشاهدة */}
         <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white px-2 py-1 rounded text-xs">
           <Eye className="h-3 w-3" />
-          <span>{ad.view_count || 0}</span>
+          <span>{viewCount}</span>
         </div>
       </div>
 
@@ -215,8 +240,21 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, onContactCli
             </CardTitle>
             <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
               <MapPin className="h-4 w-4" />
-              <span>{ad.city}</span>
+              <span>{city}</span>
             </div>
+            {showSellerInfo && ad.seller && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <img 
+                  src={ad.seller.avatar_url || "/placeholder.svg"} 
+                  alt={ad.seller.display_name}
+                  className="w-6 h-6 rounded-full"
+                />
+                <span>{ad.seller.display_name}</span>
+                {ad.seller.membership_type === 'premium' && (
+                  <Crown className="w-4 h-4 text-primary" />
+                )}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-primary">
@@ -238,7 +276,7 @@ export function CarCard({ ad, onFavoriteChange, showActions = true, onContactCli
           </div>
           <div className="flex items-center gap-1">
             <Fuel className="h-4 w-4 text-muted-foreground" />
-            <span>{ad.fuel_type}</span>
+            <span>{fuelType}</span>
           </div>
           <div className="flex items-center gap-1">
             <Settings className="h-4 w-4 text-muted-foreground" />
