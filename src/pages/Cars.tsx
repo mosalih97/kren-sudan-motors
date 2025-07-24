@@ -29,7 +29,6 @@ const Cars = () => {
   const fetchCars = async () => {
     setLoading(true);
     try {
-      // استخدام Edge Function للحصول على الإعلانات مرتبة حسب الأولوية
       const { data: response, error } = await supabase.functions.invoke('get-prioritized-ads', {
         method: 'GET'
       });
@@ -46,7 +45,7 @@ const Cars = () => {
 
       let cars = response?.ads || [];
 
-      // Apply sorting if not using prioritized ordering
+      // Apply sorting
       switch (sortBy) {
         case "newest":
           cars = cars.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -60,14 +59,7 @@ const Cars = () => {
         case "price_high":
           cars = cars.sort((a: any, b: any) => b.price - a.price);
           break;
-        case "year_new":
-          cars = cars.sort((a: any, b: any) => (b.year || 0) - (a.year || 0));
-          break;
-        case "year_old":
-          cars = cars.sort((a: any, b: any) => (a.year || 0) - (b.year || 0));
-          break;
         default:
-          // للترتيب الافتراضي، استخدم الترتيب حسب الأولوية
           break;
       }
 
@@ -143,8 +135,6 @@ const Cars = () => {
                     <SelectItem value="oldest">الأقدم</SelectItem>
                     <SelectItem value="price_low">السعر: الأقل</SelectItem>
                     <SelectItem value="price_high">السعر: الأعلى</SelectItem>
-                    <SelectItem value="year_new">السنة: الأحدث</SelectItem>
-                    <SelectItem value="year_old">السنة: الأقدم</SelectItem>
                   </SelectContent>
                 </Select>
 

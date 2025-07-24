@@ -1,15 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface SearchFilters {
   searchQuery: string;
-  brand: string;
-  carType: string;
-  state: string;
-  yearFrom: string;
-  yearTo: string;
+  city: string;
   minPrice: string;
   maxPrice: string;
 }
@@ -17,11 +13,7 @@ export interface SearchFilters {
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     searchQuery: '',
-    brand: '',
-    carType: '',
-    state: '',
-    yearFrom: '',
-    yearTo: '',
+    city: '',
     minPrice: '',
     maxPrice: ''
   });
@@ -32,7 +24,7 @@ export const useSearchFilters = () => {
   const { toast } = useToast();
 
   const performSearch = async () => {
-    if (!filters.searchQuery && !filters.brand && !filters.carType && !filters.state && !filters.yearFrom && !filters.yearTo && !filters.minPrice && !filters.maxPrice) {
+    if (!filters.searchQuery && !filters.city && !filters.minPrice && !filters.maxPrice) {
       toast({
         title: "تنبيه",
         description: "يرجى إدخال معايير البحث",
@@ -63,25 +55,8 @@ export const useSearchFilters = () => {
         query = query.or(`title.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%,model.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
       }
 
-      if (filters.brand && filters.brand !== 'all') {
-        query = query.eq('brand', filters.brand);
-      }
-
-      if (filters.carType && filters.carType !== 'all') {
-        // Assuming car type is stored in a field, adjust as needed
-        query = query.eq('car_type', filters.carType);
-      }
-
-      if (filters.state && filters.state !== 'all') {
-        query = query.eq('city', filters.state);
-      }
-
-      if (filters.yearFrom) {
-        query = query.gte('year', parseInt(filters.yearFrom));
-      }
-
-      if (filters.yearTo) {
-        query = query.lte('year', parseInt(filters.yearTo));
+      if (filters.city) {
+        query = query.ilike('city', `%${filters.city}%`);
       }
 
       if (filters.minPrice) {
@@ -127,11 +102,7 @@ export const useSearchFilters = () => {
   const clearFilters = () => {
     setFilters({
       searchQuery: '',
-      brand: '',
-      carType: '',
-      state: '',
-      yearFrom: '',
-      yearTo: '',
+      city: '',
       minPrice: '',
       maxPrice: ''
     });

@@ -1,26 +1,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, MapPin, Car, Calendar, DollarSign, Filter } from "lucide-react";
+import { Search, MapPin, DollarSign, Filter } from "lucide-react";
 import { useSearchFilters } from "@/hooks/useSearchFilters";
-
-const sudaneseStates = [
-  "الخرطوم", "الجزيرة", "كسلا", "القضارف", "البحر الأحمر", "نهر النيل", 
-  "شمال كردفان", "جنوب كردفان", "شمال دارفور", "جنوب دارفور", "غرب دارفور",
-  "وسط دارفور", "شرق دارفور", "النيل الأزرق", "النيل الأبيض", "سنار",
-  "الشمالية", "البحيرات"
-];
-
-const carBrands = [
-  "تويوتا", "نيسان", "هوندا", "هيونداي", "كيا", "فورد", "شيفروليه", 
-  "مرسيدس", "BMW", "أودي", "فولكس واجن", "بيجو", "رينو", "سوزوكي", "ميتسوبيشي"
-];
-
-const carTypes = [
-  "صالون", "هاتشباك", "SUV", "بيك أب", "كوبيه", "حافلة صغيرة", "شاحنة"
-];
 
 interface SearchFiltersProps {
   onSearch?: (results: any[]) => void;
@@ -55,112 +38,45 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
         </div>
 
         {/* الفلاتر */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* الماركة */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Car className="h-4 w-4 text-primary" />
-              الماركة
-            </label>
-            <Select value={filters.brand} onValueChange={(value) => handleFilterChange('brand', value)}>
-              <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-primary/30 transition-smooth">
-                <SelectValue placeholder="اختر الماركة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الماركات</SelectItem>
-                {carBrands.map((brand) => (
-                  <SelectItem key={brand} value={brand}>{brand}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* نوع السيارة */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Car className="h-4 w-4 text-secondary" />
-              النوع
-            </label>
-            <Select value={filters.carType} onValueChange={(value) => handleFilterChange('carType', value)}>
-              <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-secondary/30 transition-smooth">
-                <SelectValue placeholder="نوع السيارة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأنواع</SelectItem>
-                {carTypes.map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* الولاية */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* المدينة */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4 text-accent" />
-              الولاية
+              المدينة
             </label>
-            <Select value={filters.state} onValueChange={(value) => handleFilterChange('state', value)}>
-              <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 transition-smooth">
-                <SelectValue placeholder="اختر الولاية" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الولايات</SelectItem>
-                {sudaneseStates.map((state) => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              placeholder="اكتب اسم المدينة"
+              className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 focus:border-accent/50 transition-smooth"
+              value={filters.city}
+              onChange={(e) => handleFilterChange('city', e.target.value)}
+            />
           </div>
 
-          {/* سنة الصنع */}
+          {/* السعر الأدنى */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-premium" />
-              السنة
+              <DollarSign className="h-4 w-4 text-success" />
+              السعر الأدنى
             </label>
-            <div className="flex gap-2">
-              <Select value={filters.yearFrom} onValueChange={(value) => handleFilterChange('yearFrom', value)}>
-                <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
-                  <SelectValue placeholder="من" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 25 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filters.yearTo} onValueChange={(value) => handleFilterChange('yearTo', value)}>
-                <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
-                  <SelectValue placeholder="إلى" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 25 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* نطاق السعر */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-success" />
-            نطاق السعر (جنيه سوداني)
-          </label>
-          <div className="flex gap-2">
             <Input
               type="number"
-              placeholder="السعر الأدنى"
+              placeholder="السعر الأدنى (جنيه سوداني)"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.minPrice}
               onChange={(e) => handleFilterChange('minPrice', e.target.value)}
             />
+          </div>
+
+          {/* السعر الأعلى */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-success" />
+              السعر الأعلى
+            </label>
             <Input
               type="number"
-              placeholder="السعر الأعلى"
+              placeholder="السعر الأعلى (جنيه سوداني)"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.maxPrice}
               onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
