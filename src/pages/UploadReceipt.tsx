@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Upload, Copy, Check, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { PassportCamera } from '@/components/PassportCamera';
 
 const UploadReceipt = () => {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ const UploadReceipt = () => {
   const [whiteReceiptFile, setWhiteReceiptFile] = useState<File | null>(null);
   const [copied, setCopied] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [currentReceiptId, setCurrentReceiptId] = useState<string | null>(null);
 
   const displayAccountNumber = "3689929";
 
@@ -128,13 +130,15 @@ const UploadReceipt = () => {
 
       // حفظ الطلب في قاعدة البيانات
       console.log('حفظ الطلب في قاعدة البيانات...');
-      const { error: insertError } = await supabase
+      const { data: insertData, error: insertError } = await supabase
         .from('receipt_submissions')
         .insert({
           user_id: user.id,
           membership_id: membershipId,
           receipt_url: JSON.stringify(receiptPaths)
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) {
         console.error('خطأ في حفظ الطلب:', insertError);
@@ -142,6 +146,7 @@ const UploadReceipt = () => {
       }
 
       console.log('تم حفظ الطلب بنجاح');
+      setCurrentReceiptId(insertData.id);
 
       // بدء التحقق من الإيصالات
       setVerifying(true);
@@ -409,6 +414,17 @@ const UploadReceipt = () => {
                 </div>
               )}
             </div>
+
+            {/* إضافة مكون كاميرا الجواز */}
+            <PassportCamera 
+              receiptId={currentReceiptId}
+              onSuccess={() => {
+                toast({
+                  title: "تم التحقق من الجواز",
+                  description: "تمت إضافة طبقة أمان إضافية لطلبك",
+                });
+              }}
+            />
 
             {/* زر الرفع */}
             <Button
