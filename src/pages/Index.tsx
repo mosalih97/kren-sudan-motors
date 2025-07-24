@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
@@ -8,7 +9,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, Shield, Star, ArrowLeft, Zap, Target, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-
 
 const Index = () => {
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
@@ -46,6 +46,7 @@ const Index = () => {
       setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -171,7 +172,6 @@ const Index = () => {
                   isFeatured={car.is_featured}
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
-                  creditsRequired={1}
                   userId={car.user_id}
                   seller={car.profiles ? {
                     id: car.profiles.user_id,
@@ -199,7 +199,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
 
       {/* دعوة للعمل */}
       <section className="py-20 primary-gradient">

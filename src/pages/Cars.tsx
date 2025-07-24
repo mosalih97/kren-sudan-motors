@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
@@ -200,12 +201,7 @@ const Cars = () => {
                   isFeatured={car.is_featured}
                   isNew={car.condition === "جديدة"}
                   viewCount={car.view_count}
-                  creditsRequired={1}
-                  topSpot={car.top_spot}
-                  topSpotUntil={car.top_spot_until}
-                  displayTier={car.display_tier}
                   userId={car.user_id}
-                  showBoostButton={true}
                   seller={car.profiles ? {
                     id: car.profiles.user_id,
                     display_name: car.profiles.display_name,
