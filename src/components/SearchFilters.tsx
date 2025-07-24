@@ -29,6 +29,7 @@ interface SearchFiltersProps {
 
 export function SearchFilters({ onSearch }: SearchFiltersProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [carBrand, setCarBrand] = useState("");
   const [carType, setCarType] = useState("");
   const [state, setState] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -49,6 +50,10 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
       if (searchQuery.trim()) {
         query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      }
+
+      if (carBrand) {
+        query = query.eq('brand', carBrand);
       }
 
       if (carType) {
@@ -94,6 +99,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
   const handleClearFilters = () => {
     setSearchQuery("");
+    setCarBrand("");
     setCarType("");
     setState("");
     setMinPrice("");
@@ -125,12 +131,11 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <Car className="h-4 w-4 text-primary" />
               الماركة
             </label>
-            <Select value={carType} onValueChange={setCarType}>
+            <Select value={carBrand} onValueChange={setCarBrand}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-primary/30 transition-smooth">
                 <SelectValue placeholder="اختر الماركة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الماركات</SelectItem>
                 {carBrands.map((brand) => (
                   <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                 ))}
@@ -149,7 +154,6 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
                 <SelectValue placeholder="نوع السيارة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الأنواع</SelectItem>
                 {carTypes.map((type) => (
                   <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
@@ -168,7 +172,6 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
                 <SelectValue placeholder="اختر الولاية" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الولايات</SelectItem>
                 {sudaneseStates.map((stateItem) => (
                   <SelectItem key={stateItem} value={stateItem}>{stateItem}</SelectItem>
                 ))}
