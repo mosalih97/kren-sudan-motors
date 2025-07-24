@@ -1,159 +1,234 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Upload, X, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { Header } from "@/components/Header";
-import { useUserPoints } from "@/hooks/useUserPoints";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { User, Session } from "@supabase/supabase-js";
+import { Car, Upload, Phone, MapPin, Calendar, Gauge, Fuel, Settings, FileImage, X } from "lucide-react";
 
-const brands = [
-  "تويوتا", "نيسان", "هيونداي", "كيا", "فورد", "شيفروليه", "هوندا", "مازدا",
-  "BMW", "مرسيدس", "أودي", "فولكس واجن", "بيجو", "رينو", "أوبل", "سوزوكي",
-  "ميتسوبيشي", "لكزس", "إنفينيتي", "جينيسيس", "أخرى"
-];
+const AddAd = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-const cities = [
-  "الخرطوم", "الخرطوم بحري", "أمدرمان", "مدني", "كسلا", "القضارف", "بورتسودان",
-  "عطبرة", "الأبيض", "نيالا", "الفاشر", "الجنينة", "زالنجي", "دمازين", "كوستي",
-  "ربك", "رفاعة", "سنار", "الدويم", "أخرى"
-];
-
-export default function AddAd() {
-  const [formData, setFormData] = useState({
+  // Form state
+  const [adData, setAdData] = useState({
     title: "",
+    description: "",
     brand: "",
     model: "",
     year: "",
     price: "",
     city: "",
-    condition: "",
-    transmission: "",
-    fuel_type: "",
-    mileage: "",
     phone: "",
     whatsapp: "",
-    description: ""
+    mileage: "",
+    fuelType: "بنزين",
+    transmission: "أوتوماتيك",
+    condition: "مستعملة"
   });
-  const [images, setImages] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { data: pointsData, refetch: refetchPoints } = useUserPoints();
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const [images, setImages] = useState<string[]>([]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (images.length + files.length > 10) {
-      toast.error("يمكن رفع حد أقصى 10 صور");
-      return;
-    }
-    setImages(prev => [...prev, ...files]);
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadImages = async () => {
-    const uploadedUrls: string[] = [];
-    
-    for (const image of images) {
-      const fileName = `${Math.random()}.jpg`;
-      const { data, error } = await supabase.storage
-        .from('car-images')
-        .upload(fileName, image);
-      
-      if (error) {
-        console.error('Error uploading image:', error);
-        continue;
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (!session?.user) {
+          navigate("/auth");
+        } else {
+          fetchUserProfile(session.user.id);
+        }
       }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       
-      const { data: urlData } = supabase.storage
-        .from('car-images')
-        .getPublicUrl(fileName);
+      if (!session?.user) {
+        navigate("/auth");
+      } else {
+        fetchUserProfile(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      setProfile(data);
       
-      uploadedUrls.push(urlData.publicUrl);
+      // ملء أرقام الهاتف والواتساب تلقائياً إذا كانت موجودة في الملف الشخصي
+      if (data) {
+        setAdData(prev => ({
+          ...prev,
+          phone: data.phone || prev.phone,
+          whatsapp: data.whatsapp || prev.whatsapp
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
-    
-    return uploadedUrls;
+  };
+
+  const handleImageAdd = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && user) {
+        setLoading(true);
+        try {
+          const uploadPromises = Array.from(files).map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { data, error } = await supabase.storage
+              .from('car-images')
+              .upload(fileName, file);
+            
+            if (error) throw error;
+            
+            const { data: { publicUrl } } = supabase.storage
+              .from('car-images')
+              .getPublicUrl(fileName);
+            
+            return publicUrl;
+          });
+          
+          const uploadedUrls = await Promise.all(uploadPromises);
+          setImages([...images, ...uploadedUrls]);
+          toast({
+            title: "تم تحميل الصور بنجاح",
+            description: `تم تحميل ${uploadedUrls.length} صورة`,
+          });
+        } catch (error) {
+          console.error('Error uploading images:', error);
+          toast({
+            title: "خطأ في تحميل الصور",
+            description: "حدث خطأ أثناء تحميل الصور",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    input.click();
+  };
+
+  const handleImageRemove = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user) {
-      toast.error("يجب تسجيل الدخول أولاً");
+    if (!user || !profile) return;
+
+    // التحقق من تقييد الإعلانات للمستخدمين العاديين
+    if (profile.membership_type === 'free' && profile.monthly_ads_count >= 5) {
+      toast({
+        title: "وصلت للحد الأقصى",
+        description: "يمكن للمستخدمين العاديين إضافة 5 إعلانات شهرياً فقط. قم بترقية عضويتك للمزيد",
+        variant: "destructive"
+      });
       return;
     }
 
-    const adsUsed = pointsData?.monthly_ads_count || 0;
-    const adsLimit = pointsData?.monthly_ads_limit || 5;
-    
-    if (adsUsed >= adsLimit) {
-      toast.error("لقد تجاوزت الحد الأقصى للإعلانات الشهرية");
-      return;
-    }
-
-    if (!formData.title || !formData.brand || !formData.model || !formData.price || !formData.city) {
-      toast.error("يرجى ملء جميع الحقول المطلوبة");
-      return;
-    }
-
-    setUploading(true);
+    setLoading(true);
     
     try {
-      const imageUrls = await uploadImages();
-      
+      // تنسيق أرقام الهاتف والواتساب لقاعدة البيانات (إضافة كود الدولة وحذف الصفر)
+      const formatPhoneForDB = (phone: string) => {
+        if (!phone) return '';
+        // إزالة أي أحرف غير رقمية
+        const cleanPhone = phone.replace(/\D/g, '');
+        // إذا كان الرقم يبدأ بـ 0 وطوله 10 خانات، إزالة الصفر وإضافة كود الدولة
+        if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+          return '+249' + cleanPhone.substring(1);
+        }
+        return phone;
+      };
+
+      // إدراج الإعلان أولاً
       const { error } = await supabase
-        .from('ads')
-        .insert([
-          {
-            title: formData.title,
-            brand: formData.brand,
-            model: formData.model,
-            year: formData.year ? parseInt(formData.year) : null,
-            price: parseInt(formData.price),
-            city: formData.city,
-            condition: formData.condition,
-            transmission: formData.transmission,
-            fuel_type: formData.fuel_type,
-            mileage: formData.mileage,
-            phone: formData.phone,
-            whatsapp: formData.whatsapp,
-            description: formData.description,
-            images: imageUrls,
-            user_id: user.id,
-            status: 'active'
-          }
-        ]);
+        .from("ads")
+        .insert({
+          user_id: user.id,
+          title: adData.title,
+          description: adData.description,
+          brand: adData.brand,
+          model: adData.model,
+          year: parseInt(adData.year),
+          price: parseInt(adData.price),
+          city: adData.city,
+          phone: formatPhoneForDB(adData.phone),
+          whatsapp: formatPhoneForDB(adData.whatsapp),
+          mileage: adData.mileage,
+          fuel_type: adData.fuelType,
+          transmission: adData.transmission,
+          condition: adData.condition,
+          images: images,
+          status: "active"
+        });
 
       if (error) throw error;
 
-      toast.success("تم إضافة الإعلان بنجاح!");
-      await refetchPoints(); // إعادة تحميل بيانات النقاط والإعلانات
-      navigate('/profile');
+      // تحديث عدد الإعلانات الشهرية فقط بعد نجاح إدراج الإعلان
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          monthly_ads_count: (profile.monthly_ads_count || 0) + 1 
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        console.error("Error updating monthly ads count:", updateError);
+        // لا نريد أن نفشل العملية بسبب عدم تحديث العداد
+      }
+
+      toast({
+        title: "تم نشر الإعلان بنجاح",
+        description: "تم نشر إعلانك وهو الآن متاح للعرض"
+      });
+
+      navigate("/profile");
     } catch (error) {
-      console.error('Error creating ad:', error);
-      toast.error("حدث خطأ أثناء إضافة الإعلان");
+      console.error("Error creating ad:", error);
+      toast({
+        title: "خطأ في نشر الإعلان",
+        description: "حدث خطأ أثناء نشر الإعلان، حاول مرة أخرى",
+        variant: "destructive"
+      });
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
 
-  const remainingAds = (pointsData?.monthly_ads_limit || 5) - (pointsData?.monthly_ads_count || 0);
+  if (!user) {
+    return null; // Will redirect to auth
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -161,294 +236,317 @@ export default function AddAd() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-              <ArrowLeft className="ml-2 h-4 w-4" />
-              العودة
-            </Button>
+          <Card className="card-gradient border-0 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 text-2xl">
+                <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
+                  <Car className="h-5 w-5 text-white" />
+                </div>
+                أضف إعلان سيارة جديد
+              </CardTitle>
+              <p className="text-muted-foreground">
+                أضف تفاصيل سيارتك للوصول إلى آلاف المشترين المهتمين
+              </p>
+            </CardHeader>
             
-            <h1 className="text-3xl font-bold mb-2">إضافة إعلان جديد</h1>
-            <p className="text-muted-foreground">
-              الإعلانات المتبقية: {remainingAds} من {pointsData?.monthly_ads_limit || 5}
-            </p>
-          </div>
-
-          {remainingAds <= 0 && (
-            <Card className="mb-6 border-destructive">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="h-5 w-5" />
-                  <span className="font-medium">لقد تجاوزت الحد الأقصى للإعلانات الشهرية</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  للحصول على المزيد من الإعلانات، يرجى ترقية عضويتك أو انتظار الشهر القادم
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>معلومات أساسية</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="title">عنوان الإعلان *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => handleChange("title", e.target.value)}
-                    placeholder="مثال: تويوتا كامري 2020 فل كامل"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="brand">الماركة *</Label>
-                    <Select value={formData.brand} onValueChange={(value) => handleChange("brand", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الماركة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brands.map((brand) => (
-                          <SelectItem key={brand} value={brand}>
-                            {brand}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="model">الموديل *</Label>
-                    <Input
-                      id="model"
-                      value={formData.model}
-                      onChange={(e) => handleChange("model", e.target.value)}
-                      placeholder="مثال: كامري، كوريلا، إلنترا"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="year">سنة الصنع</Label>
-                    <Input
-                      id="year"
-                      type="number"
-                      value={formData.year}
-                      onChange={(e) => handleChange("year", e.target.value)}
-                      placeholder="مثال: 2020"
-                      min="1990"
-                      max="2025"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="price">السعر (جنيه سوداني) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => handleChange("price", e.target.value)}
-                      placeholder="مثال: 50000"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="city">المدينة *</Label>
-                  <Select value={formData.city} onValueChange={(value) => handleChange("city", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر المدينة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>تفاصيل السيارة</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="condition">الحالة</Label>
-                    <Select value={formData.condition} onValueChange={(value) => handleChange("condition", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الحالة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="جديدة">جديدة</SelectItem>
-                        <SelectItem value="مستعملة">مستعملة</SelectItem>
-                        <SelectItem value="كالزيرو">كالزيرو</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="transmission">ناقل الحركة</Label>
-                    <Select value={formData.transmission} onValueChange={(value) => handleChange("transmission", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر ناقل الحركة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="أوتوماتيك">أوتوماتيك</SelectItem>
-                        <SelectItem value="عادي">عادي</SelectItem>
-                        <SelectItem value="CVT">CVT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fuel_type">نوع الوقود</Label>
-                    <Select value={formData.fuel_type} onValueChange={(value) => handleChange("fuel_type", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر نوع الوقود" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="بنزين">بنزين</SelectItem>
-                        <SelectItem value="ديزل">ديزل</SelectItem>
-                        <SelectItem value="هايبرد">هايبرد</SelectItem>
-                        <SelectItem value="كهربائي">كهربائي</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="mileage">المسافة المقطوعة (كم)</Label>
-                    <Input
-                      id="mileage"
-                      value={formData.mileage}
-                      onChange={(e) => handleChange("mileage", e.target.value)}
-                      placeholder="مثال: 50000"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>معلومات التواصل</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">رقم الهاتف</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => handleChange("phone", e.target.value)}
-                      placeholder="مثال: 0123456789"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="whatsapp">رقم الواتساب</Label>
-                    <Input
-                      id="whatsapp"
-                      value={formData.whatsapp}
-                      onChange={(e) => handleChange("whatsapp", e.target.value)}
-                      placeholder="مثال: 0123456789"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">الوصف</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => handleChange("description", e.target.value)}
-                    placeholder="اكتب وصفاً مفصلاً للسيارة..."
-                    rows={4}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>صور السيارة</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                    <div className="mt-4">
-                      <label htmlFor="images" className="cursor-pointer">
-                        <span className="text-sm font-medium text-primary hover:text-primary/80">
-                          اختر الصور
-                        </span>
-                        <input
-                          id="images"
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
+            <CardContent className="space-y-6">
+              {/* معلومات العضوية والإعلانات */}
+              {profile && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">نوع العضوية:</span>
+                      <Badge variant={profile.membership_type === 'premium' ? 'premium' : 'default'}>
+                        {profile.membership_type === 'premium' ? 'مميز' : 'عادي'}
+                      </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      يمكن رفع حد أقصى 10 صور
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium text-primary">{profile.points || 0}</span> نقطة
+                    </div>
                   </div>
-
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {images.map((image, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={URL.createObjectURL(image)}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
+                  
+                  {profile.membership_type === 'free' && (
+                    <div className="bg-background rounded-md p-3 border border-warning/20">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">الإعلانات المتاحة هذا الشهر: </span>
+                        <span className="font-medium text-primary">
+                          {Math.max(0, 5 - (profile.monthly_ads_count || 0))} من 5
+                        </span>
+                      </div>
+                      {(profile.monthly_ads_count || 0) >= 5 && (
+                        <p className="text-warning text-xs mt-1">
+                          وصلت للحد الأقصى من الإعلانات هذا الشهر. قم بترقية عضويتك للمزيد.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {profile.membership_type === 'premium' && (
+                    <div className="bg-primary/10 rounded-md p-3 border border-primary/20">
+                      <p className="text-sm text-primary">
+                        🎉 عضوية مميزة: إعلانات غير محدودة + عرض مجاني لمعلومات التواصل
+                      </p>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* العنوان والوصف */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">معلومات أساسية</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="title">عنوان الإعلان *</Label>
+                    <Input
+                      id="title"
+                      placeholder="مثال: تويوتا كامري 2022 - فل أوبشن"
+                      value={adData.title}
+                      onChange={(e) => setAdData({...adData, title: e.target.value})}
+                      required
+                    />
+                  </div>
 
-            <div className="flex gap-4">
-              <Button
-                type="submit"
-                disabled={uploading || remainingAds <= 0}
-                className="flex-1"
-              >
-                {uploading ? "جاري الإضافة..." : "إضافة الإعلان"}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-                إلغاء
-              </Button>
-            </div>
-          </form>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">وصف السيارة</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="اكتب وصفاً مفصلاً عن حالة السيارة والمميزات..."
+                      value={adData.description}
+                      onChange={(e) => setAdData({...adData, description: e.target.value})}
+                      rows={4}
+                    />
+                  </div>
+                </div>
+
+                {/* تفاصيل السيارة */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">تفاصيل السيارة</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="brand">الماركة *</Label>
+                      <Input
+                        id="brand"
+                        placeholder="تويوتا، نيسان، هوندا..."
+                        value={adData.brand}
+                        onChange={(e) => setAdData({...adData, brand: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="model">الموديل *</Label>
+                      <Input
+                        id="model"
+                        placeholder="كامري، التيما، أكورد..."
+                        value={adData.model}
+                        onChange={(e) => setAdData({...adData, model: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="year">سنة الصنع</Label>
+                      <div className="relative">
+                        <Calendar className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="year"
+                          type="number"
+                          placeholder="2020"
+                          value={adData.year}
+                          onChange={(e) => setAdData({...adData, year: e.target.value})}
+                          className="pr-10"
+                          min="1990"
+                          max={new Date().getFullYear()}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mileage">الكيلومترات</Label>
+                      <div className="relative">
+                        <Gauge className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="mileage"
+                          placeholder="15,000 كم"
+                          value={adData.mileage}
+                          onChange={(e) => setAdData({...adData, mileage: e.target.value})}
+                          className="pr-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>نوع الوقود</Label>
+                      <Select value={adData.fuelType} onValueChange={(value) => setAdData({...adData, fuelType: value})}>
+                        <SelectTrigger>
+                          <div className="flex items-center gap-2">
+                            <Fuel className="h-4 w-4" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="بنزين">بنزين</SelectItem>
+                          <SelectItem value="ديزل">ديزل</SelectItem>
+                          <SelectItem value="هايبرد">هايبرد</SelectItem>
+                          <SelectItem value="كهربائي">كهربائي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>ناقل الحركة</Label>
+                      <Select value={adData.transmission} onValueChange={(value) => setAdData({...adData, transmission: value})}>
+                        <SelectTrigger>
+                          <div className="flex items-center gap-2">
+                            <Settings className="h-4 w-4" />
+                            <SelectValue />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="أوتوماتيك">أوتوماتيك</SelectItem>
+                          <SelectItem value="يدوي">يدوي</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>حالة السيارة</Label>
+                      <Select value={adData.condition} onValueChange={(value) => setAdData({...adData, condition: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="جديدة">جديدة</SelectItem>
+                          <SelectItem value="مستعملة">مستعملة</SelectItem>
+                          <SelectItem value="بحاجة لإصلاح">بحاجة لإصلاح</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="price">السعر (جنيه سوداني) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        placeholder="45000000"
+                        value={adData.price}
+                        onChange={(e) => setAdData({...adData, price: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* معلومات الاتصال */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">معلومات الاتصال</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">المدينة *</Label>
+                      <div className="relative">
+                        <MapPin className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="city"
+                          placeholder="الخرطوم، بحري، أم درمان..."
+                          value={adData.city}
+                          onChange={(e) => setAdData({...adData, city: e.target.value})}
+                          className="pr-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">رقم الهاتف *</Label>
+                      <div className="relative">
+                        <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="09XXXXXXXX"
+                          value={adData.phone}
+                          onChange={(e) => setAdData({...adData, phone: e.target.value})}
+                          className="pr-10"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp">رقم الواتساب *</Label>
+                      <div className="relative">
+                        <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="whatsapp"
+                          type="tel"
+                          placeholder="09XXXXXXXX"
+                          value={adData.whatsapp}
+                          onChange={(e) => setAdData({...adData, whatsapp: e.target.value})}
+                          className="pr-10"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* الصور */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">صور السيارة</h3>
+                  
+                  <div className="space-y-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleImageAdd}
+                      className="w-full h-20 border-dashed"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-6 w-6" />
+                        <span>اختر صور من المعرض</span>
+                      </div>
+                    </Button>
+
+                    {images.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {images.map((image, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={image}
+                              alt={`صورة ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleImageRemove(index)}
+                              className="absolute top-1 right-1 w-6 h-6 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                  {loading ? "جاري النشر..." : "نشر الإعلان"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default AddAd;

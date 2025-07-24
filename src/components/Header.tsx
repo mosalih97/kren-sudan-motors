@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useUserPoints } from "@/hooks/useUserPoints";
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -14,7 +13,6 @@ export function Header() {
   const [profile, setProfile] = useState<any>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const { data: pointsData } = useUserPoints();
 
   useEffect(() => {
     if (user) {
@@ -80,11 +78,6 @@ export function Header() {
     navigate('/');
   };
 
-  const totalPoints = pointsData?.total_points || 0;
-  const adsUsed = pointsData?.monthly_ads_count || 0;
-  const adsLimit = pointsData?.monthly_ads_limit || 5;
-  const remainingAds = adsLimit - adsUsed;
-
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80">
       <div className="container mx-auto px-4 py-4">
@@ -135,10 +128,10 @@ export function Header() {
                 <div className="hidden sm:flex items-center gap-2 bg-primary-light rounded-full px-3 py-2">
                   <Crown className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">
-                    {totalPoints} نقطة
+                    {profile?.points || 0} نقطة
                   </span>
                   {profile?.membership_type === 'premium' && (
-                    <Badge variant="outline" className="text-xs px-2 py-0">مميز</Badge>
+                    <Badge variant="premium" className="text-xs px-2 py-0">مميز</Badge>
                   )}
                 </div>
 
@@ -173,9 +166,9 @@ export function Header() {
 
                 {/* إضافة إعلان */}
                 <Link to="/add-ad">
-                  <Button variant="accent" className="hidden sm:flex" disabled={remainingAds <= 0}>
+                  <Button variant="accent" className="hidden sm:flex">
                     <Plus className="h-4 w-4 ml-2" />
-                    أضف إعلان ({remainingAds})
+                    أضف إعلان
                   </Button>
                 </Link>
 
@@ -197,13 +190,13 @@ export function Header() {
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <Crown className="h-4 w-4 text-primary" />
-                        <span className="text-sm">{totalPoints} نقطة</span>
+                        <span className="text-sm">{profile?.points || 0} نقطة</span>
                         {profile?.membership_type === 'premium' && (
-                          <Badge variant="outline" className="text-xs">مميز</Badge>
+                          <Badge variant="premium" className="text-xs">مميز</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        إعلانات: {adsUsed}/{adsLimit} ({remainingAds} متبقي)
+                        إعلانات شهرية: {profile?.monthly_ads_count || 0}/5
                       </p>
                     </div>
                     <DropdownMenuSeparator />
@@ -240,9 +233,9 @@ export function Header() {
         {user && (
           <div className="flex md:hidden items-center justify-center gap-2 mt-4">
             <Link to="/add-ad" className="flex-1">
-              <Button variant="accent" size="sm" className="w-full" disabled={remainingAds <= 0}>
+              <Button variant="accent" size="sm" className="w-full">
                 <Plus className="h-4 w-4 ml-1" />
-                أضف إعلان ({remainingAds})
+                أضف إعلان
               </Button>
             </Link>
             <Button variant="outline" size="sm">

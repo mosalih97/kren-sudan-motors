@@ -1,44 +1,39 @@
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, Eye, MapPin, Calendar, Fuel, Settings, MessageCircle, Phone, Crown } from "lucide-react";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Heart, MapPin, Calendar, Fuel, Settings, Phone, MessageCircle, Eye, Crown, Zap, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
 
 interface CarCardProps {
   id: string;
   title: string;
   price: number;
-  location?: string;
+  location: string;
   year: number;
-  mileage?: number;
-  fuelType?: string;
+  mileage: string;
+  fuelType: string;
   transmission: string;
   image: string;
   isPremium?: boolean;
   isFeatured?: boolean;
   isNew?: boolean;
-  viewCount?: number;
-  userId: string;
+  viewCount: number;
+  creditsRequired?: number;
   seller?: {
     id: string;
     display_name: string;
-    avatar_url: string;
-    membership_type: string;
+    avatar_url?: string;
+    membership_type?: string;
   };
   showSellerInfo?: boolean;
-  onFavoriteChange?: (adId: string, isFavorite: boolean) => void;
-  showActions?: boolean;
-  onContactClick?: () => void;
+  topSpot?: boolean;
+  topSpotUntil?: string;
+  displayTier?: 'top_spot' | 'premium' | 'featured' | 'regular';
+  showBoostButton?: boolean;
+  userId?: string;
 }
-
-const formatPrice = (price: number) => {
-  return price.toLocaleString('ar-SD');
-};
 
 export function CarCard({
   id,
@@ -50,225 +45,167 @@ export function CarCard({
   fuelType,
   transmission,
   image,
-  isPremium,
-  isFeatured,
-  isNew,
+  isPremium = false,
+  isFeatured = false,
+  isNew = false,
   viewCount,
-  userId,
+  creditsRequired = 1,
   seller,
   showSellerInfo = false,
-  onFavoriteChange,
-  showActions = true,
-  onContactClick
+  topSpot = false,
+  topSpotUntil,
+  displayTier = 'regular',
+  showBoostButton = false,
+  userId
 }: CarCardProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
+  
+  // تحديد ما إذا كان الإعلان في Top Spot نشط
+  const isActiveTopSpot = topSpot && topSpotUntil && new Date(topSpotUntil) > new Date();
+  
+  // تحديد هل هذا إعلان المستخدم الحالي
+  const isOwnerAd = user?.id === userId;
 
-  useEffect(() => {
-    if (user) {
-      checkIfFavorite();
-      setIsOwner(user.id === userId);
+  // تحديد نمط البطاقة بناءً على النوع
+  const getCardClassName = () => {
+    if (isActiveTopSpot) {
+      return 'group relative overflow-hidden rounded-xl border-2 border-amber-400 shadow-xl hover:shadow-2xl transition-smooth hover:-translate-y-1 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20';
     }
-  }, [user, id, userId]);
-
-  const checkIfFavorite = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('favorites')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('ad_id', id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      setIsFavorite(!!data);
-    } catch (error) {
-      console.error('Error checking favorite:', error);
+    if (isPremium) {
+      return 'group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 premium-card shadow-premium';
     }
-  };
-
-  const toggleFavorite = async () => {
-    if (!user) {
-      toast.error('يجب تسجيل الدخول لحفظ الإعلانات في المفضلة');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (isFavorite) {
-        // Remove from favorites
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('ad_id', id);
-
-        if (error) throw error;
-        setIsFavorite(false);
-        onFavoriteChange?.(id, false);
-        toast.success('تم حذف الإعلان من المفضلة');
-      } else {
-        // Add to favorites
-        const { error } = await supabase
-          .from('favorites')
-          .insert([{ user_id: user.id, ad_id: id }]);
-
-        if (error) throw error;
-        setIsFavorite(true);
-        onFavoriteChange?.(id, true);
-        toast.success('تم حفظ الإعلان في المفضلة');
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      toast.error('حدث خطأ أثناء حفظ الإعلان في المفضلة');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleContactClick = () => {
-    if (onContactClick) {
-      onContactClick();
-    }
+    return 'group relative overflow-hidden rounded-xl border-0 shadow-lg hover:shadow-xl transition-smooth hover:-translate-y-1 card-gradient';
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200">
-      {/* صورة الإعلان */}
-      <div className="relative overflow-hidden">
-        <img 
-          src={image || "/placeholder.svg"} 
-          alt={title}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
-        />
-        
-        {/* الشارات */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1">
-          {isNew && (
-            <Badge className="bg-green-500 hover:bg-green-600">
-              جديد
-            </Badge>
-          )}
-          {(isFeatured || isPremium) && (
-            <Badge className="bg-blue-500 hover:bg-blue-600">
-              <Crown className="w-3 h-3 mr-1" />
-              مميز
-            </Badge>
-          )}
-        </div>
-
-        {/* زر المفضلة */}
-        {user && !isOwner && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute top-2 left-2 bg-white/80 hover:bg-white"
-            onClick={toggleFavorite}
-            disabled={isLoading}
-          >
-            <Heart className={`h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-          </Button>
+    <Card className={getCardClassName()}>
+      {/* الشارات */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
+        {isActiveTopSpot && (
+          <Badge className="bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-900 font-bold shadow-lg animate-pulse">
+            <Star className="w-3 h-3 mr-1" />
+            TOP SPOT
+          </Badge>
         )}
-
-        {/* زر المشاهدة */}
-        <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white px-2 py-1 rounded text-xs">
-          <Eye className="h-3 w-3" />
-          <span>{viewCount || 0}</span>
-        </div>
+        {isPremium && <Badge variant="premium">مميز</Badge>}
+        {isFeatured && <Badge variant="featured">مُوصى</Badge>}
+        {isNew && <Badge variant="new">جديد</Badge>}
       </div>
 
-      {/* محتوى البطاقة */}
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold mb-1 line-clamp-1">
-              {title}
-            </CardTitle>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-              <MapPin className="h-4 w-4" />
-              <span>{location || 'غير محدد'}</span>
-            </div>
-            {showSellerInfo && seller && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <img 
-                  src={seller.avatar_url || "/placeholder.svg"} 
-                  alt={seller.display_name}
-                  className="w-6 h-6 rounded-full"
-                />
-                <span>{seller.display_name}</span>
-                {seller.membership_type === 'premium' && (
-                  <Crown className="w-4 h-4 text-primary" />
-                )}
-              </div>
-            )}
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary">
-              {formatPrice(price)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              جنيه سوداني
-            </div>
-          </div>
-        </div>
-      </CardHeader>
+      {/* أيقونة الحفظ */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-3 left-3 z-10 bg-white/80 hover:bg-white hover:scale-110 transition-bounce"
+      >
+        <Heart className="h-4 w-4" />
+      </Button>
 
-      <CardContent className="pt-0">
-        {/* معلومات السيارة */}
-        <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{year}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Fuel className="h-4 w-4 text-muted-foreground" />
-            <span>{fuelType || 'غير محدد'}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Settings className="h-4 w-4 text-muted-foreground" />
-            <span>{transmission}</span>
-          </div>
-        </div>
+      {/* صورة السيارة */}
+      <div className="relative h-48 overflow-hidden">
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-smooth"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-smooth" />
+      </div>
 
-        {/* إجراءات البطاقة */}
-        {showActions && (
-          <div className="flex gap-2">
-            <Link to={`/ads/${id}`} className="flex-1">
-              <Button variant="outline" className="w-full">
-                عرض التفاصيل
-              </Button>
-            </Link>
-            
-            {user && !isOwner && (
-              <Button 
-                variant="accent" 
-                onClick={handleContactClick}
-                className="flex items-center gap-2"
-              >
-                <Phone className="h-4 w-4" />
-                اتصل
-              </Button>
-            )}
-            
-            {user && !isOwner && (
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  window.open(`/messages?to=${userId}&ad=${id}`, '_blank');
-                }}
-                className="flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
-            )}
+      <CardContent className="p-4 space-y-4">
+        {/* معلومات البائع أعلى العنوان */}
+        {seller && showSellerInfo && (
+          <div className="flex items-center gap-2 -mt-2 mb-3">
+            <div className="relative">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={seller.avatar_url} alt={seller.display_name} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {seller.display_name?.charAt(0) || 'ب'}
+                </AvatarFallback>
+              </Avatar>
+              {seller.membership_type === 'premium' && (
+                <Crown className="h-2.5 w-2.5 text-primary absolute -top-0.5 -right-0.5" />
+              )}
+            </div>
+            <span className="text-xs text-orange-500 font-medium">
+              {seller.display_name}
+            </span>
           </div>
         )}
+
+        {/* العنوان والسعر */}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-smooth line-clamp-2 flex-1">
+              {title}
+            </h3>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold primary-gradient bg-clip-text text-transparent">
+              {price.toLocaleString('ar-SD')} جنيه
+            </span>
+          </div>
+        </div>
+
+        {/* تفاصيل السيارة */}
+        <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span>{year}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4 text-primary" />
+            <span>{transmission}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Fuel className="h-4 w-4 text-primary" />
+            <span>{fuelType}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" />
+            <span>{viewCount} مشاهدة</span>
+          </div>
+        </div>
+
+        {/* الموقع */}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <MapPin className="h-4 w-4 text-accent" />
+          <span className="text-sm">{location}</span>
+        </div>
+
+        {/* أزرار التفاعل */}
+        <div className="flex gap-2 pt-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => navigate(`/ads/${id}`)}
+          >
+            عرض التفاصيل
+          </Button>
+          <Button variant="outline" size="sm" className="px-3">
+            <Phone className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="px-3">
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* زر الترقية للمالك */}
+        {isOwnerAd && showBoostButton && (
+          <div className="pt-2 border-t border-border/50">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className={`w-full ${isActiveTopSpot ? 'border-amber-400 text-amber-600 hover:bg-amber-50' : 'border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => navigate(`/boost-ad/${id}`)}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              {isActiveTopSpot ? 'مُعزز حالياً' : 'تعزيز الإعلان'}
+            </Button>
+          </div>
+        )}
+
       </CardContent>
     </Card>
   );
