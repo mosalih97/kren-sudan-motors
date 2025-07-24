@@ -25,13 +25,15 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
   const basePoints = pointsData.base_points;
   const premiumCredits = pointsData.premium_credits;
   const isPremium = pointsData.membership_type === 'premium';
+  const adsUsed = pointsData.monthly_ads_count;
+  const adsLimit = pointsData.monthly_ads_limit;
 
   if (variant === 'full') {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Crown className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">النقاط المتاحة</h3>
+          <h3 className="font-semibold">النقاط والإعلانات المتاحة</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -55,9 +57,13 @@ export function UserPointsDisplay({ variant = 'compact' }: UserPointsDisplayProp
         </div>
         
         <div className="p-4 bg-background border rounded-lg">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <span className="font-medium">إجمالي النقاط</span>
             <span className="text-2xl font-bold text-primary">{totalPoints}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">الإعلانات المستخدمة</span>
+            <span className="text-sm font-medium">{adsUsed}/{adsLimit}</span>
           </div>
         </div>
       </div>

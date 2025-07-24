@@ -27,7 +27,15 @@ export function useUserPoints() {
         throw error;
       }
 
-      return data as UserPointsData;
+      // تحويل البيانات إلى النوع المطلوب
+      return {
+        total_points: data?.total_points || 0,
+        base_points: data?.base_points || 0,
+        premium_credits: data?.premium_credits || 0,
+        membership_type: data?.membership_type || 'free',
+        monthly_ads_count: data?.monthly_ads_count || 0,
+        monthly_ads_limit: data?.monthly_ads_limit || 5
+      } as UserPointsData;
     },
     enabled: true,
     refetchInterval: 30000,

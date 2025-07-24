@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +37,13 @@ interface Ad {
   status: string;
   top_spot: boolean;
   top_spot_until: string;
+  mileage?: string;
+  fuel_type?: string;
+  transmission?: string;
+  condition?: string;
+  description?: string;
+  phone?: string;
+  whatsapp?: string;
 }
 
 interface Favorite {
@@ -55,7 +61,7 @@ export default function Profile() {
   const [city, setCity] = useState('');
   const [updating, setUpdating] = useState(false);
   const { user, signOut } = useAuth();
-  const { data: pointsData } = useUserPoints();
+  const { data: pointsData, refetch: refetchPoints } = useUserPoints();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -135,10 +141,10 @@ export default function Profile() {
       .eq('user_id', user?.id);
 
     if (error) {
-      toast.error('Failed to update profile.');
+      toast.error('فشل في تحديث الملف الشخصي.');
       console.error('Update profile error:', error);
     } else {
-      toast.success('Profile updated successfully!');
+      toast.success('تم تحديث الملف الشخصي بنجاح!');
       fetchProfile();
     }
 
@@ -182,10 +188,10 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* عرض النقاط المجمعة */}
+            {/* عرض النقاط والإعلانات */}
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>النقاط المتاحة</CardTitle>
+                <CardTitle>النقاط والإعلانات المتاحة</CardTitle>
               </CardHeader>
               <CardContent>
                 <UserPointsDisplay variant="full" />
@@ -211,7 +217,7 @@ export default function Profile() {
                 <div className="mt-4 bg-muted rounded-full h-2">
                   <div 
                     className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(adsUsed / adsLimit) * 100}%` }}
+                    style={{ width: `${adsLimit > 0 ? (adsUsed / adsLimit) * 100 : 0}%` }}
                   />
                 </div>
               </CardContent>
@@ -345,7 +351,36 @@ export default function Profile() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {favorites.map((favorite) => (
-                    <CarCard key={favorite.ad_id} {...favorite.ads} />
+                    <Card key={favorite.ad_id} className="overflow-hidden">
+                      <div className="relative">
+                        <img
+                          src={favorite.ads.images?.[0] || '/placeholder.svg'}
+                          alt={favorite.ads.title}
+                          className="w-full h-48 object-cover"
+                        />
+                      </div>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold mb-2">{favorite.ads.title}</h3>
+                        <p className="text-2xl font-bold text-primary mb-2">
+                          {favorite.ads.price?.toLocaleString()} جنيه
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {favorite.ads.brand} {favorite.ads.model} - {favorite.ads.year}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                          <MapPin className="w-4 h-4" />
+                          {favorite.ads.city}
+                          <Eye className="w-4 h-4 ml-4" />
+                          {favorite.ads.view_count} مشاهدة
+                        </div>
+                        <Button asChild size="sm" className="w-full">
+                          <Link to={`/ad/${favorite.ads.id}`}>
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            عرض الإعلان
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}

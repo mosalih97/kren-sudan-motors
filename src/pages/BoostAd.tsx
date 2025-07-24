@@ -110,28 +110,26 @@ export default function BoostAd() {
   };
 
   const checkBoostEligibility = async () => {
-    if (!id) return;
+    if (!id || !user) return;
     
     const eligibilityResults: {[key: string]: any} = {};
     
     for (const plan of boostPlans) {
       try {
-        const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: new URLSearchParams({ 
-            ad_id: id, 
-            boost_plan: plan.id 
-          }).toString()
+        const { data, error } = await supabase.rpc('can_boost_ad_enhanced', {
+          ad_id_param: id,
+          user_id_param: user.id,
+          boost_plan: plan.id
         });
 
-        if (!error) {
+        if (!error && data) {
           eligibilityResults[plan.id] = data;
+        } else {
+          eligibilityResults[plan.id] = { can_boost: false, reason: "خطأ في فحص الأهلية" };
         }
       } catch (error) {
         console.error(`Error checking eligibility for ${plan.id}:`, error);
+        eligibilityResults[plan.id] = { can_boost: false, reason: "خطأ في فحص الأهلية" };
       }
     }
     
@@ -144,11 +142,10 @@ export default function BoostAd() {
     setBoosting(plan.id);
     
     try {
-      const { data, error } = await supabase.functions.invoke('boost-ad-enhanced', {
-        body: JSON.stringify({
-          ad_id: ad.id,
-          boost_plan: plan.id
-        })
+      const { data, error } = await supabase.rpc('boost_ad_enhanced', {
+        ad_id_param: ad.id,
+        user_id_param: user.id,
+        boost_plan: plan.id
       });
 
       if (error) throw error;
