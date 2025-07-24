@@ -1,141 +1,151 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 export interface SearchFilters {
   searchQuery: string;
   brand: string;
   carType: string;
   state: string;
-  minYear: string;
-  maxYear: string;
+  yearFrom: string;
+  yearTo: string;
   minPrice: string;
   maxPrice: string;
 }
 
-export interface CarData {
-  id: string;
-  title: string;
-  brand: string;
-  model: string;
-  year: number;
-  price: number;
-  city: string;
-  state: string;
-  fuel_type: string;
-  transmission: string;
-  mileage: number;
-  condition: string;
-  car_type: string;
-  images: string[];
-  user_id: string;
-  created_at: string;
-  is_premium: boolean;
-  is_featured: boolean;
-  view_count: number;
-  top_spot: boolean;
-  top_spot_until: string;
-  display_tier: number;
-}
-
 export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
-    searchQuery: "",
-    brand: "",
-    carType: "",
-    state: "",
-    minYear: "",
-    maxYear: "",
-    minPrice: "",
-    maxPrice: "",
+    searchQuery: '',
+    brand: '',
+    carType: '',
+    state: '',
+    yearFrom: '',
+    yearTo: '',
+    minPrice: '',
+    maxPrice: ''
   });
+  
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const { toast } = useToast();
 
-  const [filteredCars, setFilteredCars] = useState<CarData[]>([]);
-  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  const performSearch = async () => {
+    if (!filters.searchQuery && !filters.brand && !filters.carType && !filters.state && !filters.yearFrom && !filters.yearTo && !filters.minPrice && !filters.maxPrice) {
+      toast({
+        title: "تنبيه",
+        description: "يرجى إدخال معايير البحث",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  // تحديث حالة الفلاتر النشطة
-  useEffect(() => {
-    const isActive = Object.entries(filters).some(([key, value]) => 
-      value !== "" && key !== "searchQuery"
-    ) || filters.searchQuery.trim() !== "";
-    setHasActiveFilters(isActive);
-  }, [filters]);
+    setLoading(true);
+    setHasSearched(true);
 
-  const updateFilter = (key: keyof SearchFilters, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    try {
+      let query = supabase
+        .from('ads')
+        .select(`
+          *,
+          profiles!ads_user_id_fkey(
+            display_name,
+            avatar_url,
+            membership_type,
+            user_id_display
+          )
+        `)
+        .eq('status', 'active');
+
+      // Apply filters
+      if (filters.searchQuery) {
+        query = query.or(`title.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%,model.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
+      }
+
+      if (filters.brand && filters.brand !== 'all') {
+        query = query.eq('brand', filters.brand);
+      }
+
+      if (filters.carType && filters.carType !== 'all') {
+        // Assuming car type is stored in a field, adjust as needed
+        query = query.eq('car_type', filters.carType);
+      }
+
+      if (filters.state && filters.state !== 'all') {
+        query = query.eq('city', filters.state);
+      }
+
+      if (filters.yearFrom) {
+        query = query.gte('year', parseInt(filters.yearFrom));
+      }
+
+      if (filters.yearTo) {
+        query = query.lte('year', parseInt(filters.yearTo));
+      }
+
+      if (filters.minPrice) {
+        query = query.gte('price', parseInt(filters.minPrice));
+      }
+
+      if (filters.maxPrice) {
+        query = query.lte('price', parseInt(filters.maxPrice));
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Search error:', error);
+        toast({
+          title: "خطأ في البحث",
+          description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setSearchResults(data || []);
+      
+      toast({
+        title: "نتائج البحث",
+        description: `تم العثور على ${data?.length || 0} نتيجة`,
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Search error:', error);
+      toast({
+        title: "خطأ في البحث",
+        description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearFilters = () => {
     setFilters({
-      searchQuery: "",
-      brand: "",
-      carType: "",
-      state: "",
-      minYear: "",
-      maxYear: "",
-      minPrice: "",
-      maxPrice: "",
+      searchQuery: '',
+      brand: '',
+      carType: '',
+      state: '',
+      yearFrom: '',
+      yearTo: '',
+      minPrice: '',
+      maxPrice: ''
     });
-    setFilteredCars([]);
-  };
-
-  const performSearch = (cars: CarData[]) => {
-    let filtered = [...cars];
-
-    // البحث النصي
-    if (filters.searchQuery.trim()) {
-      const query = filters.searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(car => 
-        car.title.toLowerCase().includes(query) ||
-        car.brand.toLowerCase().includes(query) ||
-        car.model.toLowerCase().includes(query) ||
-        car.city.toLowerCase().includes(query)
-      );
-    }
-
-    // فلترة حسب الماركة
-    if (filters.brand && filters.brand !== "all") {
-      filtered = filtered.filter(car => car.brand === filters.brand);
-    }
-
-    // فلترة حسب نوع السيارة
-    if (filters.carType && filters.carType !== "all") {
-      filtered = filtered.filter(car => car.car_type === filters.carType);
-    }
-
-    // فلترة حسب الولاية
-    if (filters.state && filters.state !== "all") {
-      filtered = filtered.filter(car => car.state === filters.state);
-    }
-
-    // فلترة حسب السنة
-    if (filters.minYear) {
-      filtered = filtered.filter(car => car.year >= parseInt(filters.minYear));
-    }
-    if (filters.maxYear) {
-      filtered = filtered.filter(car => car.year <= parseInt(filters.maxYear));
-    }
-
-    // فلترة حسب السعر
-    if (filters.minPrice) {
-      filtered = filtered.filter(car => car.price >= parseInt(filters.minPrice));
-    }
-    if (filters.maxPrice) {
-      filtered = filtered.filter(car => car.price <= parseInt(filters.maxPrice));
-    }
-
-    setFilteredCars(filtered);
-    return filtered;
+    setSearchResults([]);
+    setHasSearched(false);
   };
 
   return {
     filters,
-    filteredCars,
-    hasActiveFilters,
-    updateFilter,
-    clearFilters,
+    setFilters,
+    searchResults,
+    loading,
+    hasSearched,
     performSearch,
+    clearFilters
   };
 };

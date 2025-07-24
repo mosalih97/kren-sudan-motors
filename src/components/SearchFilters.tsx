@@ -23,23 +23,21 @@ const carTypes = [
 ];
 
 interface SearchFiltersProps {
-  onSearch?: (filters: any) => void;
+  onSearch?: (results: any[]) => void;
 }
 
 export function SearchFilters({ onSearch }: SearchFiltersProps) {
-  const { filters, updateFilter, clearFilters, hasActiveFilters } = useSearchFilters();
+  const { filters, setFilters, performSearch, clearFilters, loading } = useSearchFilters();
 
-  const handleSearch = () => {
-    if (onSearch) {
-      onSearch(filters);
-    }
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
-  const handleClearFilters = () => {
-    clearFilters();
-    if (onSearch) {
-      onSearch({});
-    }
+  const handleSearch = async () => {
+    await performSearch();
   };
 
   return (
@@ -52,7 +50,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
             placeholder="ابحث عن سيارة... (مثال: تويوتا كامري 2020)"
             className="pr-12 h-14 text-lg rounded-xl border-2 border-primary/20 focus:border-primary/50 transition-smooth"
             value={filters.searchQuery}
-            onChange={(e) => updateFilter('searchQuery', e.target.value)}
+            onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
           />
         </div>
 
@@ -64,7 +62,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <Car className="h-4 w-4 text-primary" />
               الماركة
             </label>
-            <Select value={filters.brand} onValueChange={(value) => updateFilter('brand', value)}>
+            <Select value={filters.brand} onValueChange={(value) => handleFilterChange('brand', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-primary/30 transition-smooth">
                 <SelectValue placeholder="اختر الماركة" />
               </SelectTrigger>
@@ -83,7 +81,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <Car className="h-4 w-4 text-secondary" />
               النوع
             </label>
-            <Select value={filters.carType} onValueChange={(value) => updateFilter('carType', value)}>
+            <Select value={filters.carType} onValueChange={(value) => handleFilterChange('carType', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-secondary/30 transition-smooth">
                 <SelectValue placeholder="نوع السيارة" />
               </SelectTrigger>
@@ -102,7 +100,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               <MapPin className="h-4 w-4 text-accent" />
               الولاية
             </label>
-            <Select value={filters.state} onValueChange={(value) => updateFilter('state', value)}>
+            <Select value={filters.state} onValueChange={(value) => handleFilterChange('state', value)}>
               <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-accent/30 transition-smooth">
                 <SelectValue placeholder="اختر الولاية" />
               </SelectTrigger>
@@ -122,7 +120,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               السنة
             </label>
             <div className="flex gap-2">
-              <Select value={filters.minYear} onValueChange={(value) => updateFilter('minYear', value)}>
+              <Select value={filters.yearFrom} onValueChange={(value) => handleFilterChange('yearFrom', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="من" />
                 </SelectTrigger>
@@ -132,7 +130,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filters.maxYear} onValueChange={(value) => updateFilter('maxYear', value)}>
+              <Select value={filters.yearTo} onValueChange={(value) => handleFilterChange('yearTo', value)}>
                 <SelectTrigger className="h-12 rounded-lg border-2 border-border/50 hover:border-premium/30 transition-smooth">
                   <SelectValue placeholder="إلى" />
                 </SelectTrigger>
@@ -158,30 +156,36 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
               placeholder="السعر الأدنى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.minPrice}
-              onChange={(e) => updateFilter('minPrice', e.target.value)}
+              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
             />
             <Input
               type="number"
               placeholder="السعر الأعلى"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.maxPrice}
-              onChange={(e) => updateFilter('maxPrice', e.target.value)}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
             />
           </div>
         </div>
 
         {/* أزرار البحث */}
         <div className="flex gap-4 pt-2">
-          <Button variant="hero" size="lg" className="flex-1" onClick={handleSearch}>
+          <Button 
+            variant="hero" 
+            size="lg" 
+            className="flex-1" 
+            onClick={handleSearch}
+            disabled={loading}
+          >
             <Search className="h-5 w-5 ml-2" />
-            بحث متقدم
+            {loading ? 'جاري البحث...' : 'بحث متقدم'}
           </Button>
           <Button 
             variant="outline" 
             size="lg" 
-            className="px-8" 
-            onClick={handleClearFilters}
-            disabled={!hasActiveFilters}
+            className="px-8"
+            onClick={clearFilters}
+            disabled={loading}
           >
             <Filter className="h-5 w-5 ml-2" />
             مسح الفلاتر
