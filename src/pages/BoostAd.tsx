@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Zap, Crown, Star, MessageCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Zap, Crown, Star, MessageCircle, AlertCircle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -82,29 +82,58 @@ export default function BoostAd() {
   const [loading, setLoading] = useState(true);
   const [boosting, setBoosting] = useState<string | null>(null);
   const [boostEligibility, setBoostEligibility] = useState<{[key: string]: any}>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !id) return;
+    if (!user) {
+      toast.error("يجب تسجيل الدخول لتعزيز الإعلانات");
+      navigate('/auth');
+      return;
+    }
+    
+    if (!id) {
+      toast.error("معرف الإعلان غير صحيح");
+      navigate('/profile');
+      return;
+    }
     
     fetchAd();
     checkBoostEligibility();
-  }, [user, id]);
+  }, [user, id, navigate]);
 
   const fetchAd = async () => {
+    if (!id || !user) return;
+    
     try {
+      setLoading(true);
+      setError(null);
+      
       const { data: adData, error: adError } = await supabase
         .from('ads')
         .select('*')
         .eq('id', id)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
 
-      if (adError) throw adError;
+      if (adError) {
+        console.error('Error fetching ad:', adError);
+        if (adError.code === 'PGRST116') {
+          setError("الإعلان غير موجود أو لا تملك صلاحية الوصول إليه");
+        } else {
+          setError("فشل في جلب بيانات الإعلان");
+        }
+        return;
+      }
+
+      if (!adData) {
+        setError("الإعلان غير موجود");
+        return;
+      }
+
       setAd(adData);
     } catch (error) {
       console.error('Error fetching ad:', error);
-      toast.error("فشل في جلب بيانات الإعلان");
-      navigate('/profile');
+      setError("حدث خطأ في جلب بيانات الإعلان");
     } finally {
       setLoading(false);
     }
@@ -132,7 +161,11 @@ export default function BoostAd() {
             user_points: result?.user_points || null
           };
         } else {
-          eligibilityResults[plan.id] = { can_boost: false, reason: "خطأ في فحص الأهلية" };
+          console.error(`Error checking eligibility for ${plan.id}:`, error);
+          eligibilityResults[plan.id] = { 
+            can_boost: false, 
+            reason: error?.message || "خطأ في فحص الأهلية" 
+          };
         }
       } catch (error) {
         console.error(`Error checking eligibility for ${plan.id}:`, error);
@@ -145,6 +178,13 @@ export default function BoostAd() {
 
   const handleBoost = async (plan: BoostPlan) => {
     if (!user || !ad) return;
+
+    // التحقق من الأهلية مرة أخرى
+    const eligibility = boostEligibility[plan.id];
+    if (!eligibility?.can_boost) {
+      toast.error(eligibility?.reason || "لا يمكن تعزيز الإعلان");
+      return;
+    }
 
     setBoosting(plan.id);
     
@@ -160,7 +200,7 @@ export default function BoostAd() {
 
       if (error) {
         console.error('Boost error:', error);
-        toast.error("فشل في تعزيز الإعلان");
+        toast.error(error.message || "فشل في تعزيز الإعلان");
         return;
       }
 
@@ -180,8 +220,9 @@ export default function BoostAd() {
         }));
         
         // تحديث حالة الأهلية
-        checkBoostEligibility();
+        await checkBoostEligibility();
         
+        // الانتقال إلى الملف الشخصي بعد نجاح التعزيز
         setTimeout(() => {
           navigate('/profile');
         }, 2000);
@@ -201,7 +242,40 @@ export default function BoostAd() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">جاري التحميل...</div>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">جاري التحميل...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Card className="max-w-md mx-auto">
+              <CardContent className="p-8 text-center">
+                <AlertCircle className="h-16 w-16 mx-auto text-destructive mb-4" />
+                <h2 className="text-xl font-semibold mb-2">خطأ في تحميل الإعلان</h2>
+                <p className="text-muted-foreground mb-6">{error}</p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={() => navigate('/profile')} variant="outline">
+                    <ArrowLeft className="ml-2 h-4 w-4" />
+                    العودة للملف الشخصي
+                  </Button>
+                  <Button onClick={fetchAd}>
+                    إعادة المحاولة
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -212,7 +286,20 @@ export default function BoostAd() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">الإعلان غير موجود أو غير مملوك لك</div>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Card className="max-w-md mx-auto">
+              <CardContent className="p-8 text-center">
+                <h2 className="text-xl font-semibold mb-2">الإعلان غير موجود</h2>
+                <p className="text-muted-foreground mb-6">
+                  الإعلان غير موجود أو غير مملوك لك
+                </p>
+                <Button onClick={() => navigate('/profile')}>
+                  <ArrowLeft className="ml-2 h-4 w-4" />
+                  العودة للملف الشخصي
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -228,11 +315,11 @@ export default function BoostAd() {
         <div className="mb-6">
           <Button 
             variant="ghost" 
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/profile')}
             className="mb-4"
           >
             <ArrowLeft className="ml-2 h-4 w-4" />
-            العودة
+            العودة للملف الشخصي
           </Button>
           
           <h1 className="text-3xl font-bold mb-2">تعزيز الإعلان</h1>
@@ -296,7 +383,7 @@ export default function BoostAd() {
                   <ul className="space-y-2 mb-6">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                         {feature}
                       </li>
                     ))}
