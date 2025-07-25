@@ -26,8 +26,11 @@ export const usePasswordReset = () => {
         return { success: false, message: emailValidation.errors[0] };
       }
 
+      // Use a more specific redirect URL to ensure proper handling
+      const redirectUrl = `${window.location.origin}/password-reset?mode=reset`;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
-        redirectTo: `${window.location.origin}/password-reset`
+        redirectTo: redirectUrl
       });
 
       if (error) {

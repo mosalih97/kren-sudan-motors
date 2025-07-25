@@ -17,15 +17,18 @@ const PasswordReset = () => {
   useEffect(() => {
     const handleAuthStateChange = async () => {
       try {
-        // Check if this is a password reset callback
+        // Check if this is a password reset callback from email
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
-        const mode = searchParams.get('mode');
+        
+        console.log('URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
 
         if (type === 'recovery' && accessToken && refreshToken) {
           // This is a password reset callback from email
-          const { error } = await supabase.auth.setSession({
+          console.log('Processing password reset callback');
+          
+          const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
@@ -37,15 +40,21 @@ const PasswordReset = () => {
               description: "الرابط غير صحيح أو منتهي الصلاحية",
               variant: "destructive"
             });
+            setIsResetMode(false);
           } else {
+            console.log('Session set successfully, switching to reset mode');
             setIsResetMode(true);
           }
-        } else if (mode === 'reset') {
-          // Direct reset mode from URL parameter
-          setIsResetMode(true);
         } else {
-          // Default to request mode
-          setIsResetMode(false);
+          // Check if user is already authenticated (for direct access)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            console.log('User already authenticated, switching to reset mode');
+            setIsResetMode(true);
+          } else {
+            console.log('No session found, staying in request mode');
+            setIsResetMode(false);
+          }
         }
       } catch (error) {
         console.error('Auth state change error:', error);
@@ -54,6 +63,7 @@ const PasswordReset = () => {
           description: "حدث خطأ أثناء معالجة الطلب",
           variant: "destructive"
         });
+        setIsResetMode(false);
       } finally {
         setLoading(false);
       }
