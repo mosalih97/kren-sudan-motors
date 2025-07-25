@@ -2,8 +2,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
-import { BackButton } from "@/components/BackButton";
-import { NavigationArrows } from "@/components/NavigationArrows";
 import { CarCard } from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -124,7 +122,6 @@ const SearchResults = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton variant="floating" />
       
       {/* Header Section */}
       <section className="py-8 bg-muted/30">
@@ -263,17 +260,6 @@ const SearchResults = () => {
           )}
         </div>
       </section>
-
-      <NavigationArrows
-        prevPage={{
-          url: "/",
-          title: "الرئيسية"
-        }}
-        nextPage={{
-          url: "/cars",
-          title: "السيارات"
-        }}
-      />
     </div>
   );
 };

@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface PasswordResetHeaderProps {
   isResetMode: boolean;
@@ -18,9 +18,9 @@ export const PasswordResetHeader = ({ isResetMode }: PasswordResetHeaderProps) =
           variant="ghost"
           size="sm"
           onClick={() => navigate('/auth')}
-          className="gap-2 group transition-all duration-200 hover:scale-105"
+          className="gap-2"
         >
-          <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          <ArrowLeft className="h-4 w-4" />
           العودة
         </Button>
       </div>

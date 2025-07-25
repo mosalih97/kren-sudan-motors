@@ -1,20 +1,17 @@
-
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { BackButton } from "@/components/BackButton";
-import { NavigationArrows } from "@/components/NavigationArrows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
-import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard, AlertCircle } from "lucide-react";
+import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard } from "lucide-react";
 import { CarCard } from "@/components/CarCard";
 
 const Profile = () => {
@@ -25,7 +22,6 @@ const Profile = () => {
   const [favorites, setFavorites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,31 +33,10 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-        setAuthChecked(true);
-        
-        if (!session?.user) {
-          navigate("/auth");
-          return;
-        }
-      } catch (error) {
-        console.error("Error getting session:", error);
-        setAuthChecked(true);
-        navigate("/auth");
-      }
-    };
-
-    initializeAuth();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setAuthChecked(true);
         
         if (!session?.user) {
           navigate("/auth");
@@ -69,78 +44,84 @@ const Profile = () => {
       }
     );
 
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session?.user) {
+        navigate("/auth");
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   useEffect(() => {
-    if (user && authChecked) {
-      fetchUserData();
+    if (user) {
+      fetchProfile();
+      fetchUserAds();
+      fetchFavorites();
     }
-  }, [user, authChecked]);
+  }, [user]);
 
-  const fetchUserData = async () => {
+  const fetchProfile = async () => {
     if (!user) return;
     
-    setLoading(true);
     try {
-      // Fetch all data in parallel
-      const [profileResult, adsResult, favoritesResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("ads")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("favorites")
-          .select(`
-            *,
-            ads (*)
-          `)
-          .eq("user_id", user.id)
-      ]);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
 
-      if (profileResult.error) {
-        console.error("Profile error:", profileResult.error);
-        toast({
-          title: "خطأ في تحميل الملف الشخصي",
-          description: "حدث خطأ أثناء تحميل بياناتك",
-          variant: "destructive"
-        });
-      } else {
-        setProfile(profileResult.data);
-        setProfileData({
-          displayName: profileResult.data.display_name || "",
-          phone: profileResult.data.phone || "",
-          city: profileResult.data.city || ""
-        });
-      }
+      if (error) throw error;
 
-      if (adsResult.error) {
-        console.error("Ads error:", adsResult.error);
-      } else {
-        setUserAds(adsResult.data || []);
-      }
-
-      if (favoritesResult.error) {
-        console.error("Favorites error:", favoritesResult.error);
-      } else {
-        setFavorites(favoritesResult.data || []);
-      }
-
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      toast({
-        title: "خطأ في التحميل",
-        description: "حدث خطأ أثناء تحميل البيانات",
-        variant: "destructive"
+      setProfile(data);
+      setProfileData({
+        displayName: data.display_name || "",
+        phone: data.phone || "",
+        city: data.city || ""
       });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserAds = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setUserAds(data || []);
+    } catch (error) {
+      console.error("Error fetching user ads:", error);
+    }
+  };
+
+  const fetchFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("favorites")
+        .select(`
+          *,
+          ads (*)
+        `)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setFavorites(data || []);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
     }
   };
 
@@ -166,7 +147,7 @@ const Profile = () => {
         description: "تم حفظ التغييرات بنجاح"
       });
 
-      fetchUserData();
+      fetchProfile();
     } catch (error) {
       toast({
         title: "خطأ في التحديث",
@@ -191,56 +172,20 @@ const Profile = () => {
     }
   };
 
-  // Show loading skeleton while checking auth
-  if (!authChecked || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <BackButton variant="floating" />
+        <BackButton to="/" />
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <Card className="card-gradient border-0 shadow-lg mb-8">
-              <CardContent className="p-8">
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <Skeleton className="w-24 h-24 rounded-full" />
-                  <div className="flex-1 space-y-4">
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                    <div className="flex gap-3">
-                      <Skeleton className="h-6 w-24" />
-                      <Skeleton className="h-6 w-24" />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <div className="text-center">جاري التحميل...</div>
         </div>
       </div>
     );
   }
 
   if (!user || !profile) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <BackButton variant="floating" />
-        <div className="container mx-auto px-4 py-8">
-          <Card className="card-gradient border-0 shadow-lg">
-            <CardContent className="p-8 text-center">
-              <AlertCircle className="h-16 w-16 mx-auto text-destructive mb-4" />
-              <h3 className="text-xl font-bold mb-2">خطأ في تحميل الملف الشخصي</h3>
-              <p className="text-muted-foreground mb-4">
-                حدث خطأ أثناء تحميل بيانات الملف الشخصي
-              </p>
-              <Button onClick={() => navigate("/auth")}>
-                تسجيل الدخول
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Calculate total points properly
@@ -256,7 +201,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton variant="floating" />
+      <BackButton to="/" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -493,17 +438,6 @@ const Profile = () => {
           </Tabs>
         </div>
       </div>
-
-      <NavigationArrows
-        prevPage={{
-          url: "/",
-          title: "الرئيسية"
-        }}
-        nextPage={{
-          url: "/cars",
-          title: "السيارات"
-        }}
-      />
     </div>
   );
 };

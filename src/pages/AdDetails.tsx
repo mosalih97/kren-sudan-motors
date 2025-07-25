@@ -3,13 +3,11 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { BackButton } from "@/components/BackButton";
-import { NavigationArrows } from "@/components/NavigationArrows";
 import { ContactRevealButtons } from "@/components/ContactRevealButtons";
 import { ImageGallery } from "@/components/ImageGallery";
 import { CarCard } from "@/components/CarCard";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Gauge, Fuel, Settings, MapPin, Car } from "lucide-react";
+import { Calendar, Gauge, Fuel, Settings, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -91,17 +89,9 @@ const AdDetails = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <BackButton variant="floating" />
+        <BackButton />
         <div className="container mx-auto px-4 py-8">
-          <Card className="card-gradient border-0 shadow-lg">
-            <CardContent className="p-8 text-center">
-              <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4 animate-pulse" />
-              <h3 className="text-xl font-bold mb-2">جاري التحميل...</h3>
-              <p className="text-muted-foreground">
-                يتم تحميل تفاصيل الإعلان
-              </p>
-            </CardContent>
-          </Card>
+          <div className="text-center">جاري التحميل...</div>
         </div>
       </div>
     );
@@ -114,7 +104,7 @@ const AdDetails = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton variant="floating" />
+      <BackButton />
       
       <div className="container mx-auto px-4 py-8">
         {/* Ad Details */}
@@ -210,7 +200,6 @@ const AdDetails = () => {
                       isPremium={otherAd.is_premium}
                       isFeatured={otherAd.is_featured}
                       viewCount={otherAd.view_count}
-                      creditsRequired={1}
                     />
                   )
               )}
@@ -218,17 +207,6 @@ const AdDetails = () => {
           </div>
         )}
       </div>
-
-      <NavigationArrows
-        prevPage={{
-          url: "/cars",
-          title: "السيارات"
-        }}
-        nextPage={{
-          url: "/",
-          title: "الرئيسية"
-        }}
-      />
     </div>
   );
 };

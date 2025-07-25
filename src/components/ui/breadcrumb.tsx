@@ -1,7 +1,6 @@
-
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { ChevronLeft, MoreHorizontal, Home } from "lucide-react"
+import { ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -51,10 +50,7 @@ const BreadcrumbLink = React.forwardRef<
   return (
     <Comp
       ref={ref}
-      className={cn(
-        "transition-all duration-200 hover:text-foreground hover:scale-105 flex items-center gap-1.5",
-        className
-      )}
+      className={cn("transition-colors hover:text-foreground", className)}
       {...props}
     />
   )
@@ -70,7 +66,7 @@ const BreadcrumbPage = React.forwardRef<
     role="link"
     aria-disabled="true"
     aria-current="page"
-    className={cn("font-medium text-foreground", className)}
+    className={cn("font-normal text-foreground", className)}
     {...props}
   />
 ))
@@ -87,24 +83,10 @@ const BreadcrumbSeparator = ({
     className={cn("[&>svg]:size-3.5", className)}
     {...props}
   >
-    {children ?? <ChevronLeft className="transition-transform duration-200" />}
+    {children ?? <ChevronRight />}
   </li>
 )
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator"
-
-const BreadcrumbHome = ({
-  className,
-  ...props
-}: React.ComponentProps<"span">) => (
-  <span
-    className={cn("flex items-center gap-1.5", className)}
-    {...props}
-  >
-    <Home className="h-4 w-4" />
-    <span>الرئيسية</span>
-  </span>
-)
-BreadcrumbHome.displayName = "BreadcrumbHome"
 
 const BreadcrumbEllipsis = ({
   className,
@@ -117,10 +99,10 @@ const BreadcrumbEllipsis = ({
     {...props}
   >
     <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">المزيد</span>
+    <span className="sr-only">More</span>
   </span>
 )
-BreadcrumbEllipsis.displayName = "BreadcrumbEllipsis"
+BreadcrumbEllipsis.displayName = "BreadcrumbElipssis"
 
 export {
   Breadcrumb,
@@ -130,5 +112,4 @@ export {
   BreadcrumbPage,
   BreadcrumbSeparator,
   BreadcrumbEllipsis,
-  BreadcrumbHome,
 }
