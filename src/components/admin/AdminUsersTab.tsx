@@ -29,6 +29,11 @@ interface User {
   ads_count: number;
 }
 
+interface AdminResponse {
+  success: boolean;
+  message: string;
+}
+
 interface AdminUsersTabProps {
   onStatsUpdate: () => void;
 }
@@ -79,17 +84,19 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({ onStatsUpdate }) =
 
       if (error) throw error;
 
-      if (data.success) {
+      const response = data as AdminResponse;
+
+      if (response.success) {
         toast({
           title: "تم بنجاح",
-          description: data.message
+          description: response.message
         });
         fetchUsers();
         onStatsUpdate();
       } else {
         toast({
           title: "خطأ في الترقية",
-          description: data.message,
+          description: response.message,
           variant: "destructive"
         });
       }
@@ -118,17 +125,19 @@ export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({ onStatsUpdate }) =
 
       if (error) throw error;
 
-      if (data.success) {
+      const response = data as AdminResponse;
+
+      if (response.success) {
         toast({
           title: "تم بنجاح",
-          description: data.message
+          description: response.message
         });
         fetchUsers();
         onStatsUpdate();
       } else {
         toast({
           title: "خطأ في إلغاء الترقية",
-          description: data.message,
+          description: response.message,
           variant: "destructive"
         });
       }

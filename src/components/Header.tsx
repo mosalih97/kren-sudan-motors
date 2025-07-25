@@ -1,9 +1,4 @@
-import {
-  SignedIn,
-  SignedOut,
-  UserButton,
-  useUser,
-} from "@clerk/nextjs";
+
 import { Link } from "react-router-dom";
 import {
   NavigationMenu,
@@ -86,15 +81,13 @@ const Header = () => {
           </NavigationMenuList>
         </NavigationMenu>
         <div className="flex items-center space-x-4">
-          <SignedOut>
+          {!user ? (
             <Link to="/auth">
               <Button variant="outline" size="sm">
                 تسجيل الدخول
               </Button>
             </Link>
-          </SignedOut>
-
-          {user && (
+          ) : (
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

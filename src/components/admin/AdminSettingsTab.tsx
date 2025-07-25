@@ -10,6 +10,11 @@ import { Settings, Key, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import bcrypt from 'bcryptjs';
 
+interface AdminResponse {
+  success: boolean;
+  message: string;
+}
+
 export const AdminSettingsTab: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -89,10 +94,12 @@ export const AdminSettingsTab: React.FC = () => {
 
       if (error) throw error;
 
-      if (data.success) {
+      const response = data as AdminResponse;
+
+      if (response.success) {
         toast({
           title: "تم التحديث بنجاح",
-          description: data.message
+          description: response.message
         });
         
         // إعادة تعيين النموذج
@@ -103,7 +110,7 @@ export const AdminSettingsTab: React.FC = () => {
       } else {
         toast({
           title: "خطأ في التحديث",
-          description: data.message,
+          description: response.message,
           variant: "destructive"
         });
       }
