@@ -89,7 +89,7 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
 
     setLoading(true);
     try {
-      // Log security event
+      // تسجيل محاولة إعادة تعيين كلمة المرور
       await supabase.rpc('log_security_event', {
         event_type: 'password_reset_attempted',
         event_data: {
@@ -98,24 +98,20 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
         }
       });
 
+      // استخدام الدالة الجديدة لإعادة تعيين كلمة المرور
       const { data, error } = await supabase.rpc('reset_password_with_token', {
         reset_token: sanitizedToken,
         new_password: sanitizedPassword
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error resetting password:', error);
+        throw error;
+      }
 
       const result = data as { success: boolean; message: string };
       
       if (result.success) {
-        // Log successful password reset
-        await supabase.rpc('log_security_event', {
-          event_type: 'password_reset_successful',
-          event_data: {
-            timestamp: new Date().toISOString()
-          }
-        });
-
         toast({
           title: "تم بنجاح",
           description: "تم تحديث كلمة المرور بنجاح",
@@ -128,7 +124,9 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
         throw new Error(result.message);
       }
     } catch (error: any) {
-      // Log failed password reset
+      console.error('Password reset error:', error);
+      
+      // تسجيل الحدث الأمني للفشل
       try {
         await supabase.rpc('log_security_event', {
           event_type: 'password_reset_failed',
@@ -143,8 +141,8 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
 
       let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
       
-      if (error?.message?.includes('token')) {
-        errorMessage = "الرمز غير صحيح أو منتهي الصلاحية";
+      if (error?.message?.includes('التوكن غير صحيح') || error?.message?.includes('منتهي الصلاحية')) {
+        errorMessage = "الرابط غير صحيح أو منتهي الصلاحية. يرجى طلب رابط جديد";
       }
       
       toast({

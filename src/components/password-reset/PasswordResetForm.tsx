@@ -42,39 +42,44 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
 
     setLoading(true);
     try {
-      // Log security event
-      await supabase.rpc('log_security_event', {
-        event_type: 'password_reset_requested',
-        event_data: {
-          email: sanitizedEmail,
-          timestamp: new Date().toISOString()
-        }
-      });
-
+      // استخدام الدالة الجديدة لإنشاء توكن استعادة كلمة المرور
       const { data, error } = await supabase.rpc('create_password_reset_token', {
         user_email: sanitizedEmail
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating reset token:', error);
+        throw error;
+      }
 
-      const result = data as { success: boolean; message: string };
+      const result = data as { success: boolean; message: string; token?: string };
       
       if (result.success) {
+        // تسجيل الحدث الأمني
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_requested',
+          event_data: {
+            email: sanitizedEmail,
+            timestamp: new Date().toISOString()
+          }
+        });
+
         toast({
           title: "تم إرسال الطلب",
-          description: "تم إنشاء رمز استعادة كلمة المرور بنجاح. يرجى التحقق من بريدك الإلكتروني.",
+          description: "إذا كان البريد الإلكتروني مسجل في النظام، ستتلقى رسالة تحتوي على رابط لإعادة تعيين كلمة المرور",
         });
         
         onSuccess?.(sanitizedEmail);
       } else {
         toast({
-          title: "خطأ",
-          description: result.message || "حدث خطأ غير متوقع",
-          variant: "destructive"
+          title: "تنبيه",
+          description: "إذا كان البريد الإلكتروني مسجل في النظام، ستتلقى رسالة تحتوي على رابط لإعادة تعيين كلمة المرور",
         });
       }
     } catch (error: any) {
-      // Log security event for failed attempt
+      console.error('Password reset error:', error);
+      
+      // تسجيل الحدث الأمني للفشل
       try {
         await supabase.rpc('log_security_event', {
           event_type: 'password_reset_failed',
@@ -88,15 +93,9 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
         console.error('Failed to log security event:', logError);
       }
 
-      let errorMessage = "حدث خطأ أثناء إرسال الطلب";
-      
-      if (error?.message?.includes('email')) {
-        errorMessage = "البريد الإلكتروني غير صحيح";
-      }
-      
       toast({
         title: "خطأ",
-        description: errorMessage,
+        description: "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
     } finally {
