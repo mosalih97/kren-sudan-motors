@@ -10,11 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { validatePassword } from "@/utils/passwordValidation";
 import { sanitizeInput } from "@/utils/inputSanitizer";
 
-interface NewPasswordFormProps {
-  token: string;
-}
-
-export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
+export const NewPasswordForm = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

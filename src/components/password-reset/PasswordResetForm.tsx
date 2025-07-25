@@ -44,7 +44,7 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
     try {
       // استخدام Supabase Auth المدمج لإرسال رسالة استعادة كلمة المرور
       const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
-        redirectTo: `${window.location.origin}/password-reset`
+        redirectTo: `${window.location.origin}/password-reset?mode=reset`
       });
 
       if (error) {
@@ -85,7 +85,7 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
 
         toast({
           title: "تم إرسال الطلب",
-          description: "إذا كان البريد الإلكتروني مسجل في النظام، ستتلقى رسالة تحتوي على رابط لإعادة تعيين كلمة المرور",
+          description: "تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني",
         });
         
         onSuccess?.(sanitizedEmail);
