@@ -24,10 +24,15 @@ const AdDetails = () => {
   useEffect(() => {
     if (id) {
       fetchAdDetails(id);
+    } else {
+      setError("معرف الإعلان مطلوب");
+      setLoading(false);
     }
   }, [id]);
 
   const fetchAdDetails = async (adId: string) => {
+    if (!adId) return;
+    
     setLoading(true);
     setError(null);
     
@@ -41,7 +46,11 @@ const AdDetails = () => {
 
       if (adError) {
         console.error("Error fetching ad:", adError);
-        setError("فشل في جلب بيانات الإعلان");
+        if (adError.code === 'PGRST116') {
+          setError("الإعلان غير موجود");
+        } else {
+          setError("فشل في جلب بيانات الإعلان");
+        }
         setLoading(false);
         return;
       }
@@ -55,36 +64,50 @@ const AdDetails = () => {
       setAd(adData);
 
       // Increment view count
-      await supabase
-        .from("ads")
-        .update({ view_count: (adData.view_count || 0) + 1 })
-        .eq("id", adId);
+      try {
+        await supabase
+          .from("ads")
+          .update({ view_count: (adData.view_count || 0) + 1 })
+          .eq("id", adId);
+      } catch (viewError) {
+        console.error("Error updating view count:", viewError);
+        // Don't fail the whole operation for view count
+      }
 
       // Fetch seller's ads
-      const { data: sellerAdsData, error: sellerAdsError } = await supabase
-        .from("ads")
-        .select("*")
-        .eq("user_id", adData.user_id)
-        .neq("id", adId)
-        .limit(6);
+      try {
+        const { data: sellerAdsData, error: sellerAdsError } = await supabase
+          .from("ads")
+          .select("*")
+          .eq("user_id", adData.user_id)
+          .neq("id", adId)
+          .eq("status", "active")
+          .limit(6);
 
-      if (sellerAdsError) {
+        if (sellerAdsError) {
+          console.error("Error fetching seller ads:", sellerAdsError);
+        } else {
+          setSellerAds(sellerAdsData || []);
+        }
+      } catch (sellerAdsError) {
         console.error("Error fetching seller ads:", sellerAdsError);
-      } else {
-        setSellerAds(sellerAdsData || []);
       }
 
       // Fetch seller's profile
-      const { data: sellerProfileData, error: sellerProfileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", adData.user_id)
-        .single();
+      try {
+        const { data: sellerProfileData, error: sellerProfileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", adData.user_id)
+          .single();
 
-      if (sellerProfileError) {
+        if (sellerProfileError) {
+          console.error("Error fetching seller profile:", sellerProfileError);
+        } else {
+          setSellerProfile(sellerProfileData);
+        }
+      } catch (sellerProfileError) {
         console.error("Error fetching seller profile:", sellerProfileError);
-      } else {
-        setSellerProfile(sellerProfileData);
       }
 
     } catch (error) {
@@ -112,7 +135,7 @@ const AdDetails = () => {
     );
   }
 
-  if (error || !ad) {
+  if (error) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -120,11 +143,34 @@ const AdDetails = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">خطأ في تحميل الإعلان</h2>
-              <p className="text-muted-foreground mb-4">{error || "الإعلان غير موجود"}</p>
+              <h2 className="text-2xl font-bold mb-4 text-destructive">خطأ في تحميل الإعلان</h2>
+              <p className="text-muted-foreground mb-4">{error}</p>
               <button 
                 onClick={() => navigate("/")}
-                className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+              >
+                العودة للرئيسية
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ad) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <BackButton />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4">الإعلان غير موجود</h2>
+              <p className="text-muted-foreground mb-4">لم يتم العثور على هذا الإعلان</p>
+              <button 
+                onClick={() => navigate("/")}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
               >
                 العودة للرئيسية
               </button>

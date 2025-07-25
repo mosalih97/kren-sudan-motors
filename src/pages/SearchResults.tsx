@@ -18,6 +18,7 @@ const SearchResults = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("newest");
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const searchQuery = searchParams.get('q') || '';
@@ -30,6 +31,7 @@ const SearchResults = () => {
 
   const performSearch = async () => {
     setLoading(true);
+    setError(null);
     
     try {
       let query = supabase
@@ -65,6 +67,7 @@ const SearchResults = () => {
 
       if (error) {
         console.error('Search error:', error);
+        setError('حدث خطأ أثناء البحث');
         toast({
           title: "خطأ في البحث",
           description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
@@ -101,6 +104,7 @@ const SearchResults = () => {
       
     } catch (error) {
       console.error('Search error:', error);
+      setError('حدث خطأ أثناء البحث');
       toast({
         title: "خطأ في البحث",
         description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
@@ -119,6 +123,26 @@ const SearchResults = () => {
     
     return parts.length > 0 ? `البحث عن: ${parts.join(' - ')}` : 'نتائج البحث';
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <BackButton />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4 text-destructive">خطأ في البحث</h2>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Link to="/">
+                <Button>العودة للرئيسية</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,7 +167,7 @@ const SearchResults = () => {
           </div>
           
           <p className="text-lg text-muted-foreground">
-            {getSearchSummary()} - تم العثور على {results.length} نتيجة
+            {getSearchSummary()} - {loading ? 'جاري البحث...' : `تم العثور على ${results.length} نتيجة`}
           </p>
         </div>
       </section>
@@ -155,7 +179,7 @@ const SearchResults = () => {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground">
-                نتائج البحث ({results.length} سيارة)
+                نتائج البحث ({loading ? '...' : results.length} سيارة)
               </h2>
             </div>
 

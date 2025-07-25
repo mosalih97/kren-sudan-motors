@@ -25,7 +25,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
-const NotFound = lazy(() => import("./pages/NotFound"));
 
 function App() {
   return (
@@ -46,6 +45,7 @@ function App() {
                     <Route path="/cars" element={<Cars />} />
                     <Route path="/search-results" element={<SearchResults />} />
                     <Route path="/ad/:id" element={<AdDetails />} />
+                    <Route path="/ads/:id" element={<AdDetails />} />
                     <Route path="/seller-ads/:userId" element={<SellerAds />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
@@ -81,9 +81,6 @@ function App() {
                         <BoostAd />
                       </ProtectedRoute>
                     } />
-                    
-                    {/* 404 route */}
-                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </div>
