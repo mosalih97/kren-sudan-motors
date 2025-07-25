@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { validateEmail, validatePassword } from '@/utils/passwordValidation';
+import { validateEmail } from '@/utils/securityValidation';
+import { validatePassword } from '@/utils/passwordValidation';
 import { sanitizeHtml } from '@/utils/securityValidation';
 
 export const usePasswordReset = () => {
