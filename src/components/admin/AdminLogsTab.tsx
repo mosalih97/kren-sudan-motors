@@ -28,25 +28,30 @@ export const AdminLogsTab = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('upgrade_logs')
-        .select(`
-          *,
-          user_profile:profiles!upgrade_logs_user_id_fkey (
-            display_name,
-            phone
-          ),
-          admin_profile:profiles!upgrade_logs_admin_id_fkey (
-            display_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as (UpgradeLog & {
-        user_profile: { display_name: string; phone: string };
-        admin_profile: { display_name: string };
-      })[];
+      return data as UpgradeLog[];
     },
   });
+
+  // جلب بيانات المستخدمين والإداريين
+  const { data: profiles } = useQuery({
+    queryKey: ['admin-profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, phone');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getUserProfile = (userId: string) => {
+    return profiles?.find(p => p.user_id === userId);
+  };
 
   const getActionBadge = (action: string) => {
     switch (action) {
@@ -147,63 +152,68 @@ export const AdminLogsTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {upgradeLogs?.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      {getActionBadge(log.action)}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium">
-                          {log.user_profile?.display_name || 'غير محدد'}
+                {upgradeLogs?.map((log) => {
+                  const userProfile = getUserProfile(log.user_id);
+                  const adminProfile = getUserProfile(log.admin_id);
+                  
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        {getActionBadge(log.action)}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {userProfile?.display_name || 'غير محدد'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {userProfile?.phone}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {log.user_profile?.phone}
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      {getMembershipBadge(log.from_membership)}
-                    </TableCell>
-                    
-                    <TableCell>
-                      {getMembershipBadge(log.to_membership)}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        {log.admin_profile?.display_name || 'غير محدد'}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      {log.expires_at ? (
+                      </TableCell>
+                      
+                      <TableCell>
+                        {getMembershipBadge(log.from_membership)}
+                      </TableCell>
+                      
+                      <TableCell>
+                        {getMembershipBadge(log.to_membership)}
+                      </TableCell>
+                      
+                      <TableCell>
                         <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          {format(new Date(log.expires_at), 'dd/MM/yyyy', { locale: ar })}
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {adminProfile?.display_name || 'غير محدد'}
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground">لا يوجد</span>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: ar })}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="max-w-[200px] truncate text-sm text-muted-foreground">
-                        {log.notes || 'لا توجد ملاحظات'}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      
+                      <TableCell>
+                        {log.expires_at ? (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            {format(new Date(log.expires_at), 'dd/MM/yyyy', { locale: ar })}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">لا يوجد</span>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: ar })}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="max-w-[200px] truncate text-sm text-muted-foreground">
+                          {log.notes || 'لا توجد ملاحظات'}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

@@ -29,6 +29,12 @@ interface UserProfile {
   ads_count: number;
 }
 
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  expires_at?: string;
+}
+
 export const AdminUsersTab = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -60,7 +66,7 @@ export const AdminUsersTab = () => {
         admin_user_id: user?.id
       });
       if (error) throw error;
-      return data;
+      return data as ApiResponse;
     },
     onSuccess: (data) => {
       if (data.success) {
@@ -95,7 +101,7 @@ export const AdminUsersTab = () => {
         admin_user_id: user?.id
       });
       if (error) throw error;
-      return data;
+      return data as ApiResponse;
     },
     onSuccess: (data) => {
       if (data.success) {
