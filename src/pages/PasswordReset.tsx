@@ -38,41 +38,66 @@ const PasswordReset = () => {
 
     setLoading(true);
     try {
+      console.log('إرسال طلب استعادة كلمة المرور للبريد:', email);
+      
       const { data, error } = await supabase.rpc('create_password_reset_token', {
         user_email: email
       });
 
-      if (error) throw error;
+      console.log('استجابة الطلب:', { data, error });
+
+      if (error) {
+        console.error('خطأ في الطلب:', error);
+        throw error;
+      }
 
       const result = data as { success: boolean; message: string; token?: string };
       
       if (result.success) {
         toast({
           title: "تم إرسال الطلب",
-          description: "تم إنشاء رمز استعادة كلمة المرور. في التطبيق الحقيقي سيتم إرسال رابط للبريد الإلكتروني.",
+          description: "تم إنشاء رمز استعادة كلمة المرور بنجاح.",
         });
         
         // في بيئة التطوير، نعرض الرمز للمستخدم
         if (result.token) {
           const resetUrl = `${window.location.origin}/password-reset?token=${result.token}`;
-          toast({
-            title: "رابط الاستعادة (للتجربة)",
-            description: `انسخ هذا الرابط: ${resetUrl}`,
-            duration: 10000,
-          });
+          console.log('رابط الاستعادة:', resetUrl);
+          
+          // إظهار رابط الاستعادة في toast منفصل
+          setTimeout(() => {
+            toast({
+              title: "رابط الاستعادة (للتجربة)",
+              description: `انسخ هذا الرابط واستخدمه: ${resetUrl}`,
+              duration: 15000,
+            });
+          }, 1000);
         }
       } else {
         toast({
           title: "خطأ",
-          description: result.message,
+          description: result.message || "حدث خطأ غير متوقع",
           variant: "destructive"
         });
       }
-    } catch (error) {
-      console.error('Error requesting password reset:', error);
+    } catch (error: any) {
+      console.error('خطأ في معالجة الطلب:', error);
+      
+      let errorMessage = "حدث خطأ أثناء إرسال الطلب";
+      
+      if (error?.message) {
+        if (error.message.includes('function') && error.message.includes('does not exist')) {
+          errorMessage = "خطأ في النظام. يرجى المحاولة مرة أخرى لاحقاً";
+        } else if (error.message.includes('email')) {
+          errorMessage = "البريد الإلكتروني غير صحيح";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء إرسال الطلب",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -112,12 +137,19 @@ const PasswordReset = () => {
 
     setLoading(true);
     try {
+      console.log('تحديث كلمة المرور باستخدام الرمز:', token);
+      
       const { data, error } = await supabase.rpc('reset_password_with_token', {
         reset_token: token,
         new_password: password
       });
 
-      if (error) throw error;
+      console.log('استجابة تحديث كلمة المرور:', { data, error });
+
+      if (error) {
+        console.error('خطأ في تحديث كلمة المرور:', error);
+        throw error;
+      }
 
       const result = data as { success: boolean; message: string };
       
@@ -134,15 +166,26 @@ const PasswordReset = () => {
       } else {
         toast({
           title: "خطأ",
-          description: result.message,
+          description: result.message || "حدث خطأ أثناء تحديث كلمة المرور",
           variant: "destructive"
         });
       }
-    } catch (error) {
-      console.error('Error resetting password:', error);
+    } catch (error: any) {
+      console.error('خطأ في تحديث كلمة المرور:', error);
+      
+      let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
+      
+      if (error?.message) {
+        if (error.message.includes('token')) {
+          errorMessage = "الرمز غير صحيح أو منتهي الصلاحية";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء تحديث كلمة المرور",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
