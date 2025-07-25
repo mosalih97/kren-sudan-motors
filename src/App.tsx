@@ -18,7 +18,6 @@ import Messages from "./pages/Messages";
 import Notifications from "./pages/Notifications";
 import BoostAd from "./pages/BoostAd";
 import UploadReceipt from "./pages/UploadReceipt";
-import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,14 +81,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UploadReceipt />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute>
-                  <Admin />
                 </ProtectedRoute>
               } 
             />
