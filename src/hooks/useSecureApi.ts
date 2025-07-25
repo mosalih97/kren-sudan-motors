@@ -4,12 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSecurityLogger } from '@/hooks/useSecurityLogger';
 import { sanitizeHtml } from '@/utils/securityValidation';
+import type { Database } from '@/integrations/supabase/types';
 
 interface SecureApiOptions {
   requireAuth?: boolean;
   sanitizeInput?: boolean;
   logRequest?: boolean;
 }
+
+type TableName = keyof Database['public']['Tables'];
 
 export const useSecureApi = () => {
   const { user } = useAuth();
@@ -66,9 +69,9 @@ export const useSecureApi = () => {
     }
   }, [user, logSecurityEvent]);
 
-  const secureQuery = useCallback(async (
-    table: string,
-    query: any,
+  const secureQuery = useCallback(async <T extends TableName>(
+    table: T,
+    query: string,
     options: SecureApiOptions = {}
   ) => {
     return secureRequest(async () => {
@@ -81,9 +84,9 @@ export const useSecureApi = () => {
     }, options);
   }, [secureRequest]);
 
-  const secureInsert = useCallback(async (
-    table: string,
-    data: any,
+  const secureInsert = useCallback(async <T extends TableName>(
+    table: T,
+    data: Database['public']['Tables'][T]['Insert'],
     options: SecureApiOptions = {}
   ) => {
     return secureRequest(async () => {
@@ -91,14 +94,14 @@ export const useSecureApi = () => {
       let cleanData = data;
       if (options.sanitizeInput) {
         cleanData = Object.keys(data).reduce((acc, key) => {
-          const value = data[key];
+          const value = (data as any)[key];
           if (typeof value === 'string') {
-            acc[key] = sanitizeHtml(value);
+            (acc as any)[key] = sanitizeHtml(value);
           } else {
-            acc[key] = value;
+            (acc as any)[key] = value;
           }
           return acc;
-        }, {} as any);
+        }, {} as Database['public']['Tables'][T]['Insert']);
       }
 
       const { data: result, error } = await supabase
@@ -111,10 +114,10 @@ export const useSecureApi = () => {
     }, options);
   }, [secureRequest]);
 
-  const secureUpdate = useCallback(async (
-    table: string,
-    data: any,
-    filter: any,
+  const secureUpdate = useCallback(async <T extends TableName>(
+    table: T,
+    data: Database['public']['Tables'][T]['Update'],
+    filter: Record<string, any>,
     options: SecureApiOptions = {}
   ) => {
     return secureRequest(async () => {
@@ -122,14 +125,14 @@ export const useSecureApi = () => {
       let cleanData = data;
       if (options.sanitizeInput) {
         cleanData = Object.keys(data).reduce((acc, key) => {
-          const value = data[key];
+          const value = (data as any)[key];
           if (typeof value === 'string') {
-            acc[key] = sanitizeHtml(value);
+            (acc as any)[key] = sanitizeHtml(value);
           } else {
-            acc[key] = value;
+            (acc as any)[key] = value;
           }
           return acc;
-        }, {} as any);
+        }, {} as Database['public']['Tables'][T]['Update']);
       }
 
       let query = supabase.from(table).update(cleanData);
