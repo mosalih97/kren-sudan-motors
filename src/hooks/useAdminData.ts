@@ -85,7 +85,14 @@ export const useAdminData = () => {
       const { data, error } = await supabase.rpc('get_admin_users_list');
       
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Map the response to include user_id_display
+      const formattedUsers = (data || []).map((user: any) => ({
+        ...user,
+        user_id_display: user.user_id_display || user.user_id.substring(0, 8) // Fallback if user_id_display is missing
+      }));
+      
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -135,7 +142,7 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      const response = data as DatabaseActionResponse;
+      const response = data as unknown as DatabaseActionResponse;
 
       if (response.success) {
         toast({
@@ -173,7 +180,7 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      const response = data as DatabaseActionResponse;
+      const response = data as unknown as DatabaseActionResponse;
 
       if (response.success) {
         toast({
@@ -211,7 +218,7 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      const response = data as DatabaseActionResponse;
+      const response = data as unknown as DatabaseActionResponse;
 
       if (response.success) {
         toast({
@@ -250,7 +257,7 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      const response = data as DatabaseActionResponse;
+      const response = data as unknown as DatabaseActionResponse;
 
       if (response.success) {
         toast({

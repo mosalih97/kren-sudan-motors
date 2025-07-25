@@ -49,7 +49,7 @@ export const useAdminAuth = () => {
         return;
       }
 
-      const response = data as AdminVerifyResponse;
+      const response = data as unknown as AdminVerifyResponse;
       
       if (!response.valid) {
         localStorage.removeItem('admin_session_token');
@@ -86,7 +86,7 @@ export const useAdminAuth = () => {
         return false;
       }
 
-      const response = data as AdminSessionResponse;
+      const response = data as unknown as AdminSessionResponse;
 
       if (!response.success) {
         toast({
