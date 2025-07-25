@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +8,7 @@ import { ArrowLeft, Zap, Crown, Star, MessageCircle, AlertCircle } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 
 interface BoostPlan {
   id: string;

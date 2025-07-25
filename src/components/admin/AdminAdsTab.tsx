@@ -1,218 +1,145 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Trash2, Star, TrendingUp, Eye } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Car, Search, Filter, Star, Trash2, Eye, Zap } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface Ad {
   id: string;
   title: string;
-  brand: string;
-  model: string;
   price: number;
   city: string;
   status: string;
-  created_at: string;
   is_featured: boolean;
   is_premium: boolean;
+  created_at: string;
+  user_id: string;
   view_count: number;
-  profiles: {
+  profiles?: {
     display_name: string;
-    membership_type: string;
-  } | null;
+  };
 }
 
 interface AdminAdsTabProps {
   onStatsUpdate: () => void;
 }
 
-const AdminAdsTab: React.FC<AdminAdsTabProps> = ({ onStatsUpdate }) => {
+export const AdminAdsTab = ({ onStatsUpdate }: AdminAdsTabProps) => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAds();
   }, []);
 
   const fetchAds = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('ads')
+        .from("ads")
         .select(`
-          id,
-          title,
-          brand,
-          model,
-          price,
-          city,
-          status,
-          created_at,
-          is_featured,
-          is_premium,
-          view_count,
-          profiles!inner(display_name, membership_type)
+          *,
+          profiles!ads_user_id_fkey(display_name)
         `)
-        .order('created_at', { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setAds(data || []);
     } catch (error) {
-      console.error('Error fetching ads:', error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء جلب بيانات الإعلانات",
-        variant: "destructive"
-      });
+      console.error("Error fetching ads:", error);
+      toast.error("فشل في جلب الإعلانات");
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteAd = async (adId: string, adTitle: string) => {
+  const handleDeleteAd = async (adId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
+    
+    setActionLoading(adId);
     try {
       const { error } = await supabase
-        .from('ads')
-        .update({ status: 'deleted' })
-        .eq('id', adId);
+        .from("ads")
+        .delete()
+        .eq("id", adId);
 
       if (error) throw error;
 
-      // إرسال إشعار لصاحب الإعلان
-      const ad = ads.find(a => a.id === adId);
-      if (ad) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('display_name', ad.profiles?.display_name)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from('notifications')
-            .insert({
-              user_id: profile.user_id,
-              title: 'تم حذف إعلانك',
-              message: `تم حذف إعلان "${adTitle}" من قبل الإدارة`,
-              type: 'admin_action'
-            });
-        }
-      }
-
-      toast({
-        title: "تم الحذف",
-        description: "تم حذف الإعلان بنجاح"
-      });
-      
-      await fetchAds();
+      toast.success("تم حذف الإعلان بنجاح");
+      fetchAds();
       onStatsUpdate();
     } catch (error) {
-      console.error('Error deleting ad:', error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء حذف الإعلان",
-        variant: "destructive"
-      });
+      console.error("Error deleting ad:", error);
+      toast.error("فشل في حذف الإعلان");
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const toggleFeatured = async (adId: string, currentStatus: boolean) => {
+  const handleFeatureAd = async (adId: string, isFeatured: boolean) => {
+    setActionLoading(adId);
     try {
       const { error } = await supabase
-        .from('ads')
-        .update({ is_featured: !currentStatus })
-        .eq('id', adId);
+        .from("ads")
+        .update({ is_featured: !isFeatured })
+        .eq("id", adId);
 
       if (error) throw error;
 
-      toast({
-        title: "تم التحديث",
-        description: `تم ${!currentStatus ? 'إضافة' : 'إزالة'} التمييز للإعلان`
-      });
-      
-      await fetchAds();
+      toast.success(isFeatured ? "تم إلغاء تمييز الإعلان" : "تم تمييز الإعلان");
+      fetchAds();
     } catch (error) {
-      console.error('Error toggling featured:', error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث الإعلان",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const boostAd = async (adId: string) => {
-    try {
-      const { error } = await supabase
-        .from('ads')
-        .update({ 
-          top_spot: true,
-          top_spot_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        })
-        .eq('id', adId);
-
-      if (error) throw error;
-
-      toast({
-        title: "تم التعزيز",
-        description: "تم تعزيز الإعلان لمدة 24 ساعة"
-      });
-      
-      await fetchAds();
-    } catch (error) {
-      console.error('Error boosting ad:', error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تعزيز الإعلان",
-        variant: "destructive"
-      });
+      console.error("Error updating ad:", error);
+      toast.error("فشل في تحديث الإعلان");
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const filteredAds = ads.filter(ad => {
     const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ad.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ad.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ad.city.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = filterStatus === 'all' || ad.status === filterStatus;
-    
-    return matchesSearch && matchesFilter;
+                         ad.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ad.profiles?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || ad.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>إدارة الإعلانات</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2">جاري التحميل...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge variant="default">نشط</Badge>;
+      case "inactive":
+        return <Badge variant="secondary">غير نشط</Badge>;
+      case "sold":
+        return <Badge variant="outline">مباع</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>إدارة الإعلانات</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Car className="h-5 w-5" />
+          إدارة الإعلانات
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="البحث في الإعلانات..."
               value={searchTerm}
@@ -220,136 +147,112 @@ const AdminAdsTab: React.FC<AdminAdsTabProps> = ({ onStatsUpdate }) => {
               className="pl-10"
             />
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={filterStatus === 'all' ? 'default' : 'outline'}
-              onClick={() => setFilterStatus('all')}
-            >
-              الكل
-            </Button>
-            <Button
-              variant={filterStatus === 'active' ? 'default' : 'outline'}
-              onClick={() => setFilterStatus('active')}
-            >
-              نشط
-            </Button>
-            <Button
-              variant={filterStatus === 'deleted' ? 'default' : 'outline'}
-              onClick={() => setFilterStatus('deleted')}
-            >
-              محذوف
-            </Button>
-          </div>
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <Filter className="h-4 w-4 ml-2" />
+              <SelectValue placeholder="حالة الإعلان" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الإعلانات</SelectItem>
+              <SelectItem value="active">النشطة</SelectItem>
+              <SelectItem value="inactive">غير النشطة</SelectItem>
+              <SelectItem value="sold">المباعة</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Ads Table */}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>العنوان</TableHead>
-                <TableHead>السيارة</TableHead>
-                <TableHead>السعر</TableHead>
-                <TableHead>المدينة</TableHead>
-                <TableHead>المالك</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>المشاهدات</TableHead>
-                <TableHead>الإجراءات</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAds.map((ad) => (
-                <TableRow key={ad.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {ad.is_featured && <Star className="h-4 w-4 text-yellow-500" />}
-                      <span className="font-medium">{ad.title}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{ad.brand} {ad.model}</TableCell>
-                  <TableCell>{ad.price.toLocaleString()} ر.س</TableCell>
-                  <TableCell>{ad.city}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{ad.profiles?.display_name || 'غير محدد'}</span>
-                      {ad.profiles?.membership_type === 'premium' && (
-                        <Badge variant="default" className="text-xs">مميز</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={ad.status === 'active' ? 'default' : 'destructive'}>
-                      {ad.status === 'active' ? 'نشط' : 'محذوف'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-4 w-4 text-gray-400" />
-                      {ad.view_count}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggleFeatured(ad.id, ad.is_featured)}
-                        className={ad.is_featured ? 'text-yellow-600' : ''}
-                      >
-                        <Star className="h-4 w-4 ml-1" />
-                        {ad.is_featured ? 'إلغاء التمييز' : 'تمييز'}
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => boostAd(ad.id)}
-                        className="text-blue-600"
-                      >
-                        <TrendingUp className="h-4 w-4 ml-1" />
-                        تعزيز
-                      </Button>
-                      
-                      {ad.status === 'active' && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="text-red-600">
-                              <Trash2 className="h-4 w-4 ml-1" />
-                              حذف
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                هل أنت متأكد من حذف الإعلان "{ad.title}"؟ لا يمكن التراجع عن هذا الإجراء.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteAd(ad.id, ad.title)}>
-                                تأكيد الحذف
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </TableCell>
+        {loading ? (
+          <div className="text-center py-8">جاري التحميل...</div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>العنوان</TableHead>
+                  <TableHead>البائع</TableHead>
+                  <TableHead>السعر</TableHead>
+                  <TableHead>المدينة</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>المشاهدات</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead className="text-center">الإجراءات</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {filteredAds.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            لا توجد إعلانات
+              </TableHeader>
+              <TableBody>
+                {filteredAds.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      لا توجد إعلانات
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredAds.map((ad) => (
+                    <TableRow key={ad.id}>
+                      <TableCell className="max-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          <div className="truncate font-medium">{ad.title}</div>
+                          <div className="flex gap-1">
+                            {ad.is_featured && <Star className="h-3 w-3 text-yellow-500" />}
+                            {ad.is_premium && <Zap className="h-3 w-3 text-blue-500" />}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {ad.profiles?.display_name || "مستخدم محذوف"}
+                      </TableCell>
+                      <TableCell>
+                        {ad.price.toLocaleString()} ج.س
+                      </TableCell>
+                      <TableCell>{ad.city}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(ad.status)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                          {ad.view_count}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(ad.created_at), "yyyy/MM/dd")}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex gap-1 justify-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleFeatureAd(ad.id, ad.is_featured)}
+                            disabled={actionLoading === ad.id}
+                          >
+                            <Star className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/ad/${ad.id}`, '_blank')}
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteAd(ad.id)}
+                            disabled={actionLoading === ad.id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
     </Card>
   );
 };
-
-export default AdminAdsTab;

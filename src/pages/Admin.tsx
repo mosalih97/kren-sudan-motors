@@ -1,20 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Users, Car, FileText, Settings, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
-import AdminUsersTab from '@/components/admin/AdminUsersTab';
-import AdminAdsTab from '@/components/admin/AdminAdsTab';
-import AdminLogsTab from '@/components/admin/AdminLogsTab';
-import AdminSettingsTab from '@/components/admin/AdminSettingsTab';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Shield, Users, Car, Activity, Settings, ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import Header from "@/components/Header";
+import { AdminUsersTab } from "@/components/admin/AdminUsersTab";
+import { AdminAdsTab } from "@/components/admin/AdminAdsTab";
+import { AdminLogsTab } from "@/components/admin/AdminLogsTab";
+import { AdminSettingsTab } from "@/components/admin/AdminSettingsTab";
 
 const Admin = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -26,37 +28,36 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    checkAdminAccess();
-    fetchStats();
-  }, [user]);
-
-  const checkAdminAccess = async () => {
     if (!user) {
-      navigate('/');
+      navigate("/auth");
       return;
     }
+    
+    checkAdminAccess();
+    fetchStats();
+  }, [user, navigate]);
 
+  const checkAdminAccess = async () => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("user_id", user?.id)
         .single();
 
-      if (profile?.role !== 'admin') {
-        toast({
-          title: "غير مصرح",
-          description: "ليس لديك صلاحيات للوصول إلى لوحة التحكم",
-          variant: "destructive"
-        });
-        navigate('/');
+      if (error) throw error;
+      
+      if (profile?.role !== "admin") {
+        toast.error("ليس لديك صلاحيات للوصول إلى هذه الصفحة");
+        navigate("/");
         return;
       }
-
+      
       setIsAdmin(true);
     } catch (error) {
-      console.error('Error checking admin access:', error);
-      navigate('/');
+      console.error("Error checking admin access:", error);
+      toast.error("خطأ في التحقق من الصلاحيات");
+      navigate("/");
     } finally {
       setLoading(false);
     }
@@ -64,21 +65,24 @@ const Admin = () => {
 
   const fetchStats = async () => {
     try {
-      // إحصائيات المستخدمين
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('membership_type');
+      // Get user stats
+      const { data: users, error: usersError } = await supabase
+        .from("profiles")
+        .select("membership_type");
+
+      if (usersError) throw usersError;
+
+      // Get ads stats
+      const { data: ads, error: adsError } = await supabase
+        .from("ads")
+        .select("status");
+
+      if (adsError) throw adsError;
 
       const totalUsers = users?.length || 0;
-      const premiumUsers = users?.filter(u => u.membership_type === 'premium').length || 0;
-
-      // إحصائيات الإعلانات
-      const { data: ads } = await supabase
-        .from('ads')
-        .select('status');
-
+      const premiumUsers = users?.filter(u => u.membership_type === "premium").length || 0;
       const totalAds = ads?.length || 0;
-      const activeAds = ads?.filter(a => a.status === 'active').length || 0;
+      const activeAds = ads?.filter(ad => ad.status === "active").length || 0;
 
       setStats({
         totalUsers,
@@ -87,21 +91,16 @@ const Admin = () => {
         activeAds
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     }
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-lg">جاري التحقق من الصلاحيات...</p>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">جاري التحميل...</div>
         </div>
       </div>
     );
@@ -112,24 +111,29 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Shield className="h-8 w-8 text-primary ml-3" />
-              <h1 className="text-xl font-bold text-gray-900">لوحة التحكم الإدارية</h1>
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate(-1)}
+            className="mb-4"
+          >
+            <ArrowLeft className="ml-2 h-4 w-4" />
+            العودة
+          </Button>
+          
+          <div className="flex items-center gap-3 mb-6">
+            <Shield className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">لوحة التحكم الإدارية</h1>
+              <p className="text-muted-foreground">إدارة المستخدمين والإعلانات</p>
             </div>
-            <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              تسجيل الخروج
-            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -141,17 +145,17 @@ const Admin = () => {
               <div className="text-2xl font-bold">{stats.totalUsers}</div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">المستخدمين المميزين</CardTitle>
-              <Users className="h-4 w-4 text-yellow-500" />
+              <Badge variant="default" className="text-xs">مميز</Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.premiumUsers}</div>
+              <div className="text-2xl font-bold">{stats.premiumUsers}</div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">إجمالي الإعلانات</CardTitle>
@@ -161,19 +165,19 @@ const Admin = () => {
               <div className="text-2xl font-bold">{stats.totalAds}</div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">الإعلانات النشطة</CardTitle>
-              <Car className="h-4 w-4 text-green-500" />
+              <Activity className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.activeAds}</div>
+              <div className="text-2xl font-bold">{stats.activeAds}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
+        {/* Admin Tabs */}
         <Tabs defaultValue="users" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
@@ -185,8 +189,8 @@ const Admin = () => {
               الإعلانات
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              سجلات الترقية
+              <Activity className="h-4 w-4" />
+              سجل الترقيات
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />

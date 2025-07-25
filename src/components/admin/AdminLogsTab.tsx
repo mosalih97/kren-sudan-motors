@@ -1,218 +1,186 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, User, TrendingUp, TrendingDown } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Search, Filter } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface UpgradeLog {
   id: string;
   user_id: string;
-  upgraded_by: string;
+  upgraded_by: string | null;
   action: string;
   from_membership: string;
   to_membership: string;
   upgraded_at: string;
   expires_at: string | null;
   notes: string | null;
-  user_profile: {
+  user_profile?: {
     display_name: string;
-  } | null;
-  admin_profile: {
+  };
+  admin_profile?: {
     display_name: string;
-  } | null;
+  };
 }
 
-const AdminLogsTab: React.FC = () => {
+export const AdminLogsTab = () => {
   const [logs, setLogs] = useState<UpgradeLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchLogs();
   }, []);
 
   const fetchLogs = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('upgrade_logs')
+      const { data: logsData, error } = await supabase
+        .from("upgrade_logs")
         .select(`
-          id,
-          user_id,
-          upgraded_by,
-          action,
-          from_membership,
-          to_membership,
-          upgraded_at,
-          expires_at,
-          notes
+          *,
+          user_profile:profiles!upgrade_logs_user_id_fkey(display_name),
+          admin_profile:profiles!upgrade_logs_upgraded_by_fkey(display_name)
         `)
-        .order('upgraded_at', { ascending: false });
+        .order("upgraded_at", { ascending: false });
 
       if (error) throw error;
-
-      // جلب أسماء المستخدمين والإداريين
-      const logsWithProfiles = await Promise.all(
-        (data || []).map(async (log) => {
-          const [userProfile, adminProfile] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', log.user_id)
-              .single(),
-            supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('user_id', log.upgraded_by)
-              .single()
-          ]);
-
-          return {
-            ...log,
-            user_profile: userProfile.data,
-            admin_profile: adminProfile.data
-          };
-        })
-      );
-
-      setLogs(logsWithProfiles);
+      setLogs(logsData || []);
     } catch (error) {
-      console.error('Error fetching logs:', error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء جلب سجلات الترقية",
-        variant: "destructive"
-      });
+      console.error("Error fetching logs:", error);
+      toast.error("فشل في جلب سجلات الترقية");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = log.user_profile?.display_name
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase()) || false;
+    const matchesAction = actionFilter === "all" || log.action === actionFilter;
+    return matchesSearch && matchesAction;
+  });
+
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case "upgrade":
+        return <Badge variant="default">ترقية</Badge>;
+      case "downgrade":
+        return <Badge variant="destructive">إلغاء ترقية</Badge>;
+      default:
+        return <Badge variant="secondary">{action}</Badge>;
+    }
   };
 
-  const getRemainingDays = (expiresAt: string | null) => {
-    if (!expiresAt) return null;
-    const now = new Date();
-    const expiry = new Date(expiresAt);
-    const diff = expiry.getTime() - now.getTime();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days > 0 ? days : 0;
+  const getMembershipBadge = (membership: string) => {
+    switch (membership) {
+      case "premium":
+        return <Badge variant="default">مميز</Badge>;
+      case "free":
+        return <Badge variant="outline">عادي</Badge>;
+      default:
+        return <Badge variant="secondary">{membership}</Badge>;
+    }
   };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>سجلات الترقية</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2">جاري التحميل...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>سجلات الترقية</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          سجل الترقيات
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>الإجراء</TableHead>
-                <TableHead>المستخدم</TableHead>
-                <TableHead>من</TableHead>
-                <TableHead>إلى</TableHead>
-                <TableHead>تم بواسطة</TableHead>
-                <TableHead>التاريخ</TableHead>
-                <TableHead>تاريخ الانتهاء</TableHead>
-                <TableHead>الأيام المتبقية</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => {
-                const remainingDays = getRemainingDays(log.expires_at);
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {log.action === 'upgrade' ? (
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600" />
-                        )}
-                        <Badge variant={log.action === 'upgrade' ? 'default' : 'destructive'}>
-                          {log.action === 'upgrade' ? 'ترقية' : 'إلغاء ترقية'}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
-                        {log.user_profile?.display_name || 'غير محدد'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {log.from_membership === 'premium' ? 'مميز' : 'عادي'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={log.to_membership === 'premium' ? 'default' : 'secondary'}>
-                        {log.to_membership === 'premium' ? 'مميز' : 'عادي'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {log.admin_profile?.display_name || 'غير محدد'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        {formatDate(log.upgraded_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {log.expires_at ? formatDate(log.expires_at) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {remainingDays !== null ? (
-                        <span className={remainingDays < 7 ? 'text-red-600' : 'text-green-600'}>
-                          {remainingDays} يوم
-                        </span>
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="البحث عن مستخدم..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-full md:w-[200px]">
+              <Filter className="h-4 w-4 ml-2" />
+              <SelectValue placeholder="نوع الإجراء" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الإجراءات</SelectItem>
+              <SelectItem value="upgrade">ترقية</SelectItem>
+              <SelectItem value="downgrade">إلغاء ترقية</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {logs.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            لا توجد سجلات
+        {/* Logs Table */}
+        {loading ? (
+          <div className="text-center py-8">جاري التحميل...</div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المستخدم</TableHead>
+                  <TableHead>الإجراء</TableHead>
+                  <TableHead>من</TableHead>
+                  <TableHead>إلى</TableHead>
+                  <TableHead>المدير</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead>تنتهي في</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      لا توجد سجلات
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">
+                        {log.user_profile?.display_name || "مستخدم محذوف"}
+                      </TableCell>
+                      <TableCell>
+                        {getActionBadge(log.action)}
+                      </TableCell>
+                      <TableCell>
+                        {getMembershipBadge(log.from_membership)}
+                      </TableCell>
+                      <TableCell>
+                        {getMembershipBadge(log.to_membership)}
+                      </TableCell>
+                      <TableCell>
+                        {log.admin_profile?.display_name || "نظام"}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(log.upgraded_at), "yyyy/MM/dd HH:mm")}
+                      </TableCell>
+                      <TableCell>
+                        {log.expires_at ? format(new Date(log.expires_at), "yyyy/MM/dd") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
     </Card>
   );
 };
-
-export default AdminLogsTab;

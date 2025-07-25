@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
+import Header from "@/components/Header";
 import { SearchFilters } from "@/components/SearchFilters";
 import { SearchResults } from "@/components/SearchResults";
 import { CarCard } from "@/components/CarCard";
