@@ -4,15 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSecurityLogger } from '@/hooks/useSecurityLogger';
 import { sanitizeHtml } from '@/utils/securityValidation';
-import type { Database } from '@/integrations/supabase/types';
 
 interface SecureApiOptions {
   requireAuth?: boolean;
   sanitizeInput?: boolean;
   logRequest?: boolean;
 }
-
-type TableName = keyof Database['public']['Tables'];
 
 export const useSecureApi = () => {
   const { user } = useAuth();
@@ -69,14 +66,14 @@ export const useSecureApi = () => {
     }
   }, [user, logSecurityEvent]);
 
-  const secureQuery = useCallback(async <T extends TableName>(
-    table: T,
+  const secureQuery = useCallback(async (
+    table: string,
     query: string,
     options: SecureApiOptions = {}
   ) => {
     return secureRequest(async () => {
       const { data, error } = await supabase
-        .from(table)
+        .from(table as any)
         .select(query);
 
       if (error) throw error;
@@ -84,9 +81,9 @@ export const useSecureApi = () => {
     }, options);
   }, [secureRequest]);
 
-  const secureInsert = useCallback(async <T extends TableName>(
-    table: T,
-    data: Database['public']['Tables'][T]['Insert'],
+  const secureInsert = useCallback(async (
+    table: string,
+    data: Record<string, any>,
     options: SecureApiOptions = {}
   ) => {
     return secureRequest(async () => {
@@ -94,18 +91,18 @@ export const useSecureApi = () => {
       let cleanData = data;
       if (options.sanitizeInput) {
         cleanData = Object.keys(data).reduce((acc, key) => {
-          const value = (data as any)[key];
+          const value = data[key];
           if (typeof value === 'string') {
-            (acc as any)[key] = sanitizeHtml(value);
+            acc[key] = sanitizeHtml(value);
           } else {
-            (acc as any)[key] = value;
+            acc[key] = value;
           }
           return acc;
-        }, {} as Database['public']['Tables'][T]['Insert']);
+        }, {} as Record<string, any>);
       }
 
       const { data: result, error } = await supabase
-        .from(table)
+        .from(table as any)
         .insert(cleanData)
         .select();
 
@@ -114,9 +111,9 @@ export const useSecureApi = () => {
     }, options);
   }, [secureRequest]);
 
-  const secureUpdate = useCallback(async <T extends TableName>(
-    table: T,
-    data: Database['public']['Tables'][T]['Update'],
+  const secureUpdate = useCallback(async (
+    table: string,
+    data: Record<string, any>,
     filter: Record<string, any>,
     options: SecureApiOptions = {}
   ) => {
@@ -125,17 +122,17 @@ export const useSecureApi = () => {
       let cleanData = data;
       if (options.sanitizeInput) {
         cleanData = Object.keys(data).reduce((acc, key) => {
-          const value = (data as any)[key];
+          const value = data[key];
           if (typeof value === 'string') {
-            (acc as any)[key] = sanitizeHtml(value);
+            acc[key] = sanitizeHtml(value);
           } else {
-            (acc as any)[key] = value;
+            acc[key] = value;
           }
           return acc;
-        }, {} as Database['public']['Tables'][T]['Update']);
+        }, {} as Record<string, any>);
       }
 
-      let query = supabase.from(table).update(cleanData);
+      let query = supabase.from(table as any).update(cleanData);
       
       // تطبيق المرشحات
       Object.keys(filter).forEach(key => {
