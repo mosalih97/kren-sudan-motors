@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { sanitizeInput } from "@/utils/inputSanitizer";
-import { useSecurityContext } from "@/contexts/SecurityContext";
 
 interface NewPasswordFormProps {
   token: string;
@@ -22,7 +21,6 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { logSecurityEvent } = useSecurityContext();
 
   const validatePassword = (password: string) => {
     const errors = [];
@@ -92,9 +90,12 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
     setLoading(true);
     try {
       // Log security event
-      logSecurityEvent('password_reset_attempted', {
-        token_length: sanitizedToken.length,
-        timestamp: new Date().toISOString()
+      await supabase.rpc('log_security_event', {
+        event_type: 'password_reset_attempted',
+        event_data: {
+          token_length: sanitizedToken.length,
+          timestamp: new Date().toISOString()
+        }
       });
 
       const { data, error } = await supabase.rpc('reset_password_with_token', {
@@ -107,8 +108,12 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
       const result = data as { success: boolean; message: string };
       
       if (result.success) {
-        logSecurityEvent('password_reset_successful', {
-          timestamp: new Date().toISOString()
+        // Log successful password reset
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_successful',
+          event_data: {
+            timestamp: new Date().toISOString()
+          }
         });
 
         toast({
@@ -123,10 +128,18 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
         throw new Error(result.message);
       }
     } catch (error: any) {
-      logSecurityEvent('password_reset_failed', {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
+      // Log failed password reset
+      try {
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_failed',
+          event_data: {
+            error: error.message,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log security event:', logError);
+      }
 
       let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
       

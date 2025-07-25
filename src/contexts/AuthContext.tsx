@@ -41,20 +41,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Log security events
         if (event === 'SIGNED_IN' && session?.user) {
-          await supabase.rpc('log_security_event', {
-            event_type: 'user_login',
-            event_data: {
-              user_id: session.user.id,
-              timestamp: new Date().toISOString()
-            }
-          });
+          try {
+            await supabase.rpc('log_security_event', {
+              event_type: 'user_login',
+              event_data: {
+                user_id: session.user.id,
+                timestamp: new Date().toISOString()
+              }
+            });
+          } catch (error) {
+            console.error('Failed to log security event:', error);
+          }
         } else if (event === 'SIGNED_OUT') {
-          await supabase.rpc('log_security_event', {
-            event_type: 'user_logout',
-            event_data: {
-              timestamp: new Date().toISOString()
-            }
-          });
+          try {
+            await supabase.rpc('log_security_event', {
+              event_type: 'user_logout',
+              event_data: {
+                timestamp: new Date().toISOString()
+              }
+            });
+          } catch (error) {
+            console.error('Failed to log security event:', error);
+          }
         }
         
         // Handle auth events - only show toast for actual sign in/out actions, not initial load
@@ -100,14 +108,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         // Log failed signup attempt
-        await supabase.rpc('log_security_event', {
-          event_type: 'signup_failed',
-          event_data: {
-            email,
-            error: error.message,
-            timestamp: new Date().toISOString()
-          }
-        });
+        try {
+          await supabase.rpc('log_security_event', {
+            event_type: 'signup_failed',
+            event_data: {
+              email,
+              error: error.message,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
 
         let errorMessage = "حدث خطأ أثناء التسجيل";
         if (error.message.includes('already registered')) {
@@ -125,13 +137,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       } else {
         // Log successful signup
-        await supabase.rpc('log_security_event', {
-          event_type: 'signup_successful',
-          event_data: {
-            email,
-            timestamp: new Date().toISOString()
-          }
-        });
+        try {
+          await supabase.rpc('log_security_event', {
+            event_type: 'signup_successful',
+            event_data: {
+              email,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
 
         toast({
           title: "تم إنشاء الحساب بنجاح",
@@ -155,14 +171,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         // Log failed login attempt
-        await supabase.rpc('log_security_event', {
-          event_type: 'login_failed',
-          event_data: {
-            email,
-            error: error.message,
-            timestamp: new Date().toISOString()
-          }
-        });
+        try {
+          await supabase.rpc('log_security_event', {
+            event_type: 'login_failed',
+            event_data: {
+              email,
+              error: error.message,
+              timestamp: new Date().toISOString()
+            }
+          });
+        } catch (logError) {
+          console.error('Failed to log security event:', logError);
+        }
 
         let errorMessage = "خطأ في البريد الإلكتروني أو كلمة المرور";
         if (error.message.includes('Invalid login credentials')) {

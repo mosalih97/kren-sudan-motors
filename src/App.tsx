@@ -5,8 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SecurityProvider } from "@/contexts/SecurityContext";
-import { SecureStorageManager } from "@/components/security/SecureStorageManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AddAd from "./pages/AddAd";
@@ -30,29 +28,26 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SecurityProvider>
-            <SecureStorageManager />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/password-reset" element={<PasswordReset />} />
-                <Route path="/cars" element={<Cars />} />
-                <Route path="/search" element={<SearchResults />} />
-                <Route path="/ad/:id" element={<AdDetails />} />
-                <Route path="/seller/:userId" element={<SellerAds />} />
-                <Route path="/add-ad" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                <Route path="/boost-ad/:id" element={<ProtectedRoute><BoostAd /></ProtectedRoute>} />
-                <Route path="/upload-receipt" element={<ProtectedRoute><UploadReceipt /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </SecurityProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/password-reset" element={<PasswordReset />} />
+              <Route path="/cars" element={<Cars />} />
+              <Route path="/search" element={<SearchResults />} />
+              <Route path="/ad/:id" element={<AdDetails />} />
+              <Route path="/seller/:userId" element={<SellerAds />} />
+              <Route path="/add-ad" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/boost-ad/:id" element={<ProtectedRoute><BoostAd /></ProtectedRoute>} />
+              <Route path="/upload-receipt" element={<ProtectedRoute><UploadReceipt /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

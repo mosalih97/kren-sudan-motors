@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail } from "lucide-react";
 import { sanitizeEmail, isValidEmail } from "@/utils/inputSanitizer";
-import { useSecurityContext } from "@/contexts/SecurityContext";
 
 interface PasswordResetFormProps {
   onSuccess?: (email: string) => void;
@@ -17,7 +16,6 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { logSecurityEvent } = useSecurityContext();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +43,12 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
     setLoading(true);
     try {
       // Log security event
-      logSecurityEvent('password_reset_requested', {
-        email: sanitizedEmail,
-        timestamp: new Date().toISOString()
+      await supabase.rpc('log_security_event', {
+        event_type: 'password_reset_requested',
+        event_data: {
+          email: sanitizedEmail,
+          timestamp: new Date().toISOString()
+        }
       });
 
       const { data, error } = await supabase.rpc('create_password_reset_token', {
@@ -73,11 +74,19 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
         });
       }
     } catch (error: any) {
-      logSecurityEvent('password_reset_failed', {
-        email: sanitizedEmail,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
+      // Log security event for failed attempt
+      try {
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_failed',
+          event_data: {
+            email: sanitizedEmail,
+            error: error.message,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log security event:', logError);
+      }
 
       let errorMessage = "حدث خطأ أثناء إرسال الطلب";
       
