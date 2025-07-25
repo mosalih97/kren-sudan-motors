@@ -9,6 +9,19 @@ interface AdminAuthState {
   adminId: string | null;
 }
 
+interface AdminSessionResponse {
+  success: boolean;
+  session_token?: string;
+  admin_id?: string;
+  message?: string;
+}
+
+interface AdminVerifyResponse {
+  valid: boolean;
+  admin_id?: string;
+  message?: string;
+}
+
 export const useAdminAuth = () => {
   const [authState, setAuthState] = useState<AdminAuthState>({
     isAuthenticated: false,
@@ -30,7 +43,15 @@ export const useAdminAuth = () => {
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
-      if (error || !data?.valid) {
+      if (error || !data) {
+        localStorage.removeItem('admin_session_token');
+        setAuthState({ isAuthenticated: false, loading: false, adminId: null });
+        return;
+      }
+
+      const response = data as AdminVerifyResponse;
+      
+      if (!response.valid) {
         localStorage.removeItem('admin_session_token');
         setAuthState({ isAuthenticated: false, loading: false, adminId: null });
         return;
@@ -39,7 +60,7 @@ export const useAdminAuth = () => {
       setAuthState({
         isAuthenticated: true,
         loading: false,
-        adminId: data.admin_id
+        adminId: response.admin_id || null
       });
     } catch (error) {
       console.error('Auth check error:', error);
@@ -56,20 +77,34 @@ export const useAdminAuth = () => {
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data?.success) {
+      if (error || !data) {
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: data?.message || "حدث خطأ غير متوقع",
+          description: "حدث خطأ غير متوقع",
           variant: "destructive"
         });
         return false;
       }
 
-      localStorage.setItem('admin_session_token', data.session_token);
+      const response = data as AdminSessionResponse;
+
+      if (!response.success) {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: response.message || "حدث خطأ غير متوقع",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (response.session_token) {
+        localStorage.setItem('admin_session_token', response.session_token);
+      }
+      
       setAuthState({
         isAuthenticated: true,
         loading: false,
-        adminId: data.admin_id
+        adminId: response.admin_id || null
       });
 
       toast({

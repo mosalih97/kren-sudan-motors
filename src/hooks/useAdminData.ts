@@ -50,6 +50,11 @@ interface AdData {
   display_name: string;
 }
 
+interface DatabaseActionResponse {
+  success: boolean;
+  message?: string;
+}
+
 export const useAdminData = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -130,10 +135,12 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      const response = data as DatabaseActionResponse;
+
+      if (response.success) {
         toast({
           title: "تم ترقية المستخدم",
-          description: data.message
+          description: response.message || "تم ترقية المستخدم بنجاح"
         });
         await fetchUsers();
         await fetchStats();
@@ -141,7 +148,7 @@ export const useAdminData = () => {
       } else {
         toast({
           title: "خطأ في الترقية",
-          description: data?.message || "حدث خطأ غير متوقع",
+          description: response.message || "حدث خطأ غير متوقع",
           variant: "destructive"
         });
         return false;
@@ -166,10 +173,12 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      const response = data as DatabaseActionResponse;
+
+      if (response.success) {
         toast({
           title: "تم إرجاع المستخدم",
-          description: data.message
+          description: response.message || "تم إرجاع المستخدم بنجاح"
         });
         await fetchUsers();
         await fetchStats();
@@ -177,7 +186,7 @@ export const useAdminData = () => {
       } else {
         toast({
           title: "خطأ في الإرجاع",
-          description: data?.message || "حدث خطأ غير متوقع",
+          description: response.message || "حدث خطأ غير متوقع",
           variant: "destructive"
         });
         return false;
@@ -202,10 +211,12 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      const response = data as DatabaseActionResponse;
+
+      if (response.success) {
         toast({
           title: "تم حذف الإعلان",
-          description: data.message
+          description: response.message || "تم حذف الإعلان بنجاح"
         });
         await fetchAds();
         await fetchStats();
@@ -213,7 +224,7 @@ export const useAdminData = () => {
       } else {
         toast({
           title: "خطأ في الحذف",
-          description: data?.message || "حدث خطأ غير متوقع",
+          description: response.message || "حدث خطأ غير متوقع",
           variant: "destructive"
         });
         return false;
@@ -239,16 +250,18 @@ export const useAdminData = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      const response = data as DatabaseActionResponse;
+
+      if (response.success) {
         toast({
           title: "تم تحديث البيانات",
-          description: data.message
+          description: response.message || "تم تحديث البيانات بنجاح"
         });
         return true;
       } else {
         toast({
           title: "خطأ في التحديث",
-          description: data?.message || "حدث خطأ غير متوقع",
+          description: response.message || "حدث خطأ غير متوقع",
           variant: "destructive"
         });
         return false;
