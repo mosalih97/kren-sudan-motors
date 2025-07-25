@@ -1,14 +1,23 @@
 
 import { Button } from '@/components/ui/button';
-import { ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface BackButtonProps {
   to?: string;
   className?: string;
+  variant?: 'default' | 'floating' | 'minimal';
+  showText?: boolean;
+  text?: string;
 }
 
-export const BackButton = ({ to, className = "" }: BackButtonProps) => {
+export const BackButton = ({ 
+  to, 
+  className = "", 
+  variant = 'floating',
+  showText = true,
+  text = "العودة"
+}: BackButtonProps) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -19,15 +28,30 @@ export const BackButton = ({ to, className = "" }: BackButtonProps) => {
     }
   };
 
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'default':
+        return "bg-background/95 hover:bg-background border border-border/50 hover:border-border shadow-sm hover:shadow-md";
+      case 'floating':
+        return "bg-background/80 backdrop-blur-sm border border-border/30 shadow-lg hover:shadow-xl hover:bg-background/90";
+      case 'minimal':
+        return "bg-transparent hover:bg-muted/50 border-0 shadow-none";
+      default:
+        return "bg-background/80 backdrop-blur-sm border border-border/30 shadow-lg hover:shadow-xl hover:bg-background/90";
+    }
+  };
+
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={handleBack}
-      className={`fixed top-20 right-4 z-10 bg-background/80 backdrop-blur-sm border shadow-md hover:bg-background/90 ${className}`}
+      className={`fixed top-20 right-4 z-50 transition-all duration-300 hover:-translate-y-0.5 hover:scale-105 ${getVariantStyles()} ${className}`}
     >
-      <ChevronRight className="h-4 w-4" />
-      <span className="sr-only">العودة</span>
+      <div className="flex items-center gap-2">
+        <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+        {showText && <span className="text-sm font-medium">{text}</span>}
+      </div>
     </Button>
   );
 };

@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { BackButton } from "@/components/BackButton";
+import { NavigationArrows } from "@/components/NavigationArrows";
 import { supabase } from "@/integrations/supabase/client";
 import { CarCard } from "@/components/CarCard";
 import { Car } from "lucide-react";
@@ -52,7 +54,7 @@ const SellerAds = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <BackButton />
+        <BackButton variant="floating" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">جاري التحميل...</div>
         </div>
@@ -63,7 +65,7 @@ const SellerAds = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton />
+      <BackButton variant="floating" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
@@ -105,6 +107,17 @@ const SellerAds = () => {
           )}
         </div>
       </div>
+
+      <NavigationArrows
+        prevPage={{
+          url: "/cars",
+          title: "السيارات"
+        }}
+        nextPage={{
+          url: "/",
+          title: "الرئيسية"
+        }}
+      />
     </div>
   );
 };

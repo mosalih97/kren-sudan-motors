@@ -1,5 +1,6 @@
+
 import * as React from "react"
-import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
+import { ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ButtonProps, buttonVariants } from "@/components/ui/button"
@@ -49,9 +50,10 @@ const PaginationLink = ({
     aria-current={isActive ? "page" : undefined}
     className={cn(
       buttonVariants({
-        variant: isActive ? "outline" : "ghost",
+        variant: isActive ? "default" : "outline",
         size,
       }),
+      "transition-all duration-200 hover:scale-105",
       className
     )}
     {...props}
@@ -64,13 +66,13 @@ const PaginationPrevious = ({
   ...props
 }: React.ComponentProps<typeof PaginationLink>) => (
   <PaginationLink
-    aria-label="Go to previous page"
+    aria-label="الانتقال إلى الصفحة السابقة"
     size="default"
-    className={cn("gap-1 pl-2.5", className)}
+    className={cn("gap-2 pl-2.5 group", className)}
     {...props}
   >
-    <ChevronLeft className="h-4 w-4" />
-    <span>Previous</span>
+    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+    <span>السابق</span>
   </PaginationLink>
 )
 PaginationPrevious.displayName = "PaginationPrevious"
@@ -80,13 +82,13 @@ const PaginationNext = ({
   ...props
 }: React.ComponentProps<typeof PaginationLink>) => (
   <PaginationLink
-    aria-label="Go to next page"
+    aria-label="الانتقال إلى الصفحة التالية"
     size="default"
-    className={cn("gap-1 pr-2.5", className)}
+    className={cn("gap-2 pr-2.5 group", className)}
     {...props}
   >
-    <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
+    <span>التالي</span>
+    <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1" />
   </PaginationLink>
 )
 PaginationNext.displayName = "PaginationNext"
@@ -101,7 +103,7 @@ const PaginationEllipsis = ({
     {...props}
   >
     <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">More pages</span>
+    <span className="sr-only">المزيد من الصفحات</span>
   </span>
 )
 PaginationEllipsis.displayName = "PaginationEllipsis"
