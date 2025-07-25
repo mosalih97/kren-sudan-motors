@@ -14,102 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_boost_logs: {
-        Row: {
-          ad_id: string
-          boost_type_id: string
-          created_at: string
-          end_time: string
-          id: string
-          start_time: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          ad_id: string
-          boost_type_id: string
-          created_at?: string
-          end_time: string
-          id?: string
-          start_time?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          ad_id?: string
-          boost_type_id?: string
-          created_at?: string
-          end_time?: string
-          id?: string
-          start_time?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ad_boost_logs_ad_id_fkey"
-            columns: ["ad_id"]
-            isOneToOne: false
-            referencedRelation: "ads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ad_boost_logs_boost_type_id_fkey"
-            columns: ["boost_type_id"]
-            isOneToOne: false
-            referencedRelation: "boost_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ad_boosts: {
         Row: {
           ad_id: string
-          boost_plan: string | null
           boost_type: string
           boosted_at: string
           cost: number
           created_at: string
           expires_at: string
           id: string
-          original_expires_at: string | null
           payment_method: string
           status: string
-          tier_priority: number | null
           user_id: string
-          views_gained: number | null
         }
         Insert: {
           ad_id: string
-          boost_plan?: string | null
           boost_type?: string
           boosted_at?: string
           cost?: number
           created_at?: string
           expires_at: string
           id?: string
-          original_expires_at?: string | null
           payment_method?: string
           status?: string
-          tier_priority?: number | null
           user_id: string
-          views_gained?: number | null
         }
         Update: {
           ad_id?: string
-          boost_plan?: string | null
           boost_type?: string
           boosted_at?: string
           cost?: number
           created_at?: string
           expires_at?: string
           id?: string
-          original_expires_at?: string | null
           payment_method?: string
           status?: string
-          tier_priority?: number | null
           user_id?: string
-          views_gained?: number | null
         }
         Relationships: [
           {
@@ -249,33 +189,6 @@ export type Database = {
           },
         ]
       }
-      boost_types: {
-        Row: {
-          created_at: string
-          duration_hours: number
-          features: Json
-          id: string
-          label: string
-          points_cost: number
-        }
-        Insert: {
-          created_at?: string
-          duration_hours: number
-          features: Json
-          id?: string
-          label: string
-          points_cost: number
-        }
-        Update: {
-          created_at?: string
-          duration_hours?: number
-          features?: Json
-          id?: string
-          label?: string
-          points_cost?: number
-        }
-        Relationships: []
-      }
       favorites: {
         Row: {
           ad_id: string
@@ -405,39 +318,6 @@ export type Database = {
           },
         ]
       }
-      payment_receipts: {
-        Row: {
-          created_at: string
-          date_of_payment: string
-          green_image_url: string
-          id: string
-          transaction_id: string
-          user_id: string
-          verified: boolean
-          white_image_url: string
-        }
-        Insert: {
-          created_at?: string
-          date_of_payment: string
-          green_image_url: string
-          id?: string
-          transaction_id: string
-          user_id: string
-          verified?: boolean
-          white_image_url: string
-        }
-        Update: {
-          created_at?: string
-          date_of_payment?: string
-          green_image_url?: string
-          id?: string
-          transaction_id?: string
-          user_id?: string
-          verified?: boolean
-          white_image_url?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -455,8 +335,6 @@ export type Database = {
           points: number | null
           premium_expires_at: string | null
           updated_at: string
-          upgraded_at: string | null
-          upgraded_by: string | null
           user_id: string
           user_id_display: string | null
           whatsapp: string | null
@@ -477,8 +355,6 @@ export type Database = {
           points?: number | null
           premium_expires_at?: string | null
           updated_at?: string
-          upgraded_at?: string | null
-          upgraded_by?: string | null
           user_id: string
           user_id_display?: string | null
           whatsapp?: string | null
@@ -499,8 +375,6 @@ export type Database = {
           points?: number | null
           premium_expires_at?: string | null
           updated_at?: string
-          upgraded_at?: string | null
-          upgraded_by?: string | null
           user_id?: string
           user_id_display?: string | null
           whatsapp?: string | null
@@ -582,42 +456,6 @@ export type Database = {
         }
         Relationships: []
       }
-      upgrade_logs: {
-        Row: {
-          action: string
-          admin_id: string
-          created_at: string
-          expires_at: string | null
-          from_membership: string
-          id: string
-          notes: string | null
-          to_membership: string
-          user_id: string
-        }
-        Insert: {
-          action: string
-          admin_id: string
-          created_at?: string
-          expires_at?: string | null
-          from_membership: string
-          id?: string
-          notes?: string | null
-          to_membership: string
-          user_id: string
-        }
-        Update: {
-          action?: string
-          admin_id?: string
-          created_at?: string
-          expires_at?: string | null
-          from_membership?: string
-          id?: string
-          notes?: string | null
-          to_membership?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       used_receipt_transactions: {
         Row: {
           created_at: string | null
@@ -645,98 +483,11 @@ export type Database = {
         }
         Relationships: []
       }
-      used_transaction_ids: {
-        Row: {
-          created_at: string
-          id: string
-          transaction_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          transaction_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          transaction_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      verified_passports: {
-        Row: {
-          created_at: string
-          extracted_text: string | null
-          full_name: string | null
-          id: string
-          passport_image_url: string
-          passport_number: string | null
-          receipt_id: string | null
-          updated_at: string
-          user_id: string
-          verification_status: string | null
-          verified: boolean | null
-        }
-        Insert: {
-          created_at?: string
-          extracted_text?: string | null
-          full_name?: string | null
-          id?: string
-          passport_image_url: string
-          passport_number?: string | null
-          receipt_id?: string | null
-          updated_at?: string
-          user_id: string
-          verification_status?: string | null
-          verified?: boolean | null
-        }
-        Update: {
-          created_at?: string
-          extracted_text?: string | null
-          full_name?: string | null
-          id?: string
-          passport_image_url?: string
-          passport_number?: string | null
-          receipt_id?: string | null
-          updated_at?: string
-          user_id?: string
-          verification_status?: string | null
-          verified?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "verified_passports_receipt_id_fkey"
-            columns: ["receipt_id"]
-            isOneToOne: false
-            referencedRelation: "receipt_submissions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      boost_ad: {
-        Args: {
-          ad_id_param: string
-          user_id_param: string
-          boost_type_id_param: string
-        }
-        Returns: Json
-      }
-      boost_ad_enhanced: {
-        Args: {
-          ad_id_param: string
-          user_id_param: string
-          boost_plan?: string
-        }
-        Returns: Json
-      }
       boost_ad_to_top_spot: {
         Args: {
           ad_id_param: string
@@ -753,18 +504,6 @@ export type Database = {
         Args: { ad_id_param: string; user_id_param: string }
         Returns: Json
       }
-      can_boost_ad_enhanced: {
-        Args: {
-          ad_id_param: string
-          user_id_param: string
-          boost_plan?: string
-        }
-        Returns: Json
-      }
-      cleanup_expired_boosts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
       cleanup_expired_top_spots: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -773,47 +512,13 @@ export type Database = {
         Args: { user_id_param: string; points_to_deduct: number }
         Returns: boolean
       }
-      downgrade_user_to_free: {
-        Args: { target_user_id: string; admin_user_id: string }
-        Returns: Json
-      }
       generate_unique_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_admin_users_list: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          user_id: string
-          display_name: string
-          phone: string
-          city: string
-          membership_type: string
-          is_premium: boolean
-          points: number
-          credits: number
-          created_at: string
-          upgraded_at: string
-          premium_expires_at: string
-          days_remaining: number
-          ads_count: number
-        }[]
-      }
-      get_boost_stats: {
-        Args: { user_id_param: string }
-        Returns: Json
-      }
-      get_user_total_points: {
-        Args: { user_id_param: string }
-        Returns: Json
-      }
       record_ad_view: {
         Args: { ad_id_param: string; viewer_user_id?: string }
         Returns: undefined
-      }
-      upgrade_user_to_premium: {
-        Args: { target_user_id: string; admin_user_id: string }
-        Returns: Json
       }
     }
     Enums: {
