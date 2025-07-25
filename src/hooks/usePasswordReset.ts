@@ -10,36 +10,40 @@ export const usePasswordReset = () => {
   const requestPasswordReset = async (email: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('create_password_reset_token', {
-        user_email: email
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/password-reset`
       });
 
-      if (error) throw error;
-
-      const result = data as { success: boolean; message: string };
-      
-      if (result.success) {
+      if (error) {
+        console.error('Password reset request error:', error);
+        
         await supabase.rpc('log_security_event', {
-          event_type: 'password_reset_requested',
-          event_data: { email, timestamp: new Date().toISOString() }
+          event_type: 'password_reset_failed',
+          event_data: { email, error: error.message, timestamp: new Date().toISOString() }
         });
         
         toast({
-          title: "تم إرسال الطلب",
-          description: "إذا كان البريد الإلكتروني مسجل، ستتلقى رسالة تحتوي على رابط الاستعادة",
+          title: "خطأ",
+          description: "حدث خطأ أثناء إرسال الطلب",
+          variant: "destructive"
         });
         
-        return { success: true };
-      } else {
-        return { success: false, message: result.message };
+        return { success: false, message: error.message };
       }
+
+      await supabase.rpc('log_security_event', {
+        event_type: 'password_reset_requested',
+        event_data: { email, timestamp: new Date().toISOString() }
+      });
+      
+      toast({
+        title: "تم إرسال الطلب",
+        description: "إذا كان البريد الإلكتروني مسجل، ستتلقى رسالة تحتوي على رابط الاستعادة",
+      });
+      
+      return { success: true };
     } catch (error: any) {
       console.error('Password reset request error:', error);
-      
-      await supabase.rpc('log_security_event', {
-        event_type: 'password_reset_failed',
-        event_data: { email, error: error.message, timestamp: new Date().toISOString() }
-      });
       
       toast({
         title: "خطأ",
@@ -53,41 +57,44 @@ export const usePasswordReset = () => {
     }
   };
 
-  const resetPassword = async (token: string, newPassword: string) => {
+  const resetPassword = async (newPassword: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('reset_password_with_token', {
-        reset_token: token,
-        new_password: newPassword
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
       });
 
-      if (error) throw error;
-
-      const result = data as { success: boolean; message: string };
-      
-      if (result.success) {
-        toast({
-          title: "تم بنجاح",
-          description: "تم تحديث كلمة المرور بنجاح",
+      if (error) {
+        console.error('Password reset error:', error);
+        
+        await supabase.rpc('log_security_event', {
+          event_type: 'password_reset_failed',
+          event_data: { error: error.message, timestamp: new Date().toISOString() }
         });
         
-        return { success: true };
-      } else {
-        throw new Error(result.message);
+        toast({
+          title: "خطأ",
+          description: error.message.includes('session') ? 
+            "الرابط غير صحيح أو منتهي الصلاحية" : 
+            "حدث خطأ أثناء تحديث كلمة المرور",
+          variant: "destructive"
+        });
+        
+        return { success: false, message: error.message };
       }
+
+      toast({
+        title: "تم بنجاح",
+        description: "تم تحديث كلمة المرور بنجاح",
+      });
+      
+      return { success: true };
     } catch (error: any) {
       console.error('Password reset error:', error);
       
-      await supabase.rpc('log_security_event', {
-        event_type: 'password_reset_failed',
-        event_data: { error: error.message, timestamp: new Date().toISOString() }
-      });
-      
       toast({
         title: "خطأ",
-        description: error.message.includes('التوكن غير صحيح') ? 
-          "الرابط غير صحيح أو منتهي الصلاحية" : 
-          "حدث خطأ أثناء تحديث كلمة المرور",
+        description: "حدث خطأ أثناء تحديث كلمة المرور",
         variant: "destructive"
       });
       
