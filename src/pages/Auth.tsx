@@ -235,6 +235,17 @@ const Auth = () => {
                     </div>
                   </div>
 
+                  <div className="text-center">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => navigate("/password-reset")}
+                      className="text-sm text-primary hover:text-primary/80"
+                    >
+                      نسيت كلمة المرور؟
+                    </Button>
+                  </div>
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
                   </Button>
