@@ -26,6 +26,10 @@ const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
 
+// Admin components (isolated from main app)
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -41,6 +45,7 @@ function App() {
                   </div>
                 }>
                   <Routes>
+                    {/* Main app routes */}
                     <Route path="/" element={<Index />} />
                     <Route path="/cars" element={<Cars />} />
                     <Route path="/search-results" element={<SearchResults />} />
@@ -81,6 +86,10 @@ function App() {
                         <BoostAd />
                       </ProtectedRoute>
                     } />
+
+                    {/* Admin routes (isolated) */}
+                    <Route path="/admin-login" element={<AdminLogin />} />
+                    <Route path="/admin-dashboard" element={<AdminDashboard />} />
                   </Routes>
                 </Suspense>
               </div>
