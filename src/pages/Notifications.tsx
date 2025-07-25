@@ -1,349 +1,190 @@
+
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
+import { NavigationArrows } from "@/components/NavigationArrows";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Bell, Check, Filter, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Session } from "@supabase/supabase-js";
-import { Bell, Check, CheckCheck, Trash2, Filter, Settings, MessageCircle } from "lucide-react";
 
 const Notifications = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
-  const navigate = useNavigate();
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const { user } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session?.user) {
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (!session?.user) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
     }
-  }, [user, filter]);
+  }, [user]);
 
   const fetchNotifications = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from("notifications")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (filter === "unread") {
-        query = query.eq("is_read", false);
-      } else if (filter === "read") {
-        query = query.eq("is_read", true);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      toast({
-        title: "خطأ في التحميل",
-        description: "حدث خطأ أثناء تحميل الإشعارات",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (id: string) => {
     try {
       const { error } = await supabase
         .from("notifications")
         .update({ is_read: true })
-        .eq("id", notificationId);
+        .eq("id", id);
 
       if (error) throw error;
-      
-      setNotifications(notifications.map(notif => 
-        notif.id === notificationId 
-          ? { ...notif, is_read: true }
-          : notif
+
+      setNotifications(notifications.map(n => 
+        n.id === id ? { ...n, is_read: true } : n
       ));
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث الإشعار",
-        variant: "destructive"
-      });
-    }
-  };
 
-  const markAllAsRead = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
-
-      if (error) throw error;
-      
-      setNotifications(notifications.map(notif => ({ ...notif, is_read: true })));
-      
       toast({
-        title: "تم",
-        description: "تم وضع علامة قراءة على جميع الإشعارات"
+        title: "تم وضع علامة كمقروءة",
+        description: "تم تحديث حالة الإشعار"
       });
     } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث الإشعارات",
-        variant: "destructive"
-      });
+      console.error("Error marking notification as read:", error);
     }
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "message":
-        return "💬";
-      case "favorite":
-        return "❤️";
-      case "ad_update":
-        return "🚗";
-      case "system":
-        return "⚙️";
+  const filteredNotifications = notifications.filter(notification => {
+    switch (filter) {
+      case 'unread':
+        return !notification.is_read;
+      case 'read':
+        return notification.is_read;
       default:
-        return "🔔";
+        return true;
     }
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case "message":
-        return "text-blue-500";
-      case "favorite":
-        return "text-red-500";
-      case "ad_update":
-        return "text-green-500";
-      case "system":
-        return "text-gray-500";
-      default:
-        return "text-blue-500";
-    }
-  };
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">جاري التحميل...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  });
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <BackButton variant="floating" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <Card className="card-gradient border-0 shadow-lg mb-6">
+          <Card className="card-gradient border-0 shadow-lg">
             <CardHeader>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
-                      <Bell className="h-5 w-5 text-white" />
-                    </div>
-                    الإشعارات
-                    {unreadCount > 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <p className="text-muted-foreground mt-1">
-                    تابع آخر التحديثات والرسائل
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-6 w-6" />
+                الإشعارات
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Filter Buttons */}
+              <div className="flex gap-2 mb-6">
+                <Button
+                  variant={filter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setFilter('all')}
+                  className="gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  الكل ({notifications.length})
+                </Button>
+                <Button
+                  variant={filter === 'unread' ? 'default' : 'outline'}
+                  onClick={() => setFilter('unread')}
+                  className="gap-2"
+                >
+                  غير مقروءة ({notifications.filter(n => !n.is_read).length})
+                </Button>
+                <Button
+                  variant={filter === 'read' ? 'default' : 'outline'}
+                  onClick={() => setFilter('read')}
+                  className="gap-2"
+                >
+                  مقروءة ({notifications.filter(n => n.is_read).length})
+                </Button>
+              </div>
+
+              {/* Notifications List */}
+              {loading ? (
+                <div className="text-center py-8">
+                  <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                  <p className="text-muted-foreground">جاري تحميل الإشعارات...</p>
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <div className="text-center py-8">
+                  <Bell className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-bold mb-2">لا توجد إشعارات</h3>
+                  <p className="text-muted-foreground">
+                    {filter === 'all' ? "لا توجد إشعارات حتى الآن" : 
+                     filter === 'unread' ? "لا توجد إشعارات غير مقروءة" : 
+                     "لا توجد إشعارات مقروءة"}
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <Button variant="outline" onClick={markAllAsRead} className="gap-2">
-                      <CheckCheck className="h-4 w-4" />
-                      وضع علامة قراءة على الكل
-                    </Button>
-                  )}
-                  
-                  <Button variant="ghost" className="gap-2" onClick={() => navigate('/messages')}>
-                    <MessageCircle className="h-4 w-4" />
-                    الرسائل
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Filter Tabs */}
-          <div className="flex gap-2 mb-6">
-            <Button
-              variant={filter === "all" ? "default" : "outline"}
-              onClick={() => setFilter("all")}
-              className="gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              الكل ({notifications.length})
-            </Button>
-            <Button
-              variant={filter === "unread" ? "default" : "outline"}
-              onClick={() => setFilter("unread")}
-            >
-              غير مقروءة ({unreadCount})
-            </Button>
-            <Button
-              variant={filter === "read" ? "default" : "outline"}
-              onClick={() => setFilter("read")}
-            >
-              مقروءة ({notifications.length - unreadCount})
-            </Button>
-          </div>
-
-          {/* Notifications List */}
-          {notifications.length === 0 ? (
-            <Card className="card-gradient border-0 shadow-lg">
-              <CardContent className="p-12 text-center">
-                <Bell className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-bold mb-2">
-                  {filter === "all" ? "لا توجد إشعارات" : 
-                   filter === "unread" ? "لا توجد إشعارات غير مقروءة" : 
-                   "لا توجد إشعارات مقروءة"}
-                </h3>
-                <p className="text-muted-foreground">
-                  {filter === "all" 
-                    ? "ستظهر إشعاراتك هنا عند وصولها"
-                    : "ستظهر الإشعارات المطابقة للفلتر المحدد هنا"
-                  }
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {notifications.map((notification) => (
-                <Card 
-                  key={notification.id} 
-                  className={`card-gradient border-0 shadow-sm hover:shadow-md transition-all cursor-pointer ${
-                    !notification.is_read ? "ring-2 ring-primary/20 bg-primary/5" : ""
-                  }`}
-                  onClick={() => !notification.is_read && markAsRead(notification.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      {/* Notification Icon */}
-                      <div className={`text-2xl ${getNotificationColor(notification.type)}`}>
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      {/* Notification Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-foreground mb-1">
-                              {notification.title}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {notification.message}
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {new Date(notification.created_at).toLocaleDateString("ar-SA", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })}
-                            </span>
-                            
+              ) : (
+                <div className="space-y-4">
+                  {filteredNotifications.map((notification) => (
+                    <div 
+                      key={notification.id} 
+                      className={`border rounded-lg p-4 transition-colors ${
+                        notification.is_read ? 'bg-muted/30' : 'bg-background border-primary/20'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold">{notification.title}</h4>
                             {!notification.is_read && (
-                              <div className="w-2 h-2 bg-primary rounded-full" />
+                              <span className="w-2 h-2 bg-primary rounded-full"></span>
                             )}
                           </div>
+                          <p className="text-muted-foreground mb-2">{notification.message}</p>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(notification.created_at).toLocaleDateString('ar-SA')}
+                          </span>
                         </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2 mt-3">
-                          {!notification.is_read && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsRead(notification.id);
-                              }}
-                              className="gap-1 text-xs h-7"
-                            >
-                              <Check className="h-3 w-3" />
-                              وضع علامة قراءة
-                            </Button>
-                          )}
-                          
+                        {!notification.is_read && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1 text-xs h-7 text-destructive hover:text-destructive"
+                            onClick={() => markAsRead(notification.id)}
+                            className="gap-2"
                           >
-                            <Trash2 className="h-3 w-3" />
-                            حذف
+                            <Check className="h-4 w-4" />
+                            تم القراءة
                           </Button>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      <NavigationArrows
+        prevPage={{
+          url: "/messages",
+          title: "المحادثات"
+        }}
+        nextPage={{
+          url: "/profile",
+          title: "الملف الشخصي"
+        }}
+      />
     </div>
   );
 };
