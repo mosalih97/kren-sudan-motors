@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -13,34 +12,20 @@ const SellerAds = () => {
   const [sellerAds, setSellerAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sellerProfile, setSellerProfile] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSellerAds = async () => {
-      if (!userId) {
-        setError("معرف البائع غير صحيح");
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
-      setError(null);
-      
       try {
         // Fetch seller's ads
         const { data: ads, error: adsError } = await supabase
           .from("ads")
           .select("*")
           .eq("user_id", userId)
-          .eq("status", "active")
           .order("created_at", { ascending: false });
 
-        if (adsError) {
-          console.error("Error fetching seller ads:", adsError);
-          setError("فشل في جلب إعلانات البائع");
-        } else {
-          setSellerAds(ads || []);
-        }
+        if (adsError) throw adsError;
+        setSellerAds(ads || []);
 
         // Fetch seller's profile
         const { data: profile, error: profileError } = await supabase
@@ -49,20 +34,18 @@ const SellerAds = () => {
           .eq("user_id", userId)
           .single();
 
-        if (profileError) {
-          console.error("Error fetching seller profile:", profileError);
-        } else {
-          setSellerProfile(profile);
-        }
+        if (profileError) throw profileError;
+        setSellerProfile(profile);
       } catch (error) {
-        console.error("Error fetching seller data:", error);
-        setError("حدث خطأ أثناء جلب بيانات البائع");
+        console.error("Error fetching seller ads:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSellerAds();
+    if (userId) {
+      fetchSellerAds();
+    }
   }, [userId]);
 
   if (loading) {
@@ -71,29 +54,7 @@ const SellerAds = () => {
         <Header />
         <BackButton />
         <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">جاري تحميل إعلانات البائع...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <BackButton />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">خطأ في تحميل الإعلانات</h2>
-              <p className="text-muted-foreground mb-4">{error}</p>
-            </div>
-          </div>
+          <div className="text-center">جاري التحميل...</div>
         </div>
       </div>
     );
