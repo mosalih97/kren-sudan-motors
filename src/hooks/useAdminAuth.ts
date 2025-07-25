@@ -43,15 +43,14 @@ export const useAdminAuth = () => {
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
-      if (error || !data) {
+      if (error) {
+        console.error('Auth verification error:', error);
         localStorage.removeItem('admin_session_token');
         setAuthState({ isAuthenticated: false, loading: false, adminId: null });
         return;
       }
 
-      const response = data as unknown as AdminVerifyResponse;
-      
-      if (!response.valid) {
+      if (!data || !data.valid) {
         localStorage.removeItem('admin_session_token');
         setAuthState({ isAuthenticated: false, loading: false, adminId: null });
         return;
@@ -60,16 +59,19 @@ export const useAdminAuth = () => {
       setAuthState({
         isAuthenticated: true,
         loading: false,
-        adminId: response.admin_id || null
+        adminId: data.admin_id || null
       });
     } catch (error) {
       console.error('Auth check error:', error);
+      localStorage.removeItem('admin_session_token');
       setAuthState({ isAuthenticated: false, loading: false, adminId: null });
     }
   };
 
   const login = async (username: string, password: string) => {
     try {
+      console.log('Attempting login with:', { username });
+      
       const { data, error } = await supabase.rpc('create_admin_session', {
         username_input: username,
         password_input: password,
@@ -77,34 +79,45 @@ export const useAdminAuth = () => {
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data) {
+      if (error) {
+        console.error('Login RPC error:', error);
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: "حدث خطأ غير متوقع",
+          description: "حدث خطأ في الاتصال بالخادم",
           variant: "destructive"
         });
         return false;
       }
 
-      const response = data as unknown as AdminSessionResponse;
-
-      if (!response.success) {
+      if (!data) {
+        console.error('No data returned from login');
         toast({
           title: "خطأ في تسجيل الدخول",
-          description: response.message || "حدث خطأ غير متوقع",
+          description: "لم يتم الحصول على استجابة من الخادم",
           variant: "destructive"
         });
         return false;
       }
 
-      if (response.session_token) {
-        localStorage.setItem('admin_session_token', response.session_token);
+      console.log('Login response:', data);
+
+      if (!data.success) {
+        toast({
+          title: "خطأ في تسجيل الدخول",
+          description: data.message || "حدث خطأ غير متوقع",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data.session_token) {
+        localStorage.setItem('admin_session_token', data.session_token);
       }
       
       setAuthState({
         isAuthenticated: true,
         loading: false,
-        adminId: response.admin_id || null
+        adminId: data.admin_id || null
       });
 
       toast({

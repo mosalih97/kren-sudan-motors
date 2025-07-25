@@ -17,14 +17,27 @@ const AdminLogin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
-    const success = await login(username, password);
-    if (success) {
-      navigate('/admin-dashboard');
+    if (!username.trim() || !password.trim()) {
+      return;
     }
     
-    setLoading(false);
+    setLoading(true);
+    console.log('Starting login process...');
+    
+    try {
+      const success = await login(username, password);
+      if (success) {
+        console.log('Login successful, navigating to dashboard...');
+        navigate('/admin-dashboard');
+      } else {
+        console.log('Login failed');
+      }
+    } catch (error) {
+      console.error('Login submission error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,6 +61,7 @@ const AdminLogin = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="أدخل اسم المستخدم"
                 required
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -59,12 +73,13 @@ const AdminLogin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="أدخل كلمة المرور"
                 required
+                disabled={loading}
               />
             </div>
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading}
+              disabled={loading || !username.trim() || !password.trim()}
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -79,6 +94,15 @@ const AdminLogin = () => {
               )}
             </Button>
           </form>
+          
+          {/* معلومات تسجيل الدخول للاختبار */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">بيانات تسجيل الدخول:</p>
+            <div className="text-sm space-y-1">
+              <p><strong>اسم المستخدم:</strong> admin</p>
+              <p><strong>كلمة المرور:</strong> admin123</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
