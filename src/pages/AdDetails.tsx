@@ -17,6 +17,7 @@ const AdDetails = () => {
   const [sellerAds, setSellerAds] = useState<any[]>([]);
   const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,6 +29,8 @@ const AdDetails = () => {
 
   const fetchAdDetails = async (adId: string) => {
     setLoading(true);
+    setError(null);
+    
     try {
       // Fetch ad details
       const { data: adData, error: adError } = await supabase
@@ -36,16 +39,19 @@ const AdDetails = () => {
         .eq("id", adId)
         .single();
 
-      if (adError) throw adError;
-      if (!adData) {
-        toast({
-          title: "الإعلان غير موجود",
-          description: "الإعلان الذي تحاول الوصول إليه غير موجود",
-          variant: "destructive",
-        });
-        navigate("/");
+      if (adError) {
+        console.error("Error fetching ad:", adError);
+        setError("فشل في جلب بيانات الإعلان");
+        setLoading(false);
         return;
       }
+
+      if (!adData) {
+        setError("الإعلان غير موجود");
+        setLoading(false);
+        return;
+      }
+
       setAd(adData);
 
       // Increment view count
@@ -59,10 +65,14 @@ const AdDetails = () => {
         .from("ads")
         .select("*")
         .eq("user_id", adData.user_id)
+        .neq("id", adId)
         .limit(6);
 
-      if (sellerAdsError) throw sellerAdsError;
-      setSellerAds(sellerAdsData || []);
+      if (sellerAdsError) {
+        console.error("Error fetching seller ads:", sellerAdsError);
+      } else {
+        setSellerAds(sellerAdsData || []);
+      }
 
       // Fetch seller's profile
       const { data: sellerProfileData, error: sellerProfileError } = await supabase
@@ -71,15 +81,15 @@ const AdDetails = () => {
         .eq("user_id", adData.user_id)
         .single();
 
-      if (sellerProfileError) throw sellerProfileError;
-      setSellerProfile(sellerProfileData);
+      if (sellerProfileError) {
+        console.error("Error fetching seller profile:", sellerProfileError);
+      } else {
+        setSellerProfile(sellerProfileData);
+      }
+
     } catch (error) {
       console.error("Error fetching ad details:", error);
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء جلب تفاصيل الإعلان",
-        variant: "destructive",
-      });
+      setError("حدث خطأ أثناء جلب تفاصيل الإعلان");
     } finally {
       setLoading(false);
     }
@@ -91,14 +101,38 @@ const AdDetails = () => {
         <Header />
         <BackButton />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">جاري التحميل...</div>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">جاري تحميل تفاصيل الإعلان...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!ad) {
-    return null;
+  if (error || !ad) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <BackButton />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4">خطأ في تحميل الإعلان</h2>
+              <p className="text-muted-foreground mb-4">{error || "الإعلان غير موجود"}</p>
+              <button 
+                onClick={() => navigate("/")}
+                className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+              >
+                العودة للرئيسية
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -180,29 +214,26 @@ const AdDetails = () => {
           <div className="mt-12">
             <h2 className="text-2xl font-bold mb-4">إعلانات أخرى للبائع</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sellerAds.map(
-                (otherAd: any) =>
-                  otherAd.id !== ad.id && (
-                    <CarCard
-                      key={otherAd.id}
-                      id={otherAd.id}
-                      title={otherAd.title}
-                      price={otherAd.price}
-                      location={otherAd.city}
-                      year={otherAd.year}
-                      mileage={otherAd.mileage}
-                      fuelType={otherAd.fuel_type}
-                      transmission={otherAd.transmission}
-                      image={
-                        otherAd.images?.[0] ||
-                        "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"
-                      }
-                      isPremium={otherAd.is_premium}
-                      isFeatured={otherAd.is_featured}
-                      viewCount={otherAd.view_count}
-                    />
-                  )
-              )}
+              {sellerAds.map((otherAd: any) => (
+                <CarCard
+                  key={otherAd.id}
+                  id={otherAd.id}
+                  title={otherAd.title}
+                  price={otherAd.price}
+                  location={otherAd.city}
+                  year={otherAd.year}
+                  mileage={otherAd.mileage}
+                  fuelType={otherAd.fuel_type}
+                  transmission={otherAd.transmission}
+                  image={
+                    otherAd.images?.[0] ||
+                    "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"
+                  }
+                  isPremium={otherAd.is_premium}
+                  isFeatured={otherAd.is_featured}
+                  viewCount={otherAd.view_count}
+                />
+              ))}
             </div>
           </div>
         )}
