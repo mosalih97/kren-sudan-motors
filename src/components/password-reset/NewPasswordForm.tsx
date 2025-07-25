@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Lock, Eye, EyeOff } from "lucide-react";
+import { sanitizeInput } from "@/utils/inputSanitizer";
+import { useSecurityContext } from "@/contexts/SecurityContext";
 
 interface NewPasswordFormProps {
   token: string;
@@ -20,6 +22,7 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { logSecurityEvent } = useSecurityContext();
 
   const validatePassword = (password: string) => {
     const errors = [];
@@ -43,13 +46,9 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
     return errors;
   };
 
-  const sanitizeInput = (input: string) => {
-    return input.trim();
-  };
-
   const validatePasswords = () => {
-    const sanitizedPassword = sanitizeInput(password);
-    const sanitizedConfirmPassword = sanitizeInput(confirmPassword);
+    const sanitizedPassword = sanitizeInput(password, 128);
+    const sanitizedConfirmPassword = sanitizeInput(confirmPassword, 128);
     
     if (!sanitizedPassword || !sanitizedConfirmPassword) {
       toast({
@@ -87,11 +86,17 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
     
     if (!validatePasswords()) return;
 
-    const sanitizedPassword = sanitizeInput(password);
-    const sanitizedToken = sanitizeInput(token);
+    const sanitizedPassword = sanitizeInput(password, 128);
+    const sanitizedToken = sanitizeInput(token, 256);
 
     setLoading(true);
     try {
+      // Log security event
+      logSecurityEvent('password_reset_attempted', {
+        token_length: sanitizedToken.length,
+        timestamp: new Date().toISOString()
+      });
+
       const { data, error } = await supabase.rpc('reset_password_with_token', {
         reset_token: sanitizedToken,
         new_password: sanitizedPassword
@@ -102,6 +107,10 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
       const result = data as { success: boolean; message: string };
       
       if (result.success) {
+        logSecurityEvent('password_reset_successful', {
+          timestamp: new Date().toISOString()
+        });
+
         toast({
           title: "تم بنجاح",
           description: "تم تحديث كلمة المرور بنجاح",
@@ -111,13 +120,14 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
           navigate('/auth');
         }, 2000);
       } else {
-        toast({
-          title: "خطأ",
-          description: result.message || "حدث خطأ أثناء تحديث كلمة المرور",
-          variant: "destructive"
-        });
+        throw new Error(result.message);
       }
     } catch (error: any) {
+      logSecurityEvent('password_reset_failed', {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+
       let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
       
       if (error?.message?.includes('token')) {

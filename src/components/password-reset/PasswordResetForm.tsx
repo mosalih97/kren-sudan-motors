@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail } from "lucide-react";
+import { sanitizeEmail, isValidEmail } from "@/utils/inputSanitizer";
+import { useSecurityContext } from "@/contexts/SecurityContext";
 
 interface PasswordResetFormProps {
   onSuccess?: (email: string) => void;
@@ -15,20 +17,12 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const sanitizeInput = (input: string) => {
-    return input.trim().replace(/[<>]/g, '');
-  };
+  const { logSecurityEvent } = useSecurityContext();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedEmail = sanitizeEmail(email);
     
     if (!sanitizedEmail) {
       toast({
@@ -39,7 +33,7 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
       return;
     }
 
-    if (!validateEmail(sanitizedEmail)) {
+    if (!isValidEmail(sanitizedEmail)) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال بريد إلكتروني صحيح",
@@ -50,6 +44,12 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
 
     setLoading(true);
     try {
+      // Log security event
+      logSecurityEvent('password_reset_requested', {
+        email: sanitizedEmail,
+        timestamp: new Date().toISOString()
+      });
+
       const { data, error } = await supabase.rpc('create_password_reset_token', {
         user_email: sanitizedEmail
       });
@@ -73,6 +73,12 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
         });
       }
     } catch (error: any) {
+      logSecurityEvent('password_reset_failed', {
+        email: sanitizedEmail,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+
       let errorMessage = "حدث خطأ أثناء إرسال الطلب";
       
       if (error?.message?.includes('email')) {
