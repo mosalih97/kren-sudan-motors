@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { BackButton } from "@/components/BackButton";
 import { CarCard } from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,7 +40,7 @@ const SearchResults = () => {
             display_name,
             avatar_url,
             membership_type,
-            user_id_display
+            user_id
           )
         `)
         .eq('status', 'active');
@@ -122,6 +123,7 @@ const SearchResults = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <BackButton />
       
       {/* Header Section */}
       <section className="py-8 bg-muted/30">

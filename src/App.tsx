@@ -44,8 +44,9 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/cars" element={<Cars />} />
-                    <Route path="/search" element={<SearchResults />} />
+                    <Route path="/search-results" element={<SearchResults />} />
                     <Route path="/ad/:id" element={<AdDetails />} />
+                    <Route path="/seller-ads/:userId" element={<SellerAds />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
                     
@@ -68,11 +69,6 @@ function App() {
                     <Route path="/notifications" element={
                       <ProtectedRoute>
                         <Notifications />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/seller-ads" element={
-                      <ProtectedRoute>
-                        <SellerAds />
                       </ProtectedRoute>
                     } />
                     <Route path="/upload-receipt" element={
