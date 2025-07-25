@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header";
 import { BackButton } from "@/components/BackButton";
 import { ContactRevealButtons } from "@/components/ContactRevealButtons";
 import { ImageGallery } from "@/components/ImageGallery";
@@ -8,7 +9,7 @@ import { CarCard } from "@/components/CarCard";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Gauge, Fuel, Settings, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 const AdDetails = () => {
   const { id } = useParams<{ id: string }>();

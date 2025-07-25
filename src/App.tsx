@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,7 +19,6 @@ import Notifications from "./pages/Notifications";
 import BoostAd from "./pages/BoostAd";
 import UploadReceipt from "./pages/UploadReceipt";
 import NotFound from "./pages/NotFound";
-import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -81,14 +81,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UploadReceipt />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin" 
-              element={
-                <ProtectedRoute>
-                  <Admin />
                 </ProtectedRoute>
               } 
             />
