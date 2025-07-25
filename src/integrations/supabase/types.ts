@@ -435,6 +435,7 @@ export type Database = {
           expires_at: string
           id: string
           token: string
+          updated_at: string | null
           used: boolean | null
           user_id: string
         }
@@ -443,6 +444,7 @@ export type Database = {
           expires_at: string
           id?: string
           token: string
+          updated_at?: string | null
           used?: boolean | null
           user_id: string
         }
@@ -451,6 +453,7 @@ export type Database = {
           expires_at?: string
           id?: string
           token?: string
+          updated_at?: string | null
           used?: boolean | null
           user_id?: string
         }

@@ -16,10 +16,21 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const sanitizeInput = (input: string) => {
+    return input.trim().replace(/[<>]/g, '');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email.trim()) {
+    const sanitizedEmail = sanitizeInput(email);
+    
+    if (!sanitizedEmail) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال البريد الإلكتروني",
@@ -28,36 +39,32 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
       return;
     }
 
+    if (!validateEmail(sanitizedEmail)) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال بريد إلكتروني صحيح",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('create_password_reset_token', {
-        user_email: email
+        user_email: sanitizedEmail
       });
 
       if (error) throw error;
 
-      const result = data as { success: boolean; message: string; token?: string };
+      const result = data as { success: boolean; message: string };
       
       if (result.success) {
         toast({
           title: "تم إرسال الطلب",
-          description: "تم إنشاء رمز استعادة كلمة المرور بنجاح.",
+          description: "تم إنشاء رمز استعادة كلمة المرور بنجاح. يرجى التحقق من بريدك الإلكتروني.",
         });
         
-        // في بيئة التطوير، نعرض الرمز للمستخدم
-        if (result.token) {
-          const resetUrl = `${window.location.origin}/password-reset?token=${result.token}`;
-          
-          setTimeout(() => {
-            toast({
-              title: "رابط الاستعادة (للتجربة)",
-              description: `انسخ هذا الرابط: ${resetUrl}`,
-              duration: 20000,
-            });
-          }, 1000);
-        }
-        
-        onSuccess?.(email);
+        onSuccess?.(sanitizedEmail);
       } else {
         toast({
           title: "خطأ",
@@ -96,6 +103,7 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             className="pr-10"
             required
+            maxLength={254}
           />
         </div>
       </div>

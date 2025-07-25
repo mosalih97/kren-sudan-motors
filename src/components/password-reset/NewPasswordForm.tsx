@@ -21,8 +21,37 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const validatePassword = (password: string) => {
+    const errors = [];
+    
+    if (password.length < 8) {
+      errors.push("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push("كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل");
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push("كلمة المرور يجب أن تحتوي على حرف صغير واحد على الأقل");
+    }
+    
+    if (!/[0-9]/.test(password)) {
+      errors.push("كلمة المرور يجب أن تحتوي على رقم واحد على الأقل");
+    }
+    
+    return errors;
+  };
+
+  const sanitizeInput = (input: string) => {
+    return input.trim();
+  };
+
   const validatePasswords = () => {
-    if (!password.trim() || !confirmPassword.trim()) {
+    const sanitizedPassword = sanitizeInput(password);
+    const sanitizedConfirmPassword = sanitizeInput(confirmPassword);
+    
+    if (!sanitizedPassword || !sanitizedConfirmPassword) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال كلمة المرور وتأكيدها",
@@ -31,7 +60,7 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
       return false;
     }
 
-    if (password !== confirmPassword) {
+    if (sanitizedPassword !== sanitizedConfirmPassword) {
       toast({
         title: "خطأ",
         description: "كلمتا المرور غير متطابقتين",
@@ -40,10 +69,11 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
       return false;
     }
 
-    if (password.length < 6) {
+    const passwordErrors = validatePassword(sanitizedPassword);
+    if (passwordErrors.length > 0) {
       toast({
         title: "خطأ",
-        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        description: passwordErrors[0],
         variant: "destructive"
       });
       return false;
@@ -57,11 +87,14 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
     
     if (!validatePasswords()) return;
 
+    const sanitizedPassword = sanitizeInput(password);
+    const sanitizedToken = sanitizeInput(token);
+
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('reset_password_with_token', {
-        reset_token: token,
-        new_password: password
+        reset_token: sanitizedToken,
+        new_password: sanitizedPassword
       });
 
       if (error) throw error;
@@ -115,6 +148,7 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             className="pr-10 pl-10"
             required
+            maxLength={128}
           />
           <Button
             type="button"
@@ -140,6 +174,7 @@ export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="pr-10 pl-10"
             required
+            maxLength={128}
           />
           <Button
             type="button"
