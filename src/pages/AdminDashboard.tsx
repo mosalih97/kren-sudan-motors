@@ -50,20 +50,45 @@ const AdminDashboard = () => {
 
   const loadDashboardStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('admin_dashboard_stats')
-        .select('*')
-        .single();
+      // Load stats directly from tables for better performance
+      const [usersResult, adsResult, boostsResult, pointsResult] = await Promise.all([
+        supabase.from('profiles').select('membership_type, created_at, points, credits'),
+        supabase.from('ads').select('status, is_premium'),
+        supabase.from('ad_boosts').select('status, boost_plan, expires_at'),
+        supabase.from('profiles').select('points, credits')
+      ]);
 
-      if (error) {
-        console.error('Error loading stats:', error);
-        toast.error('خطأ في تحميل الإحصائيات');
-      } else {
-        setStats(data);
+      if (usersResult.error || adsResult.error || boostsResult.error || pointsResult.error) {
+        throw new Error('Failed to load stats');
       }
+
+      const users = usersResult.data || [];
+      const ads = adsResult.data || [];
+      const boosts = boostsResult.data || [];
+      const profiles = pointsResult.data || [];
+
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+
+      const stats: DashboardStats = {
+        total_users: users.length,
+        premium_users: users.filter(u => u.membership_type === 'premium').length,
+        new_users_this_month: users.filter(u => new Date(u.created_at) >= currentMonth).length,
+        active_ads: ads.filter(a => a.status === 'active').length,
+        deleted_ads: ads.filter(a => a.status === 'deleted').length,
+        premium_ads: ads.filter(a => a.is_premium && a.status === 'active').length,
+        active_boosts: boosts.filter(b => b.status === 'active' && new Date(b.expires_at) > new Date()).length,
+        basic_boosts: boosts.filter(b => b.boost_plan === 'basic').length,
+        premium_boosts: boosts.filter(b => b.boost_plan === 'premium').length,
+        ultimate_boosts: boosts.filter(b => b.boost_plan === 'ultimate').length,
+        total_points: profiles.reduce((sum, p) => sum + (p.points || 0), 0),
+        total_credits: profiles.reduce((sum, p) => sum + (p.credits || 0), 0)
+      };
+
+      setStats(stats);
     } catch (error) {
       console.error('Error loading stats:', error);
-      toast.error('خطأ في النظام');
+      toast.error('خطأ في تحميل الإحصائيات');
     } finally {
       setLoading(false);
     }
