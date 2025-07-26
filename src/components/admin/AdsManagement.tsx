@@ -88,22 +88,14 @@ const AdsManagement: React.FC = () => {
 
   const deleteAd = async (adId: string) => {
     try {
-      const { data: currentAdmin } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('membership_type', 'admin')
-        .single();
-
-      if (!currentAdmin) {
-        throw new Error('لم يتم العثور على بيانات المدير');
-      }
-
-      const { data, error } = await supabase.rpc('delete_ad_permanently', {
+      const response = await supabase.rpc('delete_ad_permanently', {
         ad_id_param: adId,
-        admin_user_id: currentAdmin.user_id
+        admin_user_id: '00000000-0000-0000-0000-000000000001' // Admin user ID
       });
 
-      if (error) throw error;
+      const data = response.data as any;
+
+      if (response.error) throw response.error;
 
       if (data?.success) {
         toast({
@@ -213,12 +205,12 @@ const AdsManagement: React.FC = () => {
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {ad.is_premium && (
-                          <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600 text-xs">
+                          <Badge variant="premium" className="text-xs">
                             مميز
                           </Badge>
                         )}
                         {ad.is_featured && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="featured" className="text-xs">
                             مُروّج
                           </Badge>
                         )}

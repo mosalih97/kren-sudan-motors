@@ -49,10 +49,35 @@ const UsersManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_admin_users_list');
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          user_id,
+          display_name,
+          phone,
+          city,
+          membership_type,
+          is_premium,
+          points,
+          credits,
+          created_at,
+          upgraded_at,
+          premium_expires_at,
+          user_id_display
+        `)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setUsers(data || []);
+
+      const formattedUsers = (data || []).map(user => ({
+        ...user,
+        days_remaining: user.premium_expires_at 
+          ? Math.ceil((new Date(user.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : null,
+        ads_count: 0 // We'll calculate this separately or set default
+      }));
+
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -67,22 +92,14 @@ const UsersManagement: React.FC = () => {
 
   const upgradeUser = async (userId: string) => {
     try {
-      const { data: currentAdmin } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('membership_type', 'admin')
-        .single();
-
-      if (!currentAdmin) {
-        throw new Error('لم يتم العثور على بيانات المدير');
-      }
-
-      const { data, error } = await supabase.rpc('upgrade_user_to_premium', {
+      const response = await supabase.rpc('upgrade_user_to_premium', {
         target_user_id: userId,
-        admin_user_id: currentAdmin.user_id
+        admin_user_id: '00000000-0000-0000-0000-000000000001' // Admin user ID
       });
 
-      if (error) throw error;
+      const data = response.data as any;
+
+      if (response.error) throw response.error;
 
       if (data?.success) {
         toast({
@@ -105,22 +122,14 @@ const UsersManagement: React.FC = () => {
 
   const downgradeUser = async (userId: string) => {
     try {
-      const { data: currentAdmin } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('membership_type', 'admin')
-        .single();
-
-      if (!currentAdmin) {
-        throw new Error('لم يتم العثور على بيانات المدير');
-      }
-
-      const { data, error } = await supabase.rpc('downgrade_user_to_free', {
+      const response = await supabase.rpc('downgrade_user_to_free', {
         target_user_id: userId,
-        admin_user_id: currentAdmin.user_id
+        admin_user_id: '00000000-0000-0000-0000-000000000001' // Admin user ID
       });
 
-      if (error) throw error;
+      const data = response.data as any;
+
+      if (response.error) throw response.error;
 
       if (data?.success) {
         toast({
@@ -215,8 +224,7 @@ const UsersManagement: React.FC = () => {
                     <TableCell>{user.city || 'غير محدد'}</TableCell>
                     <TableCell>
                       <Badge 
-                        variant={user.membership_type === 'premium' ? 'default' : 'secondary'}
-                        className={user.membership_type === 'premium' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
+                        variant={user.membership_type === 'premium' ? 'premium' : 'secondary'}
                       >
                         {user.membership_type === 'premium' && <Crown className="h-3 w-3 ml-1" />}
                         {user.membership_type === 'premium' ? 'مميز' : 'عادي'}

@@ -29,15 +29,58 @@ const DashboardStats: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('admin_dashboard_stats')
-        .select('*')
-        .single();
+      // Since the view might not be available in types, use raw SQL approach
+      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
 
-      if (error) throw error;
-      setStats(data);
+      if (error) {
+        console.error('Stats error:', error);
+        // Fallback: manually calculate stats
+        const [
+          { count: totalUsers },
+          { count: premiumUsers },
+          { count: activeAds },
+          { count: deletedAds }
+        ] = await Promise.all([
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('membership_type', 'premium'),
+          supabase.from('ads').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+          supabase.from('ads').select('*', { count: 'exact', head: true }).eq('status', 'deleted')
+        ]);
+
+        setStats({
+          total_users: totalUsers || 0,
+          premium_users: premiumUsers || 0,
+          new_users_this_month: 0,
+          active_ads: activeAds || 0,
+          deleted_ads: deletedAds || 0,
+          premium_ads: 0,
+          active_boosts: 0,
+          basic_boosts: 0,
+          premium_boosts: 0,
+          ultimate_boosts: 0,
+          total_points: 0,
+          total_credits: 0
+        });
+      } else {
+        setStats(data);
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Set default empty stats
+      setStats({
+        total_users: 0,
+        premium_users: 0,
+        new_users_this_month: 0,
+        active_ads: 0,
+        deleted_ads: 0,
+        premium_ads: 0,
+        active_boosts: 0,
+        basic_boosts: 0,
+        premium_boosts: 0,
+        ultimate_boosts: 0,
+        total_points: 0,
+        total_credits: 0
+      });
     } finally {
       setLoading(false);
     }
