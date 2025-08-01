@@ -918,6 +918,10 @@ export type Database = {
         }
         Returns: Json
       }
+      check_admin_access: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       cleanup_expired_boosts: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -955,6 +959,10 @@ export type Database = {
         Returns: string
       }
       get_admin_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_admin_stats: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }

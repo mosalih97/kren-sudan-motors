@@ -2,11 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 export const useAdminCheck = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,26 +19,21 @@ export const useAdminCheck = () => {
         return;
       }
 
-      // فحص سريع مباشر بدون تعقيدات
       try {
-        console.log('فحص مباشر وسريع من جدول admin_users...');
+        console.log('استخدام دالة check_admin_access...');
         
-        const { data, error } = await supabase
-          .from('admin_users')
-          .select('email')
-          .eq('email', user.email)
-          .limit(1);
-          
+        const { data, error } = await supabase.rpc('check_admin_access', {
+          user_email: user.email
+        });
+        
         console.log('نتيجة الفحص:', { data, error });
         
         if (error) {
           console.error('خطأ في الفحص:', error);
           setIsAdmin(false);
         } else {
-          // إذا وُجدت نتائج، المستخدم مدير
-          const adminFound = data && data.length > 0;
-          console.log('هل المستخدم مدير؟', adminFound);
-          setIsAdmin(adminFound);
+          console.log('هل المستخدم مدير؟', data);
+          setIsAdmin(data === true);
         }
         
       } catch (error) {
@@ -51,13 +44,8 @@ export const useAdminCheck = () => {
       }
     };
 
-    if (user) {
-      checkAdminAccess();
-    } else {
-      setLoading(false);
-      setIsAdmin(false);
-    }
-  }, [user?.email, toast]);
+    checkAdminAccess();
+  }, [user?.email]);
 
   return { isAdmin, loading };
 };

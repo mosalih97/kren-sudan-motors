@@ -9,6 +9,7 @@ interface AdminStats {
   active_ads: number;
   premium_users: number;
   total_boosts: number;
+  new_users_this_month: number;
 }
 
 export const useAdminStats = (isAdmin: boolean | null) => {
@@ -21,18 +22,29 @@ export const useAdminStats = (isAdmin: boolean | null) => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
+      console.log('تحميل إحصائيات المدير...');
+      
+      const { data, error } = await supabase.rpc('get_admin_stats');
       
       if (error) {
-        console.error('Stats loading error:', error);
+        console.error('خطأ في تحميل الإحصائيات:', error);
         throw error;
       }
       
+      console.log('تم تحميل الإحصائيات:', data);
+      
       // التأكد من أن البيانات من النوع الصحيح
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        setStats(data as unknown as AdminStats);
+      if (data && typeof data === 'object') {
+        setStats({
+          total_users: data.total_users || 0,
+          total_ads: data.total_ads || 0,
+          active_ads: data.active_ads || 0,
+          premium_users: data.premium_users || 0,
+          total_boosts: data.total_boosts || 0,
+          new_users_this_month: data.new_users_this_month || 0
+        });
       } else {
-        throw new Error('Invalid data format received');
+        throw new Error('صيغة البيانات غير صحيحة');
       }
     } catch (error) {
       console.error('خطأ في تحميل الإحصائيات:', error);
