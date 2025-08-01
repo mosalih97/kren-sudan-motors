@@ -13,17 +13,22 @@ export const useAdminAuth = () => {
         return { isAdmin: false };
       }
 
+      console.log('Checking admin status for:', user.email);
+
       const { data, error } = await supabase.rpc('is_admin_user', {
         user_email: user.email
       });
 
       if (error) {
         console.error('Admin check error:', error);
-        return { isAdmin: false };
+        throw error;
       }
 
-      return { isAdmin: data };
+      console.log('Admin check result:', data);
+      return { isAdmin: Boolean(data) };
     },
     enabled: !!user?.email,
+    staleTime: 5 * 60 * 1000, // البيانات صالحة لمدة 5 دقائق
+    retry: 2,
   });
 };
