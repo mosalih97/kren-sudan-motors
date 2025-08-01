@@ -1,233 +1,262 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator 
-} from '@/components/ui/dropdown-menu';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Badge } from '@/components/ui/badge';
-import { Bell, User, Settings, LogOut, Plus, Car, MessageSquare, Crown, Shield } from 'lucide-react';
 
-export const Header = () => {
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Bell, Plus, User, Heart, MessageCircle, Crown, Menu, LogOut, Settings } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserPoints } from "@/hooks/useUserPoints";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+export function Header() {
   const { user, signOut } = useAuth();
+  const { pointsData } = useUserPoints();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  // جلب بيانات الملف الشخصي
-  const { data: profile } = useQuery({
-    queryKey: ['profile', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
+  useEffect(() => {
+    if (user) {
+      // Fetch user profile
+      const fetchProfile = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        setProfile(data);
+      };
 
-  // التحقق من صلاحيات الإدارة
-  const { data: isAdmin } = useQuery({
-    queryKey: ['admin-check', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return false;
-      
-      const { data, error } = await supabase.rpc('is_admin', {
-        user_email: user.email
-      });
+      // Fetch unread notifications count
+      const fetchUnreadNotifications = async () => {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+        setUnreadNotifications(count || 0);
+      };
 
-      if (error) {
-        console.error('Admin check error:', error);
-        return false;
-      }
-      
-      return data;
-    },
-    enabled: !!user?.email,
-  });
+      // Fetch unread messages count
+      const fetchUnreadMessages = async () => {
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+        setUnreadMessages(count || 0);
+      };
 
-  // جلب عدد الإشعارات غير المقروءة
-  const { data: unreadCount } = useQuery({
-    queryKey: ['unread-notifications', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      
-      if (error) throw error;
-      return count || 0;
-    },
-    enabled: !!user?.id,
-    refetchInterval: 30000,
-  });
+      fetchProfile();
+      fetchUnreadNotifications();
+      fetchUnreadMessages();
+
+      // Setup real-time subscription for messages
+      const messagesSubscription = supabase
+        .channel('header-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `receiver_id.eq.${user.id}`
+          },
+          () => {
+            fetchUnreadMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        messagesSubscription.unsubscribe();
+      };
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
-    setIsLoading(true);
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Sign out error:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    await signOut();
+    navigate('/');
   };
 
   return (
-    <header className="bg-white shadow-md border-b">
-      <div className="container mx-auto px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80">
+      <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <Car className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-blue-600">الكرين</span>
+          {/* الشعار */}
+          <Link to="/" className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl primary-gradient flex items-center justify-center">
+                <span className="text-white font-bold text-xl">ك</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold primary-gradient bg-clip-text text-transparent font-scheherazade">
+                  الكرين
+                </h1>
+                <p className="text-xs text-muted-foreground">سوق السيارات السوداني</p>
+              </div>
+            </div>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link 
-              to="/cars" 
-              className="text-gray-700 hover:text-blue-600 font-medium"
-            >
-              السيارات
+          {/* القائمة الرئيسية - سطح المكتب */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link to="/">
+              <Button variant="ghost" className="text-foreground hover:text-primary">
+                الرئيسية
+              </Button>
             </Link>
-            {user && (
-              <>
-                <Link 
-                  to="/add-ad" 
-                  className="text-gray-700 hover:text-blue-600 font-medium"
-                >
-                  إضافة إعلان
-                </Link>
-                <Link 
-                  to="/my-ads" 
-                  className="text-gray-700 hover:text-blue-600 font-medium"
-                >
-                  إعلاناتي
-                </Link>
-              </>
-            )}
+            <Link to="/cars">
+              <Button variant="ghost" className="text-foreground hover:text-primary">
+                السيارات
+              </Button>
+            </Link>
+            <Button variant="ghost" className="text-foreground hover:text-primary">
+              المعارض
+            </Button>
+            <Button variant="ghost" className="text-foreground hover:text-primary">
+              قطع الغيار
+            </Button>
+            <Button variant="ghost" className="text-foreground hover:text-primary">
+              تمويل
+            </Button>
           </nav>
 
-          <div className="flex items-center space-x-4">
+          {/* أزرار التفاعل */}
+          <div className="flex items-center gap-3">
             {user ? (
-              <div className="flex items-center space-x-3">
-                {/* الإشعارات */}
-                <Link to="/notifications" className="relative p-2">
-                  <Bell className="h-5 w-5 text-gray-600 hover:text-blue-600" />
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
+              <>
+                {/* النقاط ونوع العضوية */}
+                <div className="hidden sm:flex items-center gap-2 bg-primary-light rounded-full px-3 py-2">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">
+                    {pointsData?.totalPoints || 0} نقطة
+                  </span>
+                  {pointsData?.membershipType === 'premium' && (
+                    <Badge variant="premium" className="text-xs px-2 py-0">مميز</Badge>
                   )}
+                </div>
+
+                {/* الإشعارات */}
+                <Link to="/notifications">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadNotifications > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs">
+                        {unreadNotifications}
+                      </Badge>
+                    )}
+                  </Button>
                 </Link>
+
+                {/* المفضلة */}
+                <Button variant="ghost" size="icon" className="hidden sm:flex">
+                  <Heart className="h-5 w-5" />
+                </Button>
 
                 {/* الرسائل */}
-                <Link to="/messages" className="p-2">
-                  <MessageSquare className="h-5 w-5 text-gray-600 hover:text-blue-600" />
+                <Link to="/messages">
+                  <Button variant="ghost" size="icon" className="hidden sm:flex relative">
+                    <MessageCircle className="h-5 w-5" />
+                    {unreadMessages > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs animate-pulse">
+                        {unreadMessages}
+                      </Badge>
+                    )}
+                  </Button>
                 </Link>
 
-                {/* قائمة المستخدم */}
+                {/* إضافة إعلان */}
+                <Link to="/add-ad">
+                  <Button variant="accent" className="hidden sm:flex">
+                    <Plus className="h-4 w-4 ml-2" />
+                    أضف إعلان
+                  </Button>
+                </Link>
+
+                {/* الملف الشخصي */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={profile?.avatar_url} alt="الملف الشخصي" />
-                        <AvatarFallback>
-                          {profile?.display_name?.charAt(0) || user.email?.charAt(0) || '؟'}
-                        </AvatarFallback>
-                      </Avatar>
+                    <Button variant="ghost" size="icon" className="rounded-full relative">
+                      <User className="h-5 w-5" />
+                      {pointsData?.membershipType === 'premium' && (
+                        <Crown className="h-3 w-3 text-primary absolute -top-1 -right-1" />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <div className="flex items-center justify-start gap-2 p-2">
-                      <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-medium text-sm">
-                          {profile?.display_name || 'مستخدم'}
-                        </p>
-                        <p className="w-[200px] truncate text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          {profile?.is_premium && (
-                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
-                              <Crown className="h-3 w-3 mr-1" />
-                              مميز
-                            </Badge>
-                          )}
-                          {isAdmin && (
-                            <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
-                              <Shield className="h-3 w-3 mr-1" />
-                              مدير
-                            </Badge>
-                          )}
-                        </div>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <div className="p-2">
+                      <p className="text-sm font-medium">
+                        {profile?.display_name || user.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Crown className="h-4 w-4 text-primary" />
+                        <span className="text-sm">{pointsData?.totalPoints || 0} نقطة</span>
+                        {pointsData?.membershipType === 'premium' && (
+                          <Badge variant="premium" className="text-xs">مميز</Badge>
+                        )}
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        إعلانات شهرية: {pointsData?.monthlyAdsCount || 0}/{pointsData?.monthlyAdsLimit || 5}
+                      </p>
                     </div>
                     <DropdownMenuSeparator />
-                    
-                    {/* لوحة التحكم الإدارية */}
-                    {isAdmin && (
-                      <>
-                        <DropdownMenuItem asChild>
-                          <Link to="/admin" className="cursor-pointer">
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span>لوحة التحكم</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>الملف الشخصي</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuItem asChild>
-                      <Link to="/add-ad" className="cursor-pointer">
-                        <Plus className="mr-2 h-4 w-4" />
-                        <span>إضافة إعلان</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    
+                    <Link to="/profile">
+                      <DropdownMenuItem>
+                        <Settings className="ml-2 h-4 w-4" />
+                        الملف الشخصي
+                      </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="cursor-pointer text-red-600"
-                      onClick={handleSignOut}
-                      disabled={isLoading}
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>{isLoading ? 'جاري الخروج...' : 'تسجيل الخروج'}</span>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="ml-2 h-4 w-4" />
+                      تسجيل خروج
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
+              </>
             ) : (
-              <Button asChild>
-                <Link to="/auth">تسجيل الدخول</Link>
-              </Button>
+              <Link to="/auth">
+                <Button variant="accent">
+                  تسجيل دخول
+                </Button>
+              </Link>
             )}
+
+            {/* قائمة الموبايل */}
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Menu className="h-5 w-5" />
+            </Button>
           </div>
         </div>
+
+        {/* شريط سريع للموبايل */}
+        {user && (
+          <div className="flex md:hidden items-center justify-center gap-2 mt-4">
+            <Link to="/add-ad" className="flex-1">
+              <Button variant="accent" size="sm" className="w-full">
+                <Plus className="h-4 w-4 ml-1" />
+                أضف إعلان
+              </Button>
+            </Link>
+            <Button variant="outline" size="sm">
+              <Heart className="h-4 w-4" />
+            </Button>
+            <Link to="/messages">
+              <Button variant="outline" size="sm" className="relative">
+                <MessageCircle className="h-4 w-4" />
+                {unreadMessages > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs animate-pulse">
+                    {unreadMessages}
+                  </Badge>
+                )}
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   );
-};
+}

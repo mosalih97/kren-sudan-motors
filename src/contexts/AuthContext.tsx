@@ -1,9 +1,8 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { validateEmail, validateDisplayName } from '@/utils/securityValidation';
-import { SecureStorage } from '@/components/security/SecureStorageManager';
 
 interface AuthContextType {
   user: User | null;
@@ -40,21 +39,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Enhanced security logging
+        // Log security events
         if (event === 'SIGNED_IN' && session?.user) {
           try {
             await supabase.rpc('log_security_event', {
               event_type: 'user_login',
               event_data: {
                 user_id: session.user.id,
-                timestamp: new Date().toISOString(),
-                ip_address: 'unknown',
-                user_agent: navigator.userAgent
+                timestamp: new Date().toISOString()
               }
             });
-            
-            // Store session info securely
-            SecureStorage.setSecureItem('last_login', new Date().toISOString());
           } catch (error) {
             console.error('Failed to log security event:', error);
           }
@@ -63,14 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await supabase.rpc('log_security_event', {
               event_type: 'user_logout',
               event_data: {
-                timestamp: new Date().toISOString(),
-                ip_address: 'unknown',
-                user_agent: navigator.userAgent
+                timestamp: new Date().toISOString()
               }
             });
-            
-            // Clear secure storage on logout
-            SecureStorage.clearSecureStorage();
           } catch (error) {
             console.error('Failed to log security event:', error);
           }
@@ -106,53 +95,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
-      // Enhanced input validation
-      const emailValidation = validateEmail(email);
-      if (!emailValidation.isValid) {
-        const error = new Error(emailValidation.errors[0]);
-        toast({
-          variant: "destructive",
-          title: "خطأ في التسجيل",
-          description: emailValidation.errors[0],
-        });
-        return { error };
-      }
-
-      if (displayName) {
-        const nameValidation = validateDisplayName(displayName);
-        if (!nameValidation.isValid) {
-          const error = new Error(nameValidation.errors[0]);
-          toast({
-            variant: "destructive",
-            title: "خطأ في التسجيل",
-            description: nameValidation.errors[0],
-          });
-          return { error };
-        }
-      }
-
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email,
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: displayName ? { display_name: displayName.trim() } : undefined
+          data: displayName ? { display_name: displayName } : undefined
         }
       });
 
       if (error) {
-        // Enhanced security logging for failed attempts
+        // Log failed signup attempt
         try {
           await supabase.rpc('log_security_event', {
             event_type: 'signup_failed',
             event_data: {
-              email: email.trim().toLowerCase(),
+              email,
               error: error.message,
-              timestamp: new Date().toISOString(),
-              ip_address: 'unknown',
-              user_agent: navigator.userAgent
+              timestamp: new Date().toISOString()
             }
           });
         } catch (logError) {
@@ -174,15 +136,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: errorMessage,
         });
       } else {
-        // Enhanced security logging for successful attempts
+        // Log successful signup
         try {
           await supabase.rpc('log_security_event', {
             event_type: 'signup_successful',
             event_data: {
-              email: email.trim().toLowerCase(),
-              timestamp: new Date().toISOString(),
-              ip_address: 'unknown',
-              user_agent: navigator.userAgent
+              email,
+              timestamp: new Date().toISOString()
             }
           });
         } catch (logError) {
@@ -204,34 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Enhanced input validation
-      const emailValidation = validateEmail(email);
-      if (!emailValidation.isValid) {
-        const error = new Error(emailValidation.errors[0]);
-        toast({
-          variant: "destructive",
-          title: "خطأ في تسجيل الدخول",
-          description: emailValidation.errors[0],
-        });
-        return { error };
-      }
-
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email,
         password,
       });
 
       if (error) {
-        // Enhanced security logging for failed login attempts
+        // Log failed login attempt
         try {
           await supabase.rpc('log_security_event', {
             event_type: 'login_failed',
             event_data: {
-              email: email.trim().toLowerCase(),
+              email,
               error: error.message,
-              timestamp: new Date().toISOString(),
-              ip_address: 'unknown',
-              user_agent: navigator.userAgent
+              timestamp: new Date().toISOString()
             }
           });
         } catch (logError) {
@@ -261,9 +207,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      // Clear secure storage before logout
-      SecureStorage.clearSecureStorage();
-      
       const { error } = await supabase.auth.signOut();
       if (error) {
         toast({
