@@ -25,7 +25,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 function App() {
   return (
@@ -37,7 +36,7 @@ function App() {
               <SecurityAuditLogger />
               <div className="min-h-screen bg-background">
                 <Suspense fallback={
-                  <div className="flex items-center justify-center min-h-screen bg-background">
+                  <div className="flex items-center justify-center min-h-screen">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 }>
@@ -50,13 +49,6 @@ function App() {
                     <Route path="/seller-ads/:userId" element={<SellerAds />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
-                    
-                    {/* Admin route - protected */}
-                    <Route path="/admin" element={
-                      <ProtectedRoute>
-                        <AdminDashboard />
-                      </ProtectedRoute>
-                    } />
                     
                     {/* Protected routes */}
                     <Route path="/add-ad" element={
