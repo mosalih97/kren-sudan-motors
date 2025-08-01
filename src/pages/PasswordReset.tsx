@@ -69,9 +69,14 @@ const PasswordReset = () => {
           description: "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية",
         });
         navigate('/auth');
+        return;
       }
 
-      if (data && !data.valid) {
+      // Type-safe handling of the RPC response
+      const result = data as { valid: boolean } | boolean;
+      const isValid = typeof result === 'boolean' ? result : result?.valid;
+
+      if (!isValid) {
         toast({
           variant: "destructive",
           title: "رمز غير صالح",

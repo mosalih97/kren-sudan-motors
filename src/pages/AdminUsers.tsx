@@ -238,7 +238,7 @@ const AdminUsers = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          {userData.membership_type !== 'premium' ? (
+                          {userData.membership_type !== 'premium' && userData.membership_type !== 'admin' ? (
                             <Button
                               size="sm"
                               onClick={() => upgradeUser(userData.user_id)}
@@ -255,7 +255,7 @@ const AdminUsers = () => {
                               )}
                             </Button>
                           ) : (
-                            userData.membership_type !== 'admin' && (
+                            userData.membership_type === 'premium' && (
                               <Button
                                 size="sm"
                                 variant="outline"
