@@ -24,6 +24,18 @@ interface User {
   ads_count: number;
 }
 
+interface SessionVerifyResponse {
+  valid: boolean;
+  message: string;
+  username?: string;
+  admin_id?: string;
+}
+
+interface AdminActionResponse {
+  success: boolean;
+  message: string;
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +58,8 @@ export default function AdminUsers() {
 
     try {
       const { data } = await supabase.rpc('verify_admin_session', { token });
-      if (!data?.valid) {
+      const response = data as SessionVerifyResponse;
+      if (!response?.valid) {
         localStorage.removeItem('admin_token');
         navigate('/admin-login');
       }
@@ -75,28 +88,31 @@ export default function AdminUsers() {
     setProcessingUserId(userId);
     try {
       const { data: sessionData } = await supabase.rpc('verify_admin_session', { token });
-      if (!sessionData?.valid) {
+      const sessionResponse = sessionData as SessionVerifyResponse;
+      if (!sessionResponse?.valid) {
         navigate('/admin-login');
         return;
       }
 
       const { data, error } = await supabase.rpc('upgrade_user_to_premium', {
         target_user_id: userId,
-        admin_user_id: sessionData.admin_id
+        admin_user_id: sessionResponse.admin_id!
       });
+
+      const response = data as AdminActionResponse;
 
       if (error) throw error;
 
-      if (data?.success) {
+      if (response?.success) {
         toast({
           title: "نجح الترقية",
-          description: data.message,
+          description: response.message,
         });
         loadUsers();
       } else {
         toast({
           title: "فشل الترقية",
-          description: data?.message || 'حدث خطأ',
+          description: response?.message || 'حدث خطأ',
           variant: "destructive",
         });
       }
@@ -118,28 +134,31 @@ export default function AdminUsers() {
     setProcessingUserId(userId);
     try {
       const { data: sessionData } = await supabase.rpc('verify_admin_session', { token });
-      if (!sessionData?.valid) {
+      const sessionResponse = sessionData as SessionVerifyResponse;
+      if (!sessionResponse?.valid) {
         navigate('/admin-login');
         return;
       }
 
       const { data, error } = await supabase.rpc('downgrade_user_to_free', {
         target_user_id: userId,
-        admin_user_id: sessionData.admin_id
+        admin_user_id: sessionResponse.admin_id!
       });
+
+      const response = data as AdminActionResponse;
 
       if (error) throw error;
 
-      if (data?.success) {
+      if (response?.success) {
         toast({
           title: "نجح التراجع",
-          description: data.message,
+          description: response.message,
         });
         loadUsers();
       } else {
         toast({
           title: "فشل التراجع",
-          description: data?.message || 'حدث خطأ',
+          description: response?.message || 'حدث خطأ',
           variant: "destructive",
         });
       }

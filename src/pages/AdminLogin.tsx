@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+interface AdminSessionResponse {
+  success: boolean;
+  message: string;
+  session_token?: string;
+  expires_at?: string;
+}
+
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -26,12 +33,14 @@ export default function AdminLogin() {
         user_agent_input: navigator.userAgent
       });
 
-      if (funcError || !data?.success) {
-        setError(data?.message || 'فشل تسجيل الدخول');
+      const response = data as AdminSessionResponse;
+
+      if (funcError || !response?.success) {
+        setError(response?.message || 'فشل تسجيل الدخول');
         return;
       }
 
-      localStorage.setItem('admin_token', data.session_token);
+      localStorage.setItem('admin_token', response.session_token!);
       navigate('/admin-users');
     } catch (err) {
       setError('حدث خطأ في الاتصال');

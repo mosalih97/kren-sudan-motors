@@ -27,6 +27,7 @@ const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
                     {/* Admin routes */}
                     <Route path="/admin-login" element={<AdminLogin />} />
                     <Route path="/admin-users" element={<AdminUsers />} />
+                    <Route path="/admin-dashboard" element={<AdminDashboard />} />
                     
                     {/* Protected routes */}
                     <Route path="/add-ad" element={
