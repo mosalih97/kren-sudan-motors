@@ -9,7 +9,6 @@ import { SecurityProvider } from "@/components/security/SecurityProvider";
 import { SecurityAuditLogger } from "@/components/security/SecurityAuditLogger";
 import Index from "./pages/Index";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AdminRoute from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -26,7 +25,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
-const Admin = lazy(() => import("./pages/Admin"));
 
 function App() {
   return (
@@ -51,13 +49,6 @@ function App() {
                     <Route path="/seller-ads/:userId" element={<SellerAds />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
-                    
-                    {/* Admin route with special protection */}
-                    <Route path="/admin" element={
-                      <AdminRoute>
-                        <Admin />
-                      </AdminRoute>
-                    } />
                     
                     {/* Protected routes */}
                     <Route path="/add-ad" element={
