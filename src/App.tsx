@@ -25,9 +25,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
-const AdminUsers = lazy(() => import("./pages/AdminUsers"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 function App() {
   return (
@@ -52,11 +49,6 @@ function App() {
                     <Route path="/seller-ads/:userId" element={<SellerAds />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
-                    
-                    {/* Admin routes */}
-                    <Route path="/admin-login" element={<AdminLogin />} />
-                    <Route path="/admin-users" element={<AdminUsers />} />
-                    <Route path="/admin-dashboard" element={<AdminDashboard />} />
                     
                     {/* Protected routes */}
                     <Route path="/add-ad" element={
