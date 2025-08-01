@@ -31,20 +31,25 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
-      if (error || !data) {
+      if (error) {
+        console.error('Session verification error:', error);
         localStorage.removeItem('admin_session_token');
         setIsAuthenticated(false);
         setSessionToken(null);
-      } else {
+      } else if (data) {
         const result = data as { valid?: boolean };
-        if (!result?.valid) {
+        if (result.valid) {
+          setIsAuthenticated(true);
+          setSessionToken(token);
+        } else {
           localStorage.removeItem('admin_session_token');
           setIsAuthenticated(false);
           setSessionToken(null);
-        } else {
-          setIsAuthenticated(true);
-          setSessionToken(token);
         }
+      } else {
+        localStorage.removeItem('admin_session_token');
+        setIsAuthenticated(false);
+        setSessionToken(null);
       }
     } catch (error) {
       console.error('Session verification error:', error);
@@ -65,22 +70,24 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data) {
-        return { success: false, message: 'فشل تسجيل الدخول' };
+      if (error) {
+        console.error('Login error:', error);
+        return { success: false, message: 'خطأ في الاتصال بالخادم' };
       }
 
-      const sessionData = data as { success?: boolean; message?: string; session_token?: string };
-      if (!sessionData?.success) {
-        return { success: false, message: sessionData?.message || 'فشل تسجيل الدخول' };
+      if (data) {
+        const sessionData = data as { success?: boolean; message?: string; session_token?: string };
+        if (sessionData.success && sessionData.session_token) {
+          localStorage.setItem('admin_session_token', sessionData.session_token);
+          setSessionToken(sessionData.session_token);
+          setIsAuthenticated(true);
+          return { success: true };
+        } else {
+          return { success: false, message: sessionData.message || 'فشل تسجيل الدخول' };
+        }
       }
 
-      if (sessionData.session_token) {
-        localStorage.setItem('admin_session_token', sessionData.session_token);
-        setSessionToken(sessionData.session_token);
-        setIsAuthenticated(true);
-      }
-      
-      return { success: true };
+      return { success: false, message: 'فشل تسجيل الدخول' };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, message: 'خطأ في الاتصال' };
