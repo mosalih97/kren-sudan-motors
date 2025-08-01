@@ -61,11 +61,28 @@ export const AdminUsersManager: React.FC = () => {
           variant: "destructive",
         });
       } else {
-        // Add user_id_display to match the interface
-        const usersWithDisplay = (data || []).map((user: any) => ({
+        // Cast the data to the expected type and add user_id_display
+        const rawUsers = data as Array<{
+          user_id: string;
+          display_name: string;
+          phone: string;
+          city: string;
+          membership_type: string;
+          is_premium: boolean;
+          points: number;
+          credits: number;
+          created_at: string;
+          upgraded_at: string;
+          premium_expires_at: string;
+          days_remaining: number;
+          ads_count: number;
+        }>;
+
+        const usersWithDisplay = rawUsers.map((user) => ({
           ...user,
-          user_id_display: user.user_id_display || 'غير متوفر'
+          user_id_display: user.user_id.slice(-8) // Use last 8 characters of UUID as display ID
         }));
+        
         setUsers(usersWithDisplay);
       }
     } catch (error) {
@@ -84,19 +101,27 @@ export const AdminUsersManager: React.FC = () => {
         admin_user_id: 'current_admin_id' // This should be the actual admin ID
       });
 
-      const result = data as any;
-      if (error || !result?.success) {
+      if (error || !data) {
         toast({
           title: "فشل الترقية",
-          description: result?.message || "حدث خطأ أثناء ترقية المستخدم",
+          description: "حدث خطأ أثناء ترقية المستخدم",
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "تم بنجاح",
-          description: "تم ترقية المستخدم إلى العضوية المميزة",
-        });
-        loadUsers(); // Reload the users list
+        const result = data as { success?: boolean; message?: string };
+        if (!result?.success) {
+          toast({
+            title: "فشل الترقية",
+            description: result?.message || "حدث خطأ أثناء ترقية المستخدم",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "تم بنجاح",
+            description: "تم ترقية المستخدم إلى العضوية المميزة",
+          });
+          loadUsers(); // Reload the users list
+        }
       }
     } catch (error) {
       console.error('Upgrade error:', error);

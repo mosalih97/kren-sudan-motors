@@ -31,13 +31,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
-      if (error || !data || !(data as any)?.valid) {
+      if (error || !data) {
         localStorage.removeItem('admin_session_token');
         setIsAuthenticated(false);
         setSessionToken(null);
       } else {
-        setIsAuthenticated(true);
-        setSessionToken(token);
+        const result = data as { valid?: boolean };
+        if (!result?.valid) {
+          localStorage.removeItem('admin_session_token');
+          setIsAuthenticated(false);
+          setSessionToken(null);
+        } else {
+          setIsAuthenticated(true);
+          setSessionToken(token);
+        }
       }
     } catch (error) {
       console.error('Session verification error:', error);
@@ -58,14 +65,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data || !(data as any)?.success) {
-        return { success: false, message: (data as any)?.message || 'فشل تسجيل الدخول' };
+      if (error || !data) {
+        return { success: false, message: 'فشل تسجيل الدخول' };
       }
 
-      const sessionData = data as any;
-      localStorage.setItem('admin_session_token', sessionData.session_token);
-      setSessionToken(sessionData.session_token);
-      setIsAuthenticated(true);
+      const sessionData = data as { success?: boolean; message?: string; session_token?: string };
+      if (!sessionData?.success) {
+        return { success: false, message: sessionData?.message || 'فشل تسجيل الدخول' };
+      }
+
+      if (sessionData.session_token) {
+        localStorage.setItem('admin_session_token', sessionData.session_token);
+        setSessionToken(sessionData.session_token);
+        setIsAuthenticated(true);
+      }
       
       return { success: true };
     } catch (error) {

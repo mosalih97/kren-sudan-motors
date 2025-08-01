@@ -56,26 +56,34 @@ export const AdminSettings: React.FC = () => {
         new_password_hash: passwordHash
       });
 
-      const result = data as any;
-      if (error || !result?.success) {
+      if (error || !data) {
         toast({
           title: "فشل التحديث",
-          description: result?.message || "حدث خطأ أثناء تحديث بيانات الدخول",
+          description: "حدث خطأ أثناء تحديث بيانات الدخول",
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "تم التحديث",
-          description: "تم تحديث بيانات الدخول بنجاح. سيتم تسجيل خروجك الآن.",
-        });
-        
-        // Clear form
-        setNewUsername('');
-        setNewPassword('');
-        setConfirmPassword('');
-        
-        // Logout after successful update
-        setTimeout(() => logout(), 2000);
+        const result = data as { success?: boolean; message?: string };
+        if (!result?.success) {
+          toast({
+            title: "فشل التحديث",
+            description: result?.message || "حدث خطأ أثناء تحديث بيانات الدخول",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "تم التحديث",
+            description: "تم تحديث بيانات الدخول بنجاح. سيتم تسجيل خروجك الآن.",
+          });
+          
+          // Clear form
+          setNewUsername('');
+          setNewPassword('');
+          setConfirmPassword('');
+          
+          // Logout after successful update
+          setTimeout(() => logout(), 2000);
+        }
       }
     } catch (error) {
       console.error('Update error:', error);
@@ -101,7 +109,7 @@ export const AdminSettings: React.FC = () => {
         admin_id: 'current_admin_id' // This should be the actual admin ID
       });
 
-      const result = data as any;
+      const result = data as { success?: boolean; message?: string };
       toast({
         title: "تم بنجاح",
         description: result?.message || "تم تسجيل الخروج من جميع الجلسات",

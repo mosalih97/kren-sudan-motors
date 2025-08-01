@@ -97,20 +97,28 @@ export const AdminAdsManager: React.FC = () => {
         admin_user_id: 'current_admin_id' // This should be the actual admin ID
       });
 
-      const result = data as any;
-      if (error || !result?.success) {
+      if (error || !data) {
         toast({
           title: "فشل الحذف",
-          description: result?.message || "حدث خطأ أثناء حذف الإعلان",
+          description: "حدث خطأ أثناء حذف الإعلان",
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "تم الحذف",
-          description: "تم حذف الإعلان نهائياً",
-        });
-        setAdInfo(null);
-        setSearchQuery('');
+        const result = data as { success?: boolean; message?: string };
+        if (!result?.success) {
+          toast({
+            title: "فشل الحذف",
+            description: result?.message || "حدث خطأ أثناء حذف الإعلان",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "تم الحذف",
+            description: "تم حذف الإعلان نهائياً",
+          });
+          setAdInfo(null);
+          setSearchQuery('');
+        }
       }
     } catch (error) {
       console.error('Delete error:', error);
