@@ -51,8 +51,12 @@ function App() {
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
                     
-                    {/* Admin route */}
-                    <Route path="/admin" element={<AdminDashboard />} />
+                    {/* Admin route - now protected */}
+                    <Route path="/admin" element={
+                      <ProtectedRoute>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Protected routes */}
                     <Route path="/add-ad" element={

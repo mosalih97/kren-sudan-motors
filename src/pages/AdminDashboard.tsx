@@ -13,15 +13,27 @@ import { Shield, Users, Car, TrendingUp } from "lucide-react";
 const AdminDashboard = () => {
   const { user } = useAuth();
 
-  // التحقق من صلاحيات المدير
+  // التحقق من صلاحيات المدير مباشرة من جدول admin_users
   const { data: isAdmin, isLoading: isCheckingAdmin } = useQuery({
     queryKey: ["isAdmin", user?.email],
     queryFn: async () => {
       if (!user?.email) return false;
-      const { data } = await supabase.rpc("is_admin_user", {
-        user_email: user.email,
-      });
-      return data || false;
+      
+      // فحص مباشر من جدول admin_users
+      const { data: adminData } = await supabase
+        .from("admin_users")
+        .select("email")
+        .eq("email", user.email)
+        .single();
+      
+      // فحص إضافي من جدول profiles
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("membership_type")
+        .eq("user_id", user.id)
+        .single();
+      
+      return adminData?.email === user.email || profileData?.membership_type === 'admin';
     },
     enabled: !!user?.email,
   });
@@ -29,7 +41,10 @@ const AdminDashboard = () => {
   if (isCheckingAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
+        </div>
       </div>
     );
   }
@@ -42,8 +57,11 @@ const AdminDashboard = () => {
             <div className="text-center">
               <Shield className="mx-auto h-12 w-12 text-destructive mb-4" />
               <h2 className="text-xl font-semibold mb-2">غير مخول</h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 ليس لديك صلاحية للوصول إلى لوحة التحكم
+              </p>
+              <p className="text-sm text-muted-foreground">
+                البريد الإلكتروني: {user?.email}
               </p>
             </div>
           </CardContent>
@@ -61,6 +79,9 @@ const AdminDashboard = () => {
           </h1>
           <p className="text-muted-foreground">
             إدارة المستخدمين والإعلانات ومراقبة الأداء
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            مرحباً {user?.email}
           </p>
         </div>
 
