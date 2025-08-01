@@ -172,47 +172,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_sessions: {
-        Row: {
-          admin_user_id: string
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          ip_address: string | null
-          is_active: boolean | null
-          session_token: string
-          user_agent: string | null
-        }
-        Insert: {
-          admin_user_id: string
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          session_token: string
-          user_agent?: string | null
-        }
-        Update: {
-          admin_user_id?: string
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          session_token?: string
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_sessions_admin_user_id_fkey"
-            columns: ["admin_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
       ads: {
         Row: {
           brand: string
@@ -469,30 +428,6 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
-      }
-      password_reset_attempts: {
-        Row: {
-          attempted_at: string | null
-          created_at: string | null
-          email: string
-          id: string
-          ip_address: string | null
-        }
-        Insert: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email: string
-          id?: string
-          ip_address?: string | null
-        }
-        Update: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email?: string
-          id?: string
-          ip_address?: string | null
-        }
-        Relationships: []
       }
       password_reset_tokens: {
         Row: {
@@ -818,42 +753,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_sessions: {
-        Row: {
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          ip_address: string | null
-          is_active: boolean | null
-          last_activity: string | null
-          session_token: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       verified_passports: {
         Row: {
           created_at: string
@@ -906,23 +805,7 @@ export type Database = {
       }
     }
     Views: {
-      admin_dashboard_stats: {
-        Row: {
-          active_ads: number | null
-          active_boosts: number | null
-          basic_boosts: number | null
-          deleted_ads: number | null
-          new_users_this_month: number | null
-          premium_ads: number | null
-          premium_boosts: number | null
-          premium_users: number | null
-          total_credits: number | null
-          total_points: number | null
-          total_users: number | null
-          ultimate_boosts: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       boost_ad: {
@@ -977,19 +860,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      cleanup_old_reset_attempts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      create_admin_session: {
-        Args: {
-          username_input: string
-          password_input: string
-          ip_addr?: string
-          user_agent_input?: string
-        }
-        Returns: Json
-      }
       create_password_reset_token: {
         Args: { user_email: string }
         Returns: Json
@@ -997,10 +867,6 @@ export type Database = {
       deduct_points: {
         Args: { user_id_param: string; points_to_deduct: number }
         Returns: boolean
-      }
-      delete_ad_permanently: {
-        Args: { ad_id_param: string; admin_user_id: string }
-        Returns: Json
       }
       downgrade_user_to_free: {
         Args: { target_user_id: string; admin_user_id: string }
@@ -1040,14 +906,6 @@ export type Database = {
         Args: { event_type: string; event_data?: Json }
         Returns: undefined
       }
-      logout_admin_session: {
-        Args: { token: string }
-        Returns: Json
-      }
-      logout_all_admin_sessions: {
-        Args: { admin_id: string }
-        Returns: Json
-      }
       record_ad_view: {
         Args: { ad_id_param: string; viewer_user_id?: string }
         Returns: undefined
@@ -1066,10 +924,6 @@ export type Database = {
       }
       upgrade_user_to_premium: {
         Args: { target_user_id: string; admin_user_id: string }
-        Returns: Json
-      }
-      verify_admin_session: {
-        Args: { token: string }
         Returns: Json
       }
       verify_password_reset_token: {

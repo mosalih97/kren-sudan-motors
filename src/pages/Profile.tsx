@@ -219,14 +219,10 @@ const Profile = () => {
                   <h1 className="text-3xl font-bold text-foreground">
                     {profile.display_name || "مستخدم جديد"}
                   </h1>
-                  <div className="mt-2 space-y-1">
-                    <p className="text-muted-foreground text-lg font-mono bg-muted px-3 py-1 rounded-md inline-block">
-                      ID: {profile.user_id_display || "جاري التحديث..."}
-                    </p>
-                    {profile.city && (
-                      <p className="text-muted-foreground">{profile.city}</p>
-                    )}
-                  </div>
+                  <p className="text-muted-foreground text-lg">ID: {profile.user_id_display}</p>
+                  {profile.city && (
+                    <p className="text-muted-foreground">{profile.city}</p>
+                  )}
                   
                   <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
                     {profile.membership_type === 'premium' ? (
@@ -306,16 +302,6 @@ const Profile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-6 p-4 bg-muted rounded-lg">
-                    <Label className="text-sm font-medium text-muted-foreground">رقم التعريف الخاص بك</Label>
-                    <div className="mt-2 font-mono text-lg font-bold text-foreground bg-background px-4 py-2 rounded border">
-                      {profile.user_id_display || "جاري التحديث..."}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      استخدم هذا الرقم للتواصل مع الدعم الفني
-                    </p>
-                  </div>
-
                   <form onSubmit={updateProfile} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="display-name">الاسم الكامل</Label>
