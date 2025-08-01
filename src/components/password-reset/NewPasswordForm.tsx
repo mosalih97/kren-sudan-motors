@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { validatePassword } from "@/utils/passwordValidation";
-import { sanitizeHtml } from "@/utils/securityValidation";
+import { sanitizeInput } from "@/utils/inputSanitizer";
 
 export const NewPasswordForm = () => {
   const [password, setPassword] = useState('');
@@ -20,9 +20,8 @@ export const NewPasswordForm = () => {
   const navigate = useNavigate();
 
   const validatePasswords = () => {
-    // Enhanced validation with sanitization
-    const sanitizedPassword = sanitizeHtml(password);
-    const sanitizedConfirmPassword = sanitizeHtml(confirmPassword);
+    const sanitizedPassword = sanitizeInput(password, 128);
+    const sanitizedConfirmPassword = sanitizeInput(confirmPassword, 128);
     
     if (!sanitizedPassword || !sanitizedConfirmPassword) {
       toast({
@@ -64,24 +63,21 @@ export const NewPasswordForm = () => {
 
     setLoading(true);
     try {
-      const sanitizedPassword = sanitizeHtml(password);
-      
+      // استخدام Supabase Auth المدمج لتحديث كلمة المرور
       const { error } = await supabase.auth.updateUser({
-        password: sanitizedPassword
+        password: sanitizeInput(password, 128)
       });
 
       if (error) {
         console.error('Password update error:', error);
         
-        // Enhanced security logging
+        // تسجيل الحدث الأمني للفشل
         try {
           await supabase.rpc('log_security_event', {
             event_type: 'password_reset_failed',
             event_data: {
               error: error.message,
-              timestamp: new Date().toISOString(),
-              ip_address: 'unknown',
-              user_agent: navigator.userAgent
+              timestamp: new Date().toISOString()
             }
           });
         } catch (logError) {
@@ -96,14 +92,12 @@ export const NewPasswordForm = () => {
           variant: "destructive"
         });
       } else {
-        // Enhanced security logging for successful password reset
+        // تسجيل الحدث الأمني للنجاح
         try {
           await supabase.rpc('log_security_event', {
             event_type: 'password_reset_successful',
             event_data: {
-              timestamp: new Date().toISOString(),
-              ip_address: 'unknown',
-              user_agent: navigator.userAgent
+              timestamp: new Date().toISOString()
             }
           });
         } catch (logError) {
@@ -115,7 +109,7 @@ export const NewPasswordForm = () => {
           description: "تم تحديث كلمة المرور بنجاح",
         });
         
-        // Navigate to auth page after successful reset
+        // التوجه إلى صفحة تسجيل الدخول
         setTimeout(() => {
           navigate('/auth');
         }, 2000);
@@ -148,8 +142,6 @@ export const NewPasswordForm = () => {
             className="pr-10 pl-10"
             required
             maxLength={128}
-            disabled={loading}
-            autoComplete="new-password"
           />
           <Button
             type="button"
@@ -157,7 +149,6 @@ export const NewPasswordForm = () => {
             size="sm"
             className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowPassword(!showPassword)}
-            disabled={loading}
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
@@ -177,8 +168,6 @@ export const NewPasswordForm = () => {
             className="pr-10 pl-10"
             required
             maxLength={128}
-            disabled={loading}
-            autoComplete="new-password"
           />
           <Button
             type="button"
@@ -186,7 +175,6 @@ export const NewPasswordForm = () => {
             size="sm"
             className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            disabled={loading}
           >
             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>

@@ -429,30 +429,6 @@ export type Database = {
           },
         ]
       }
-      password_reset_attempts: {
-        Row: {
-          attempted_at: string | null
-          created_at: string | null
-          email: string
-          id: string
-          ip_address: string | null
-        }
-        Insert: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email: string
-          id?: string
-          ip_address?: string | null
-        }
-        Update: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email?: string
-          id?: string
-          ip_address?: string | null
-        }
-        Relationships: []
-      }
       password_reset_tokens: {
         Row: {
           created_at: string | null
@@ -777,42 +753,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_sessions: {
-        Row: {
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          ip_address: string | null
-          is_active: boolean | null
-          last_activity: string | null
-          session_token: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       verified_passports: {
         Row: {
           created_at: string
@@ -917,10 +857,6 @@ export type Database = {
         Returns: number
       }
       cleanup_expired_top_spots: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_old_reset_attempts: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
