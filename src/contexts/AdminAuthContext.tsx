@@ -24,35 +24,45 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const checkSession = async () => {
     try {
       const token = localStorage.getItem('admin_session_token');
+      console.log('Checking session with token:', token ? 'exists' : 'none');
+      
       if (!token) {
+        console.log('No token found, user not authenticated');
+        setIsAuthenticated(false);
+        setSessionToken(null);
         setLoading(false);
         return;
       }
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
+      console.log('Session verification response:', { data, error });
+      
       if (error) {
         console.error('Session verification error:', error);
         localStorage.removeItem('admin_session_token');
         setIsAuthenticated(false);
         setSessionToken(null);
-      } else if (data) {
-        const result = data as { valid?: boolean };
+      } else if (data && typeof data === 'object' && 'valid' in data) {
+        const result = data as { valid: boolean };
         if (result.valid) {
+          console.log('Session is valid');
           setIsAuthenticated(true);
           setSessionToken(token);
         } else {
+          console.log('Session is invalid');
           localStorage.removeItem('admin_session_token');
           setIsAuthenticated(false);
           setSessionToken(null);
         }
       } else {
+        console.log('Invalid session data structure');
         localStorage.removeItem('admin_session_token');
         setIsAuthenticated(false);
         setSessionToken(null);
       }
     } catch (error) {
-      console.error('Session verification error:', error);
+      console.error('Session check error:', error);
       localStorage.removeItem('admin_session_token');
       setIsAuthenticated(false);
       setSessionToken(null);
@@ -63,6 +73,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const login = async (username: string, password: string) => {
     try {
+      console.log('Attempting login for username:', username);
+      
       const { data, error } = await supabase.rpc('create_admin_session', {
         username_input: username,
         password_input: password,
@@ -70,24 +82,46 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user_agent_input: navigator.userAgent
       });
 
+      console.log('Login RPC response:', { data, error });
+
       if (error) {
-        console.error('Login error:', error);
+        console.error('Login RPC error:', error);
         return { success: false, message: 'خطأ في الاتصال بالخادم' };
       }
 
-      if (data) {
-        const sessionData = data as { success?: boolean; message?: string; session_token?: string };
-        if (sessionData.success && sessionData.session_token) {
-          localStorage.setItem('admin_session_token', sessionData.session_token);
-          setSessionToken(sessionData.session_token);
-          setIsAuthenticated(true);
-          return { success: true };
-        } else {
-          return { success: false, message: sessionData.message || 'فشل تسجيل الدخول' };
+      if (!data) {
+        console.log('No data returned from login');
+        return { success: false, message: 'خطأ في الخادم' };
+      }
+
+      // التعامل مع البيانات كـ JSON object
+      let sessionData: any = data;
+      
+      // إذا كانت البيانات string، حاول تحويلها إلى JSON
+      if (typeof data === 'string') {
+        try {
+          sessionData = JSON.parse(data);
+        } catch (parseError) {
+          console.error('Failed to parse session data:', parseError);
+          return { success: false, message: 'خطأ في معالجة البيانات' };
         }
       }
 
-      return { success: false, message: 'فشل تسجيل الدخول' };
+      console.log('Processed session data:', sessionData);
+
+      if (sessionData && sessionData.success && sessionData.session_token) {
+        console.log('Login successful, storing token');
+        localStorage.setItem('admin_session_token', sessionData.session_token);
+        setSessionToken(sessionData.session_token);
+        setIsAuthenticated(true);
+        return { success: true };
+      } else {
+        console.log('Login failed:', sessionData.message);
+        return { 
+          success: false, 
+          message: sessionData.message || 'فشل تسجيل الدخول' 
+        };
+      }
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, message: 'خطأ في الاتصال' };

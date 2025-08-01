@@ -23,9 +23,11 @@ const AdminLogin: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
+    
+    // التحقق من إدخال البيانات
+    if (!username.trim() || !password.trim()) {
       toast({
-        title: "خطأ",
+        title: "خطأ في البيانات",
         description: "يرجى إدخال اسم المستخدم وكلمة المرور",
         variant: "destructive",
       });
@@ -33,25 +35,45 @@ const AdminLogin: React.FC = () => {
     }
 
     setLoading(true);
-    const result = await login(username, password);
     
-    if (result.success) {
+    try {
+      console.log('Submitting login form with:', { username: username.trim() });
+      const result = await login(username.trim(), password);
+      
+      console.log('Login result:', result);
+      
+      if (result.success) {
+        toast({
+          title: "تم تسجيل الدخول بنجاح",
+          description: "مرحباً بك في لوحة التحكم الإدارية",
+        });
+        // التنقل سيتم تلقائياً من خلال isAuthenticated
+      } else {
+        // عرض رسالة خطأ مفيدة
+        const errorMessage = result.message === 'بيانات الدخول غير صحيحة' 
+          ? "اسم المستخدم أو كلمة المرور غير صحيحة"
+          : result.message || "حدث خطأ أثناء تسجيل الدخول";
+          
+        toast({
+          title: "فشل تسجيل الدخول",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Login submission error:', error);
       toast({
-        title: "نجح تسجيل الدخول",
-        description: "مرحباً بك في لوحة التحكم الإدارية",
-      });
-    } else {
-      toast({
-        title: "فشل تسجيل الدخول",
-        description: result.message || "بيانات الدخول غير صحيحة",
+        title: "خطأ في النظام",
+        description: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
@@ -72,6 +94,8 @@ const AdminLogin: React.FC = () => {
                 placeholder="أدخل اسم المستخدم"
                 disabled={loading}
                 dir="ltr"
+                className="text-left"
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
@@ -85,13 +109,16 @@ const AdminLogin: React.FC = () => {
                   placeholder="أدخل كلمة المرور"
                   disabled={loading}
                   dir="ltr"
+                  className="text-left pr-10"
+                  autoComplete="current-password"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2"
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 h-auto p-1"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
@@ -105,6 +132,12 @@ const AdminLogin: React.FC = () => {
               {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </Button>
           </form>
+          
+          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+            <p className="font-medium mb-1">بيانات الدخول الافتراضية:</p>
+            <p>اسم المستخدم: admin</p>
+            <p>كلمة المرور: admin123</p>
+          </div>
         </CardContent>
       </Card>
     </div>
