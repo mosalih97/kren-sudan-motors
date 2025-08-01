@@ -16,27 +16,46 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAdminAccess();
-    loadDashboardStats();
+    if (user) {
+      checkAdminAccess();
+      loadDashboardStats();
+    } else {
+      setIsAdmin(false);
+      setLoading(false);
+    }
   }, [user]);
 
   const checkAdminAccess = async () => {
     if (!user?.email) {
+      console.log('No user email found');
       setIsAdmin(false);
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Checking admin access for:', user.email);
+      
       const { data, error } = await supabase.rpc('is_admin', {
         user_email: user.email
       });
 
-      if (error) throw error;
-      setIsAdmin(data);
+      console.log('Admin check result:', { data, error });
+
+      if (error) {
+        console.error('Error checking admin access:', error);
+        throw error;
+      }
+      
+      setIsAdmin(data || false);
     } catch (error) {
       console.error('خطأ في التحقق من صلاحية المدير:', error);
       setIsAdmin(false);
+      toast({
+        title: "خطأ",
+        description: "فشل في التحقق من صلاحيات الإدارة",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -45,6 +64,8 @@ const Admin = () => {
   const loadDashboardStats = async () => {
     try {
       const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
+      console.log('Dashboard stats:', { data, error });
+      
       if (error) throw error;
       setStats(data);
     } catch (error) {
@@ -60,7 +81,11 @@ const Admin = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg">جاري التحميل...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-lg">جاري التحميل...</div>
+          <div className="text-sm text-gray-500 mt-2">التحقق من صلاحيات الإدارة</div>
+        </div>
       </div>
     );
   }
@@ -74,7 +99,14 @@ const Admin = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">غير مصرح</h1>
-          <p className="text-gray-600">لا تملك صلاحيات للوصول لهذه الصفحة</p>
+          <p className="text-gray-600 mb-4">لا تملك صلاحيات للوصول لهذه الصفحة</p>
+          <p className="text-sm text-gray-500">البريد الإلكتروني: {user.email}</p>
+          <Button 
+            onClick={() => window.location.href = '/'}
+            className="mt-4"
+          >
+            العودة للصفحة الرئيسية
+          </Button>
         </div>
       </div>
     );
