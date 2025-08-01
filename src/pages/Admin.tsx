@@ -15,16 +15,24 @@ const Admin = () => {
   const { isAdmin, loading: adminLoading } = useAdminCheck();
   const { stats, loading: statsLoading, refetch } = useAdminStats(isAdmin);
 
+  // إذا كان التطبيق يحمل بيانات المصادقة
   if (adminLoading) {
     return <AdminLoadingScreen />;
   }
 
+  // إذا لم يكن المستخدم مسجل دخول
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
+  // إذا لم يكن المستخدم مديراً
   if (isAdmin === false) {
     return <AccessDeniedScreen userEmail={user.email} />;
+  }
+
+  // إذا لم يتم التحقق بعد من الصلاحيات
+  if (isAdmin === null) {
+    return <AdminLoadingScreen />;
   }
 
   return (

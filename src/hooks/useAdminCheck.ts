@@ -31,34 +31,58 @@ export const useAdminCheck = () => {
         console.log('Admin check response:', { data, error });
 
         if (error) {
-          console.error('Admin check error:', error);
-          throw error;
-        }
-        
-        const adminResult = data || false;
-        console.log('Admin check result:', adminResult);
-        setIsAdmin(adminResult);
-        
-        if (!adminResult) {
-          console.log('User is not admin, checking admin_users table directly...');
+          console.error('Admin RPC error:', error);
+          // إذا فشل RPC، نحاول التحقق مباشرة من الجدول
+          console.log('RPC failed, checking admin_users table directly...');
           
-          // التحقق المباشر من جدول admin_users للتشخيص
           const { data: adminData, error: adminError } = await supabase
             .from('admin_users')
             .select('email')
             .eq('email', user.email);
             
           console.log('Direct admin_users check:', { adminData, adminError });
+          
+          if (adminError) {
+            console.error('Direct admin check error:', adminError);
+            setIsAdmin(false);
+          } else {
+            const isAdminUser = adminData && adminData.length > 0;
+            console.log('Admin status from direct check:', isAdminUser);
+            setIsAdmin(isAdminUser);
+          }
+        } else {
+          const adminResult = Boolean(data);
+          console.log('Admin check result from RPC:', adminResult);
+          setIsAdmin(adminResult);
         }
         
       } catch (error) {
         console.error('خطأ في التحقق من صلاحية المدير:', error);
-        setIsAdmin(false);
-        toast({
-          title: "خطأ في التحقق",
-          description: "فشل في التحقق من صلاحيات الإدارة. يرجى المحاولة مرة أخرى.",
-          variant: "destructive"
-        });
+        
+        // محاولة أخيرة للتحقق مباشرة من الجدول
+        try {
+          console.log('Final attempt: checking admin_users table directly...');
+          const { data: adminData, error: adminError } = await supabase
+            .from('admin_users')
+            .select('email')
+            .eq('email', user.email);
+            
+          if (!adminError && adminData && adminData.length > 0) {
+            console.log('Admin found in direct table check');
+            setIsAdmin(true);
+          } else {
+            console.log('Admin not found in direct table check');
+            setIsAdmin(false);
+          }
+        } catch (finalError) {
+          console.error('Final admin check failed:', finalError);
+          setIsAdmin(false);
+          toast({
+            title: "خطأ في التحقق",
+            description: "فشل في التحقق من صلاحيات الإدارة. يرجى المحاولة مرة أخرى.",
+            variant: "destructive"
+          });
+        }
       } finally {
         setLoading(false);
       }
