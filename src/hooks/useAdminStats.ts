@@ -28,7 +28,12 @@ export const useAdminStats = (isAdmin: boolean | null) => {
         throw error;
       }
       
-      setStats(data);
+      // التأكد من أن البيانات من النوع الصحيح
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        setStats(data as AdminStats);
+      } else {
+        throw new Error('Invalid data format received');
+      }
     } catch (error) {
       console.error('خطأ في تحميل الإحصائيات:', error);
       toast({

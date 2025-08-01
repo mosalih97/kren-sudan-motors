@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,36 +36,10 @@ const AdminAds = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAdminAccess();
-  }, [user]);
-
-  const checkAdminAccess = async () => {
-    if (!user?.email) {
-      setIsAdmin(false);
-      setLoading(false);
-      return;
+    if (isAdmin === true) {
+      loadAds();
     }
-
-    try {
-      const { data, error } = await supabase.rpc('is_admin', {
-        user_email: user.email
-      });
-
-      if (error) throw error;
-      
-      if (data) {
-        setIsAdmin(true);
-        loadAds();
-      } else {
-        setIsAdmin(false);
-      }
-    } catch (error) {
-      console.error('خطأ في التحقق من صلاحية المدير:', error);
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isAdmin]);
 
   const loadAds = async () => {
     try {
@@ -96,6 +71,8 @@ const AdminAds = () => {
         description: "فشل في تحميل بيانات الإعلانات",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,6 +90,10 @@ const AdminAds = () => {
 
   if (isAdmin === false) {
     return <AccessDeniedScreen userEmail={user.email} />;
+  }
+
+  if (loading) {
+    return <AdminLoadingScreen />;
   }
 
   return (
