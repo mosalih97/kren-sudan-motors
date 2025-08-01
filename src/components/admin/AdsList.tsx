@@ -6,12 +6,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Car, MapPin, Eye, DollarSign, User } from "lucide-react";
 
+interface AdData {
+  id: string;
+  title: string;
+  brand: string;
+  model: string;
+  price: number;
+  city: string;
+  status: string;
+  view_count: number;
+  created_at: string;
+  user_display_name: string;
+}
+
 export const AdsList = () => {
   const { data: ads, isLoading } = useQuery({
     queryKey: ["adminAdsList"],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_ads_list");
-      return data || [];
+    queryFn: async (): Promise<AdData[]> => {
+      const { data: adsData } = await supabase
+        .from("ads")
+        .select(`
+          id,
+          title,
+          brand,
+          model,
+          price,
+          city,
+          status,
+          view_count,
+          created_at,
+          profiles!inner(display_name)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (!adsData) return [];
+
+      return adsData.map((ad) => ({
+        id: ad.id,
+        title: ad.title || "",
+        brand: ad.brand || "",
+        model: ad.model || "",
+        price: ad.price || 0,
+        city: ad.city || "",
+        status: ad.status || "",
+        view_count: ad.view_count || 0,
+        created_at: ad.created_at,
+        user_display_name: (ad.profiles as any)?.display_name || "مجهول",
+      }));
     },
   });
 
@@ -74,7 +116,7 @@ export const AdsList = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {ads?.map((ad: any) => (
+          {ads?.map((ad) => (
             <div
               key={ad.id}
               className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"

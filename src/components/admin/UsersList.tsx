@@ -7,12 +7,56 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Phone, MapPin, Star, Coins } from "lucide-react";
 
+interface UserData {
+  user_id: string;
+  display_name: string;
+  phone: string;
+  city: string;
+  membership_type: string;
+  points: number;
+  credits: number;
+  created_at: string;
+  ads_count: number;
+}
+
 export const UsersList = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ["adminUsersList"],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_users_list");
-      return data || [];
+    queryFn: async (): Promise<UserData[]> => {
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select(`
+          user_id,
+          display_name,
+          phone,
+          city,
+          membership_type,
+          points,
+          credits,
+          created_at
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (!profilesData) return [];
+
+      // جلب عدد الإعلانات لكل مستخدم
+      const usersWithAdsCount = await Promise.all(
+        profilesData.map(async (profile) => {
+          const { count: adsCount } = await supabase
+            .from("ads")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", profile.user_id)
+            .eq("status", "active");
+
+          return {
+            ...profile,
+            ads_count: adsCount || 0,
+          };
+        })
+      );
+
+      return usersWithAdsCount;
     },
   });
 
@@ -49,7 +93,7 @@ export const UsersList = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {users?.map((user: any) => (
+          {users?.map((user) => (
             <div
               key={user.user_id}
               className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"

@@ -7,12 +7,79 @@ import { Users, Car, TrendingUp, Star, Activity, DollarSign } from "lucide-react
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
+interface DashboardStats {
+  total_users: number;
+  total_ads: number;
+  active_ads: number;
+  premium_users: number;
+  total_boosts: number;
+  total_revenue: number;
+  new_users_today: number;
+  ads_today: number;
+}
+
 export const DashboardStats = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["adminDashboardStats"],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_admin_dashboard_stats");
-      return data;
+    queryFn: async (): Promise<DashboardStats> => {
+      // جلب إجمالي المستخدمين
+      const { count: totalUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      // جلب إجمالي الإعلانات
+      const { count: totalAds } = await supabase
+        .from("ads")
+        .select("*", { count: "exact", head: true });
+
+      // جلب الإعلانات النشطة
+      const { count: activeAds } = await supabase
+        .from("ads")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active");
+
+      // جلب المستخدمين المميزين
+      const { count: premiumUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("membership_type", "premium");
+
+      // جلب الترقيات النشطة
+      const { count: totalBoosts } = await supabase
+        .from("ad_boosts")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active");
+
+      // جلب إجمالي الإيرادات
+      const { data: boostData } = await supabase
+        .from("ad_boosts")
+        .select("cost");
+      
+      const totalRevenue = boostData?.reduce((sum, boost) => sum + (boost.cost || 0), 0) || 0;
+
+      // جلب المستخدمين الجدد اليوم
+      const today = new Date().toISOString().split('T')[0];
+      const { count: newUsersToday } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today);
+
+      // جلب إعلانات اليوم
+      const { count: adsToday } = await supabase
+        .from("ads")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today);
+
+      return {
+        total_users: totalUsers || 0,
+        total_ads: totalAds || 0,
+        active_ads: activeAds || 0,
+        premium_users: premiumUsers || 0,
+        total_boosts: totalBoosts || 0,
+        total_revenue: totalRevenue,
+        new_users_today: newUsersToday || 0,
+        ads_today: adsToday || 0,
+      };
     },
     refetchInterval: 30000, // تحديث كل 30 ثانية
   });
