@@ -3,105 +3,71 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Mail } from "lucide-react";
-import { sanitizeEmail, isValidEmail } from "@/utils/inputSanitizer";
+import { usePasswordReset } from "@/hooks/usePasswordReset";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { validateEmail, sanitizeHtml } from "@/utils/securityValidation";
+import { Mail, AlertCircle, Clock } from "lucide-react";
 
-interface PasswordResetFormProps {
-  onSuccess?: (email: string) => void;
-}
-
-export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
+export const PasswordResetForm = () => {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const { requestPasswordReset, loading } = usePasswordReset();
+  
+  const { checkRateLimit, recordAttempt, isBlocked, attemptsLeft } = useRateLimit(
+    'password_reset',
+    { maxAttempts: 5, windowMinutes: 60, blockDurationMinutes: 60 }
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const sanitizedEmail = sanitizeEmail(email);
+    if (loading || isBlocked) return;
+
+    // Sanitize input
+    const sanitizedEmail = sanitizeHtml(email.trim().toLowerCase());
     
-    if (!sanitizedEmail) {
-      toast({
-        title: "خطأ",
-        description: "يرجى إدخال البريد الإلكتروني",
-        variant: "destructive"
-      });
+    // Validate email
+    const emailValidation = validateEmail(sanitizedEmail);
+    if (!emailValidation.isValid) {
+      console.error('Email validation failed:', emailValidation.errors);
       return;
     }
 
-    if (!isValidEmail(sanitizedEmail)) {
-      toast({
-        title: "خطأ",
-        description: "يرجى إدخال بريد إلكتروني صحيح",
-        variant: "destructive"
-      });
+    // Check rate limit
+    const canProceed = await checkRateLimit(sanitizedEmail);
+    if (!canProceed) {
       return;
     }
 
-    setLoading(true);
+    // Record attempt
+    await recordAttempt(sanitizedEmail);
+
     try {
-      // استخدام Supabase Auth المدمج لإرسال رسالة استعادة كلمة المرور
-      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
-        redirectTo: `${window.location.origin}/password-reset?mode=reset`
-      });
-
-      if (error) {
-        console.error('Password reset error:', error);
-        
-        // تسجيل الحدث الأمني للفشل
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'password_reset_failed',
-            event_data: {
-              email: sanitizedEmail,
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
-        toast({
-          title: "خطأ",
-          description: "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى",
-          variant: "destructive"
-        });
-      } else {
-        // تسجيل الحدث الأمني للنجاح
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'password_reset_requested',
-            event_data: {
-              email: sanitizedEmail,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
-        toast({
-          title: "تم إرسال الطلب",
-          description: "تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني",
-        });
-        
-        onSuccess?.(sanitizedEmail);
-      }
-    } catch (error: any) {
-      console.error('Password reset error:', error);
+      const result = await requestPasswordReset(sanitizedEmail);
       
-      toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      if (result.success) {
+        setIsSubmitted(true);
+      }
+    } catch (error) {
+      console.error('Password reset request failed:', error);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="text-center space-y-4">
+        <div className="flex justify-center">
+          <Mail className="h-12 w-12 text-green-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">تم إرسال الطلب</h3>
+          <p className="text-sm text-gray-600 mt-2">
+            إذا كان البريد الإلكتروني مسجل لدينا، ستتلقى رسالة تحتوي على رابط استعادة كلمة المرور
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,12 +83,32 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             className="pr-10"
             required
+            disabled={loading || isBlocked}
             maxLength={254}
+            autoComplete="email"
           />
         </div>
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      {isBlocked && (
+        <div className="flex items-center gap-2 text-amber-600 text-sm">
+          <Clock className="h-4 w-4" />
+          <span>تم تجاوز الحد المسموح من المحاولات. يرجى المحاولة لاحقاً</span>
+        </div>
+      )}
+
+      {!isBlocked && attemptsLeft < 3 && (
+        <div className="flex items-center gap-2 text-amber-600 text-sm">
+          <AlertCircle className="h-4 w-4" />
+          <span>تبقى {attemptsLeft} محاولات</span>
+        </div>
+      )}
+
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={loading || isBlocked || !email.trim()}
+      >
         {loading ? "جاري الإرسال..." : "إرسال رابط الاستعادة"}
       </Button>
     </form>
