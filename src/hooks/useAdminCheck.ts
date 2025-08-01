@@ -12,83 +12,68 @@ export const useAdminCheck = () => {
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      console.log('Admin check started for user:', user?.email);
+      console.log('بدء فحص صلاحية المدير للبريد:', user?.email);
       
       if (!user?.email) {
-        console.log('No user email found');
+        console.log('لا يوجد بريد إلكتروني للمستخدم');
         setIsAdmin(false);
         setLoading(false);
         return;
       }
 
       try {
-        console.log('Calling is_admin RPC with email:', user.email);
+        // فحص مباشر من جدول admin_users بدلاً من RPC
+        console.log('فحص مباشر من جدول admin_users...');
         
-        const { data, error } = await supabase.rpc('is_admin', {
-          user_email: user.email
-        });
-
-        console.log('Admin check response:', { data, error });
-
-        if (error) {
-          console.error('Admin RPC error:', error);
-          // إذا فشل RPC، نحاول التحقق مباشرة من الجدول
-          console.log('RPC failed, checking admin_users table directly...');
+        const { data: adminData, error: adminError } = await supabase
+          .from('admin_users')
+          .select('email')
+          .eq('email', user.email)
+          .single();
           
-          const { data: adminData, error: adminError } = await supabase
-            .from('admin_users')
-            .select('email')
-            .eq('email', user.email);
-            
-          console.log('Direct admin_users check:', { adminData, adminError });
-          
-          if (adminError) {
-            console.error('Direct admin check error:', adminError);
+        console.log('نتيجة فحص admin_users:', { adminData, adminError });
+        
+        if (adminError) {
+          if (adminError.code === 'PGRST116') {
+            // لا يوجد سجل - المستخدم ليس مديراً
+            console.log('المستخدم ليس مديراً');
             setIsAdmin(false);
           } else {
-            const isAdminUser = adminData && adminData.length > 0;
-            console.log('Admin status from direct check:', isAdminUser);
-            setIsAdmin(isAdminUser);
+            console.error('خطأ في فحص admin_users:', adminError);
+            setIsAdmin(false);
+            toast({
+              title: "خطأ في التحقق",
+              description: "فشل في التحقق من صلاحيات الإدارة",
+              variant: "destructive"
+            });
           }
+        } else if (adminData?.email === user.email) {
+          console.log('تم العثور على المدير في الجدول');
+          setIsAdmin(true);
         } else {
-          const adminResult = Boolean(data);
-          console.log('Admin check result from RPC:', adminResult);
-          setIsAdmin(adminResult);
+          console.log('المستخدم ليس مديراً');
+          setIsAdmin(false);
         }
         
       } catch (error) {
-        console.error('خطأ في التحقق من صلاحية المدير:', error);
-        
-        // محاولة أخيرة للتحقق مباشرة من الجدول
-        try {
-          console.log('Final attempt: checking admin_users table directly...');
-          const { data: adminData, error: adminError } = await supabase
-            .from('admin_users')
-            .select('email')
-            .eq('email', user.email);
-            
-          if (!adminError && adminData && adminData.length > 0) {
-            console.log('Admin found in direct table check');
-            setIsAdmin(true);
-          } else {
-            console.log('Admin not found in direct table check');
-            setIsAdmin(false);
-          }
-        } catch (finalError) {
-          console.error('Final admin check failed:', finalError);
-          setIsAdmin(false);
-          toast({
-            title: "خطأ في التحقق",
-            description: "فشل في التحقق من صلاحيات الإدارة. يرجى المحاولة مرة أخرى.",
-            variant: "destructive"
-          });
-        }
+        console.error('خطأ عام في التحقق من صلاحية المدير:', error);
+        setIsAdmin(false);
+        toast({
+          title: "خطأ في التحقق",
+          description: "فشل في التحقق من صلاحيات الإدارة. يرجى المحاولة مرة أخرى.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    checkAdminAccess();
+    if (user?.email) {
+      checkAdminAccess();
+    } else {
+      setLoading(false);
+      setIsAdmin(false);
+    }
   }, [user?.email, toast]);
 
   return { isAdmin, loading };
