@@ -31,7 +31,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const { data, error } = await supabase.rpc('verify_admin_session', { token });
       
-      if (error || !data?.valid) {
+      if (error || !data || !(data as any)?.valid) {
         localStorage.removeItem('admin_session_token');
         setIsAuthenticated(false);
         setSessionToken(null);
@@ -58,12 +58,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data?.success) {
-        return { success: false, message: data?.message || 'فشل تسجيل الدخول' };
+      if (error || !data || !(data as any)?.success) {
+        return { success: false, message: (data as any)?.message || 'فشل تسجيل الدخول' };
       }
 
-      localStorage.setItem('admin_session_token', data.session_token);
-      setSessionToken(data.session_token);
+      const sessionData = data as any;
+      localStorage.setItem('admin_session_token', sessionData.session_token);
+      setSessionToken(sessionData.session_token);
       setIsAuthenticated(true);
       
       return { success: true };
