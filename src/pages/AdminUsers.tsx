@@ -63,6 +63,7 @@ const AdminUsers = () => {
 
   const loadUsers = async () => {
     try {
+      // جلب بيانات المستخدمين مع عدد الإعلانات
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -79,7 +80,28 @@ const AdminUsers = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+
+      // جلب عدد الإعلانات لكل مستخدم
+      const usersWithAdsCounts = await Promise.all(
+        (data || []).map(async (user) => {
+          const { data: adsData, error: adsError } = await supabase
+            .from('ads')
+            .select('id')
+            .eq('user_id', user.user_id)
+            .eq('status', 'active');
+
+          if (adsError) {
+            console.error('خطأ في جلب عدد الإعلانات:', adsError);
+          }
+
+          return {
+            ...user,
+            ads_count: adsData?.length || 0
+          };
+        })
+      );
+
+      setUsers(usersWithAdsCounts);
     } catch (error) {
       console.error('خطأ في تحميل المستخدمين:', error);
       toast({
@@ -135,6 +157,7 @@ const AdminUsers = () => {
                       </h3>
                       <p className="text-gray-600">{userData.phone}</p>
                       <p className="text-sm text-gray-500">{userData.city}</p>
+                      <p className="text-sm text-gray-500">الإعلانات: {userData.ads_count}</p>
                     </div>
                   </div>
 
