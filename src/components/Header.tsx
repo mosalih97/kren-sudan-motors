@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Bell, User, Settings, LogOut, Plus, Car, MessageSquare, Crown, Shield } from 'lucide-react';
 
-const Header = () => {
+export const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
