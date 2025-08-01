@@ -1,93 +1,22 @@
 
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Navigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import { Users, Car, Star, TrendingUp } from 'lucide-react';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { useAdminStats } from '@/hooks/useAdminStats';
+import AdminLoadingScreen from '@/components/admin/AdminLoadingScreen';
+import AccessDeniedScreen from '@/components/admin/AccessDeniedScreen';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Admin = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  const { stats, loading: statsLoading, refetch } = useAdminStats(isAdmin);
 
-  useEffect(() => {
-    if (user) {
-      checkAdminAccess();
-      loadDashboardStats();
-    } else {
-      setIsAdmin(false);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const checkAdminAccess = async () => {
-    if (!user?.email) {
-      console.log('No user email found');
-      setIsAdmin(false);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('Checking admin access for:', user.email);
-      
-      const { data, error } = await supabase.rpc('is_admin', {
-        user_email: user.email
-      });
-
-      console.log('Admin check result:', { data, error });
-
-      if (error) {
-        console.error('Error checking admin access:', error);
-        throw error;
-      }
-      
-      setIsAdmin(data || false);
-    } catch (error) {
-      console.error('خطأ في التحقق من صلاحية المدير:', error);
-      setIsAdmin(false);
-      toast({
-        title: "خطأ",
-        description: "فشل في التحقق من صلاحيات الإدارة",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDashboardStats = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
-      console.log('Dashboard stats:', { data, error });
-      
-      if (error) throw error;
-      setStats(data);
-    } catch (error) {
-      console.error('خطأ في تحميل الإحصائيات:', error);
-      toast({
-        title: "خطأ",
-        description: "فشل في تحميل إحصائيات لوحة التحكم",
-        variant: "destructive"
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-lg">جاري التحميل...</div>
-          <div className="text-sm text-gray-500 mt-2">التحقق من صلاحيات الإدارة</div>
-        </div>
-      </div>
-    );
+  if (adminLoading) {
+    return <AdminLoadingScreen />;
   }
 
   if (!user) {
@@ -95,21 +24,7 @@ const Admin = () => {
   }
 
   if (isAdmin === false) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">غير مصرح</h1>
-          <p className="text-gray-600 mb-4">لا تملك صلاحيات للوصول لهذه الصفحة</p>
-          <p className="text-sm text-gray-500">البريد الإلكتروني: {user.email}</p>
-          <Button 
-            onClick={() => window.location.href = '/'}
-            className="mt-4"
-          >
-            العودة للصفحة الرئيسية
-          </Button>
-        </div>
-      </div>
-    );
+    return <AccessDeniedScreen userEmail={user.email} />;
   }
 
   return (
@@ -128,7 +43,9 @@ const Admin = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_users || 0}</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.total_users || 0)}
+              </div>
             </CardContent>
           </Card>
 
@@ -138,7 +55,9 @@ const Admin = () => {
               <Car className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_ads || 0}</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.total_ads || 0)}
+              </div>
             </CardContent>
           </Card>
 
@@ -148,7 +67,9 @@ const Admin = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.active_ads || 0}</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.active_ads || 0)}
+              </div>
             </CardContent>
           </Card>
 
@@ -158,7 +79,9 @@ const Admin = () => {
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.premium_users || 0}</div>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.premium_users || 0)}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -202,11 +125,12 @@ const Admin = () => {
             <CardContent>
               <p className="text-gray-600 mb-4">تقارير مفصلة عن النشاطات</p>
               <Button 
-                onClick={loadDashboardStats}
+                onClick={refetch}
                 variant="outline"
                 className="w-full"
+                disabled={statsLoading}
               >
-                تحديث الإحصائيات
+                {statsLoading ? 'جاري التحديث...' : 'تحديث الإحصائيات'}
               </Button>
             </CardContent>
           </Card>

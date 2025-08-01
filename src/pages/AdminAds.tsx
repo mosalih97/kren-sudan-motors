@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Navigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Car, Eye, Star, Calendar } from 'lucide-react';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
+import AdminLoadingScreen from '@/components/admin/AdminLoadingScreen';
+import AccessDeniedScreen from '@/components/admin/AccessDeniedScreen';
 
 interface AdData {
   id: string;
@@ -27,8 +29,8 @@ interface AdData {
 
 const AdminAds = () => {
   const { user } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdminCheck();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [ads, setAds] = useState<AdData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,16 +103,16 @@ const AdminAds = () => {
     return new Intl.NumberFormat('ar-SA').format(price) + ' ريال';
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg">جاري التحميل...</div>
-      </div>
-    );
+  if (adminLoading) {
+    return <AdminLoadingScreen />;
   }
 
-  if (!user || isAdmin === false) {
-    return <Navigate to="/admin" replace />;
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (isAdmin === false) {
+    return <AccessDeniedScreen userEmail={user.email} />;
   }
 
   return (
