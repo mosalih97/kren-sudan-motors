@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +19,7 @@ import UploadReceipt from "./pages/UploadReceipt";
 import PasswordReset from "./pages/PasswordReset";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminUsers from "./pages/AdminUsers";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +45,7 @@ function App() {
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/boost-ad/:id" element={<ProtectedRoute><BoostAd /></ProtectedRoute>} />
               <Route path="/upload-receipt" element={<ProtectedRoute><UploadReceipt /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
