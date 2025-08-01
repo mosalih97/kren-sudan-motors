@@ -15,140 +15,139 @@ const Admin = () => {
   const { isAdmin, loading: adminLoading } = useAdminCheck();
   const { stats, loading: statsLoading, refetch } = useAdminStats(isAdmin);
 
-  console.log('حالة Admin:', { user: user?.email, isAdmin, adminLoading });
+  console.log('حالة المدير الحالية:', { 
+    userEmail: user?.email, 
+    isAdmin, 
+    adminLoading 
+  });
 
-  // عرض شاشة التحميل فقط إذا كان يتم التحقق من المصادقة
+  // عرض شاشة التحميل لفترة قصيرة فقط
   if (adminLoading) {
     return <AdminLoadingScreen />;
   }
 
-  // إذا لم يكن المستخدم مسجل دخول
+  // التحقق من تسجيل الدخول
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
 
-  // إذا لم يكن المستخدم مديراً
+  // إذا لم يكن مديراً
   if (isAdmin === false) {
     return <AccessDeniedScreen userEmail={user.email} />;
   }
 
-  // إذا كان المستخدم مديراً، عرض لوحة التحكم
-  if (isAdmin === true) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
-            <p className="text-gray-600 mt-2">مرحباً {user.email}</p>
-          </div>
+  // عرض لوحة التحكم للمدير
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
+          <p className="text-gray-600 mt-2">مرحباً {user.email}</p>
+        </div>
 
-          {/* الإحصائيات */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? '...' : (stats?.total_users || 0)}
-                </div>
-              </CardContent>
-            </Card>
+        {/* الإحصائيات */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">إجمالي المستخدمين</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.total_users || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">إجمالي الإعلانات</CardTitle>
-                <Car className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? '...' : (stats?.total_ads || 0)}
-                </div>
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">إجمالي الإعلانات</CardTitle>
+              <Car className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.total_ads || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">الإعلانات النشطة</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? '...' : (stats?.active_ads || 0)}
-                </div>
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">الإعلانات النشطة</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.active_ads || 0)}
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">المستخدمون المميزون</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? '...' : (stats?.premium_users || 0)}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">المستخدمون المميزون</CardTitle>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {statsLoading ? '...' : (stats?.premium_users || 0)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* أزرار الإجراءات */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة المستخدمين</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">عرض وإدارة المستخدمين المسجلين</p>
-                <Button 
-                  onClick={() => window.location.href = '/admin/users'}
-                  className="w-full"
-                >
-                  عرض المستخدمين
-                </Button>
-              </CardContent>
-            </Card>
+        {/* أزرار الإجراءات */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>إدارة المستخدمين</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">عرض وإدارة المستخدمين المسجلين</p>
+              <Button 
+                onClick={() => window.location.href = '/admin/users'}
+                className="w-full"
+              >
+                عرض المستخدمين
+              </Button>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة الإعلانات</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">مراجعة وإدارة الإعلانات المنشورة</p>
-                <Button 
-                  onClick={() => window.location.href = '/admin/ads'}
-                  className="w-full"
-                >
-                  عرض الإعلانات
-                </Button>
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>إدارة الإعلانات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">مراجعة وإدارة الإعلانات المنشورة</p>
+              <Button 
+                onClick={() => window.location.href = '/admin/ads'}
+                className="w-full"
+              >
+                عرض الإعلانات
+              </Button>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>الإحصائيات المتقدمة</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">تقارير مفصلة عن النشاطات</p>
-                <Button 
-                  onClick={refetch}
-                  variant="outline"
-                  className="w-full"
-                  disabled={statsLoading}
-                >
-                  {statsLoading ? 'جاري التحديث...' : 'تحديث الإحصائيات'}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>الإحصائيات المتقدمة</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">تقارير مفصلة عن النشاطات</p>
+              <Button 
+                onClick={refetch}
+                variant="outline"
+                className="w-full"
+                disabled={statsLoading}
+              >
+                {statsLoading ? 'جاري التحديث...' : 'تحديث الإحصائيات'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    );
-  }
-
-  // إذا كانت الحالة لا تزال null
-  return <AdminLoadingScreen />;
+    </div>
+  );
 };
 
 export default Admin;
