@@ -23,7 +23,19 @@ export const useAdminStats = () => {
         throw error;
       }
 
-      return data as AdminStats;
+      // Type casting للتأكد من أن البيانات تتطابق مع AdminStats
+      const stats = data as unknown as AdminStats;
+      
+      // التأكد من أن جميع القيم أرقام صحيحة
+      return {
+        total_users: Number(stats.total_users) || 0,
+        total_ads: Number(stats.total_ads) || 0,
+        active_ads: Number(stats.active_ads) || 0,
+        premium_users: Number(stats.premium_users) || 0,
+        total_boosts: Number(stats.total_boosts) || 0,
+        new_users_today: Number(stats.new_users_today) || 0,
+        revenue_today: Number(stats.revenue_today) || 0,
+      };
     },
     refetchInterval: 30000, // تحديث كل 30 ثانية
   });
