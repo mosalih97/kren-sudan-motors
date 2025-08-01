@@ -30,7 +30,7 @@ export const useAdminStats = (isAdmin: boolean | null) => {
       
       // التأكد من أن البيانات من النوع الصحيح
       if (data && typeof data === 'object' && !Array.isArray(data)) {
-        setStats(data as AdminStats);
+        setStats(data as unknown as AdminStats);
       } else {
         throw new Error('Invalid data format received');
       }
