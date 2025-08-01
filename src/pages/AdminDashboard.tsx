@@ -13,34 +13,65 @@ import { Shield, Users, Car, TrendingUp } from "lucide-react";
 const AdminDashboard = () => {
   const { user } = useAuth();
 
-  // التحقق من صلاحيات المدير مباشرة من جدول admin_users
-  const { data: isAdmin, isLoading: isCheckingAdmin } = useQuery({
+  // التحقق من صلاحيات المدير بطريقة محسنة
+  const { data: isAdmin, isLoading: isCheckingAdmin, error } = useQuery({
     queryKey: ["isAdmin", user?.email],
     queryFn: async () => {
-      if (!user?.email) return false;
+      if (!user?.email || !user?.id) {
+        console.log('No user email or id found');
+        return false;
+      }
       
-      // فحص مباشر من جدول admin_users
-      const { data: adminData } = await supabase
-        .from("admin_users")
-        .select("email")
-        .eq("email", user.email)
-        .single();
+      console.log('Checking admin access for:', user.email, user.id);
       
-      // فحص إضافي من جدول profiles
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("membership_type")
-        .eq("user_id", user.id)
-        .single();
-      
-      return adminData?.email === user.email || profileData?.membership_type === 'admin';
+      try {
+        // فحص من جدول admin_users
+        const { data: adminData, error: adminError } = await supabase
+          .from("admin_users")
+          .select("email")
+          .eq("email", user.email)
+          .maybeSingle();
+        
+        if (adminError) {
+          console.error('Admin check error:', adminError);
+        }
+        
+        // فحص من جدول profiles
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("membership_type, role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Profile check error:', profileError);
+        }
+        
+        console.log('Admin data:', adminData);
+        console.log('Profile data:', profileData);
+        
+        const isAdminUser = adminData?.email === user.email;
+        const isAdminProfile = profileData?.membership_type === 'admin' || profileData?.role === 'admin';
+        
+        const result = isAdminUser || isAdminProfile;
+        console.log('Admin check result:', result);
+        
+        return result;
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+      }
     },
-    enabled: !!user?.email,
+    enabled: !!user?.email && !!user?.id,
+    retry: 3,
+    refetchOnWindowFocus: false,
   });
+
+  console.log('AdminDashboard - User:', user?.email, 'IsAdmin:', isAdmin, 'Loading:', isCheckingAdmin, 'Error:', error);
 
   if (isCheckingAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
@@ -49,9 +80,34 @@ const AdminDashboard = () => {
     );
   }
 
+  if (error) {
+    console.error('Admin dashboard error:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <Shield className="mx-auto h-12 w-12 text-destructive mb-4" />
+              <h2 className="text-xl font-semibold mb-2">خطأ في النظام</h2>
+              <p className="text-muted-foreground mb-4">
+                حدث خطأ أثناء التحقق من الصلاحيات
+              </p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="text-primary hover:underline"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">
@@ -60,9 +116,10 @@ const AdminDashboard = () => {
               <p className="text-muted-foreground mb-4">
                 ليس لديك صلاحية للوصول إلى لوحة التحكم
               </p>
-              <p className="text-sm text-muted-foreground">
-                البريد الإلكتروني: {user?.email}
-              </p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>البريد الإلكتروني: {user?.email}</p>
+                <p>معرف المستخدم: {user?.id}</p>
+              </div>
             </div>
           </CardContent>
         </Card>

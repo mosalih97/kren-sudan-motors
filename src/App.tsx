@@ -37,7 +37,7 @@ function App() {
               <SecurityAuditLogger />
               <div className="min-h-screen bg-background">
                 <Suspense fallback={
-                  <div className="flex items-center justify-center min-h-screen">
+                  <div className="flex items-center justify-center min-h-screen bg-background">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 }>
@@ -51,7 +51,7 @@ function App() {
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
                     
-                    {/* Admin route - now protected */}
+                    {/* Admin route - protected */}
                     <Route path="/admin" element={
                       <ProtectedRoute>
                         <AdminDashboard />
