@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Cars from "./pages/Cars";
@@ -37,19 +38,19 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/cars" element={<Cars />} />
-              <Route path="/add-ad" element={<AddAd />} />
+              <Route path="/add-ad" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
               <Route path="/ad/:id" element={<AdDetails />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/password-reset" element={<PasswordReset />} />
-              <Route path="/seller-ads" element={<SellerAds />} />
-              <Route path="/boost-ad/:id" element={<BoostAd />} />
-              <Route path="/upload-receipt" element={<UploadReceipt />} />
+              <Route path="/seller-ads" element={<ProtectedRoute><SellerAds /></ProtectedRoute>} />
+              <Route path="/boost-ad/:id" element={<ProtectedRoute><BoostAd /></ProtectedRoute>} />
+              <Route path="/upload-receipt" element={<ProtectedRoute><UploadReceipt /></ProtectedRoute>} />
               <Route path="/search" element={<SearchResults />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/ads" element={<AdminAds />} />
+              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+              <Route path="/admin/ads" element={<ProtectedRoute><AdminAds /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
