@@ -25,7 +25,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const PasswordReset = lazy(() => import("./pages/PasswordReset"));
 const UploadReceipt = lazy(() => import("./pages/UploadReceipt"));
 const BoostAd = lazy(() => import("./pages/BoostAd"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 
 function App() {
   return (
@@ -80,11 +79,6 @@ function App() {
                     <Route path="/boost/:id" element={
                       <ProtectedRoute>
                         <BoostAd />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/admin" element={
-                      <ProtectedRoute>
-                        <AdminDashboard />
                       </ProtectedRoute>
                     } />
                   </Routes>
