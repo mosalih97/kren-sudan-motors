@@ -22,40 +22,100 @@ interface AdminUser {
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      console.log('Loading users...');
-      const { data, error } = await supabase.rpc('get_admin_users_list');
+      console.log('Loading users from get_admin_users_list...');
       
-      console.log('Users data:', data);
-      console.log('Users error:', error);
+      // Try the RPC function first
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_users_list');
       
-      if (error) {
-        console.error('Error loading users:', error);
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: "فشل في تحميل قائمة المستخدمين: " + error.message,
-        });
-        return;
+      if (rpcError) {
+        console.log('RPC function failed, trying direct query:', rpcError);
+        
+        // Fallback to direct query if RPC fails
+        const { data: directData, error: directError } = await supabase
+          .from('profiles')
+          .select(`
+            user_id,
+            display_name,
+            phone,
+            city,
+            membership_type,
+            is_premium,
+            points,
+            credits,
+            created_at,
+            upgraded_at,
+            premium_expires_at
+          `)
+          .order('created_at', { ascending: false });
+
+        if (directError) {
+          console.error('Direct query also failed:', directError);
+          toast({
+            variant: "destructive",
+            title: "خطأ",
+            description: "فشل في تحميل قائمة المستخدمين",
+          });
+          return;
+        }
+
+        if (directData && Array.isArray(directData)) {
+          // Transform data to match expected format
+          const transformedData = directData.map(user => ({
+            ...user,
+            days_remaining: user.premium_expires_at 
+              ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+              : 0,
+            ads_count: 0 // Will be updated if we can fetch ads data
+          }));
+
+          console.log('Direct query successful:', transformedData.length, 'users');
+          setUsers(transformedData);
+          setFilteredUsers(transformedData);
+        }
+      } else {
+        // RPC function succeeded
+        if (rpcData && Array.isArray(rpcData)) {
+          console.log('RPC function successful:', rpcData.length, 'users');
+          setUsers(rpcData as AdminUser[]);
+          setFilteredUsers(rpcData as AdminUser[]);
+        } else {
+          console.log('No data received from RPC function');
+          setUsers([]);
+          setFilteredUsers([]);
+        }
       }
 
-      if (data && Array.isArray(data)) {
-        console.log('Setting users data:', data.length, 'users');
-        setUsers(data as AdminUser[]);
-        setFilteredUsers(data as AdminUser[]);
-      } else {
-        console.log('No data received or data is not array:', data);
-        setUsers([]);
-        setFilteredUsers([]);
-      }
+      // Set up real-time subscription for profile changes
+      const profilesChannel = supabase
+        .channel('admin-profiles-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles'
+          },
+          (payload) => {
+            console.log('Real-time profile change:', payload);
+            // Reload data when changes occur
+            loadUsers();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(profilesChannel);
+      };
+
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading users:', error);
       toast({
         variant: "destructive",
         title: "خطأ",
@@ -162,7 +222,14 @@ export const useAdminUsers = () => {
   };
 
   useEffect(() => {
-    loadUsers();
+    console.log('useAdminUsers: Starting to load users...');
+    const cleanup = loadUsers();
+    
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, []);
 
   return {
