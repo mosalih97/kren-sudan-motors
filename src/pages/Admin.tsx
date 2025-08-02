@@ -128,7 +128,9 @@ const Admin = () => {
       if (statsError) {
         console.error('Error loading stats:', statsError);
       } else {
-        setStats(statsData as AdminStats);
+        // إصلاح TypeScript error بتحديد النوع
+        const typedStats = statsData as unknown as AdminStats;
+        setStats(typedStats);
       }
 
       // تحميل قائمة المستخدمين
