@@ -62,7 +62,7 @@ const Admin = () => {
         return;
       }
 
-      setIsAuthenticated(data);
+      setIsAuthenticated(data as boolean);
       if (data) {
         await loadAdminData();
       }
@@ -92,17 +92,17 @@ const Admin = () => {
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data.success) {
+      if (error || !(data as any)?.success) {
         toast({
           variant: "destructive",
           title: "خطأ في تسجيل الدخول",
-          description: data?.message || "فشل في تسجيل الدخول",
+          description: (data as any)?.message || "فشل في تسجيل الدخول",
         });
         return;
       }
 
       // حفظ token الجلسة
-      localStorage.setItem('admin_session_token', data.session_token);
+      localStorage.setItem('admin_session_token', (data as any).session_token);
       setIsAuthenticated(true);
       await loadAdminData();
       
@@ -128,7 +128,7 @@ const Admin = () => {
       if (statsError) {
         console.error('Error loading stats:', statsError);
       } else {
-        setStats(statsData);
+        setStats(statsData as AdminStats);
       }
 
       // تحميل قائمة المستخدمين
@@ -136,7 +136,7 @@ const Admin = () => {
       if (usersError) {
         console.error('Error loading users:', usersError);
       } else {
-        setUsers(usersData || []);
+        setUsers((usersData as User[]) || []);
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -153,11 +153,11 @@ const Admin = () => {
         admin_user_id: user.id
       });
 
-      if (error || !data.success) {
+      if (error || !(data as any)?.success) {
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: data?.message || "فشل في ترقية المستخدم",
+          description: (data as any)?.message || "فشل في ترقية المستخدم",
         });
         return;
       }
@@ -188,11 +188,11 @@ const Admin = () => {
         admin_user_id: user.id
       });
 
-      if (error || !data.success) {
+      if (error || !(data as any)?.success) {
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: data?.message || "فشل في إرجاع المستخدم للعضوية العادية",
+          description: (data as any)?.message || "فشل في إرجاع المستخدم للعضوية العادية",
         });
         return;
       }
