@@ -86,27 +86,14 @@ export const UserManagement = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>إدارة المستخدمين ({users.length})</span>
-            {loading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                جاري التحديث...
-              </div>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading && users.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-muted-foreground text-lg">جاري تحميل المستخدمين...</p>
-            </div>
-          ) : (
-            <UsersTable
-              users={users}
-              onUpgrade={handleUpgrade}
-              onDowngrade={handleDowngrade}
-            />
-          )}
+          <UsersTable
+            users={users}
+            onUpgrade={handleUpgrade}
+            onDowngrade={handleDowngrade}
+          />
         </CardContent>
       </Card>
     </div>

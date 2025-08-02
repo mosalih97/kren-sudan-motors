@@ -22,12 +22,12 @@ interface AdminUser {
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Changed to false to disable loading
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const loadUsers = async () => {
-    setLoading(true);
+    // Remove setLoading(true) to disable loading state
     try {
       console.log('Loading users from get_admin_users_list...');
       
@@ -92,28 +92,6 @@ export const useAdminUsers = () => {
         }
       }
 
-      // Set up real-time subscription for profile changes
-      const profilesChannel = supabase
-        .channel('admin-profiles-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'profiles'
-          },
-          (payload) => {
-            console.log('Real-time profile change:', payload);
-            // Reload data when changes occur
-            loadUsers();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(profilesChannel);
-      };
-
     } catch (error) {
       console.error('Error loading users:', error);
       toast({
@@ -121,9 +99,8 @@ export const useAdminUsers = () => {
         title: "خطأ",
         description: "حدث خطأ أثناء تحميل المستخدمين",
       });
-    } finally {
-      setLoading(false);
     }
+    // Remove setLoading(false) since we're not using loading state
   };
 
   const searchUsers = (term: string) => {
@@ -223,12 +200,28 @@ export const useAdminUsers = () => {
 
   useEffect(() => {
     console.log('useAdminUsers: Starting to load users...');
-    const cleanup = loadUsers();
-    
+    loadUsers();
+
+    // Set up real-time subscription for profile changes
+    const profilesChannel = supabase
+      .channel('admin-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        (payload) => {
+          console.log('Real-time profile change:', payload);
+          // Reload data when changes occur
+          loadUsers();
+        }
+      )
+      .subscribe();
+
     return () => {
-      if (cleanup && typeof cleanup === 'function') {
-        cleanup();
-      }
+      supabase.removeChannel(profilesChannel);
     };
   }, []);
 
