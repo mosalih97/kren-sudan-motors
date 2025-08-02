@@ -1,6 +1,5 @@
 
-import { useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useSearchParams, useEffect, useState } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { PasswordResetHeader } from "@/components/password-reset/PasswordResetHeader";
 import { PasswordResetForm } from "@/components/password-reset/PasswordResetForm";
