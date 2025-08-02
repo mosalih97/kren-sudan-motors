@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +37,7 @@ const Admin = () => {
   const { user } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +52,7 @@ const Admin = () => {
     }
 
     try {
+      console.log('Checking admin access for email:', user.email);
       const { data, error } = await supabase.rpc('check_admin_access', {
         user_email: user.email
       });
@@ -62,6 +63,7 @@ const Admin = () => {
         return;
       }
 
+      console.log('Admin access result:', data);
       setIsAuthenticated(data as boolean);
       if (data) {
         await loadAdminData();
@@ -84,6 +86,9 @@ const Admin = () => {
       return;
     }
 
+    setIsLoggingIn(true);
+    console.log('Attempting admin login with username:', username);
+
     try {
       const { data, error } = await supabase.rpc('create_admin_session', {
         username_input: username,
@@ -92,26 +97,59 @@ const Admin = () => {
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
+      console.log('Admin login response:', { data, error });
+
+      if (error) {
+        console.error('Admin login error:', error);
         toast({
           variant: "destructive",
           title: "خطأ في تسجيل الدخول",
-          description: (data && typeof data === 'object' && 'message' in data) ? String(data.message) : "فشل في تسجيل الدخول",
+          description: error.message || "فشل في تسجيل الدخول",
         });
         return;
       }
 
-      // حفظ token الجلسة
-      if (data && typeof data === 'object' && 'session_token' in data) {
-        localStorage.setItem('admin_session_token', String(data.session_token));
+      if (!data) {
+        toast({
+          variant: "destructive",
+          title: "خطأ في تسجيل الدخول",
+          description: "لم يتم إرجاع بيانات من الخادم",
+        });
+        return;
       }
-      setIsAuthenticated(true);
-      await loadAdminData();
-      
-      toast({
-        title: "مرحباً",
-        description: "تم تسجيل الدخول بنجاح",
-      });
+
+      // التحقق من نجاح العملية
+      if (typeof data === 'object' && data !== null && 'success' in data) {
+        const loginResult = data as { success: boolean; message?: string; session_token?: string };
+        
+        if (!loginResult.success) {
+          toast({
+            variant: "destructive",
+            title: "خطأ في تسجيل الدخول",
+            description: loginResult.message || "فشل في تسجيل الدخول",
+          });
+          return;
+        }
+
+        // حفظ token الجلسة
+        if (loginResult.session_token) {
+          localStorage.setItem('admin_session_token', loginResult.session_token);
+        }
+        
+        setIsAuthenticated(true);
+        await loadAdminData();
+        
+        toast({
+          title: "مرحباً",
+          description: "تم تسجيل الدخول بنجاح",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "خطأ",
+          description: "استجابة غير متوقعة من الخادم",
+        });
+      }
     } catch (error) {
       console.error('Admin login error:', error);
       toast({
@@ -119,6 +157,8 @@ const Admin = () => {
         title: "خطأ",
         description: "حدث خطأ أثناء تسجيل الدخول",
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -264,6 +304,7 @@ const Admin = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="text-right"
+              disabled={isLoggingIn}
             />
             <Input
               type="password"
@@ -271,13 +312,26 @@ const Admin = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="text-right"
+              disabled={isLoggingIn}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleAdminLogin();
+                }
+              }}
             />
             <Button 
               onClick={handleAdminLogin}
               className="w-full"
-              disabled={!username || !password}
+              disabled={!username || !password || isLoggingIn}
             >
-              دخول
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  جاري تسجيل الدخول...
+                </>
+              ) : (
+                'دخول'
+              )}
             </Button>
           </CardContent>
         </Card>
