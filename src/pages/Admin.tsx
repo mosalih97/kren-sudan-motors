@@ -130,16 +130,19 @@ const Admin = () => {
       if (statsError) {
         console.error('Error loading stats:', statsError);
       } else {
-        // تحويل البيانات للنوع الصحيح
-        const convertedStats: AdminStats = {
-          total_users: Number(statsData?.total_users || 0),
-          total_ads: Number(statsData?.total_ads || 0),
-          active_ads: Number(statsData?.active_ads || 0),
-          premium_users: Number(statsData?.premium_users || 0),
-          total_boosts: Number(statsData?.total_boosts || 0),
-          new_users_this_month: Number(statsData?.new_users_this_month || 0)
-        };
-        setStats(convertedStats);
+        // التأكد من أن البيانات من النوع الصحيح
+        if (statsData && typeof statsData === 'object' && statsData !== null) {
+          const statsObject = statsData as Record<string, unknown>;
+          const convertedStats: AdminStats = {
+            total_users: Number(statsObject.total_users || 0),
+            total_ads: Number(statsObject.total_ads || 0),
+            active_ads: Number(statsObject.active_ads || 0),
+            premium_users: Number(statsObject.premium_users || 0),
+            total_boosts: Number(statsObject.total_boosts || 0),
+            new_users_this_month: Number(statsObject.new_users_this_month || 0)
+          };
+          setStats(convertedStats);
+        }
       }
 
       // تحميل قائمة المستخدمين
