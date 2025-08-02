@@ -5,25 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, UserPlus, UserMinus, Crown, Users, Calendar, CreditCard } from 'lucide-react';
-
-interface User {
-  user_id: string;
-  display_name: string;
-  phone: string;
-  city: string;
-  membership_type: string;
-  is_premium: boolean;
-  points: number;
-  credits: number;
-  created_at: string;
-  upgraded_at: string;
-  premium_expires_at: string;
-  days_remaining: number;
-  ads_count: number;
-}
+import { Loader2, Users, Calendar, CreditCard, Crown } from 'lucide-react';
+import { UserManagement } from '@/components/admin/UserManagement';
 
 interface AdminStats {
   total_users: number;
@@ -39,9 +23,7 @@ const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -91,101 +73,62 @@ const Admin = () => {
     console.log('Attempting admin login with username:', username);
 
     try {
-      // First try direct credential check
+      // Primary authentication method - hardcoded credentials
       if (username === 'admin' && password === 'admin123') {
-        console.log('Using hardcoded admin credentials');
+        console.log('Using hardcoded admin credentials - successful');
         setIsAuthenticated(true);
         await loadAdminData();
         
         toast({
-          title: "مرحباً",
+          title: "مرحباً بك في لوحة التحكم",
           description: "تم تسجيل الدخول بنجاح",
         });
         return;
       }
 
-      // Try the RPC function
-      const { data, error } = await supabase.rpc('create_admin_session', {
-        username_input: username,
-        password_input: password,
-        ip_addr: '',
-        user_agent_input: navigator.userAgent
-      });
+      // Secondary method - try RPC function if available
+      try {
+        const { data, error } = await supabase.rpc('create_admin_session', {
+          username_input: username,
+          password_input: password,
+          ip_addr: '',
+          user_agent_input: navigator.userAgent
+        });
 
-      console.log('Admin login response:', { data, error });
+        console.log('RPC Admin login response:', { data, error });
 
-      if (error) {
-        console.error('Admin login error:', error);
-        
-        // Fallback: try hardcoded credentials again
-        if (username === 'admin' && password === 'admin123') {
+        if (!error && data && typeof data === 'object' && 'success' in data && data.success) {
+          if ('session_token' in data && data.session_token) {
+            localStorage.setItem('admin_session_token', String(data.session_token));
+          }
+          
           setIsAuthenticated(true);
           await loadAdminData();
           
           toast({
-            title: "مرحباً",
-            description: "تم تسجيل الدخول بنجاح (وضع الطوارئ)",
+            title: "مرحباً بك",
+            description: "تم تسجيل الدخول بنجاح عبر قاعدة البيانات",
           });
           return;
         }
-        
-        toast({
-          variant: "destructive",
-          title: "خطأ في تسجيل الدخول",
-          description: error.message || "اسم المستخدم أو كلمة المرور غير صحيحة",
-        });
-        return;
+      } catch (rpcError) {
+        console.log('RPC method failed, falling back to hardcoded check:', rpcError);
       }
 
-      if (data && typeof data === 'object' && 'success' in data && data.success) {
-        if ('session_token' in data && data.session_token) {
-          localStorage.setItem('admin_session_token', String(data.session_token));
-        }
-        
-        setIsAuthenticated(true);
-        await loadAdminData();
-        
-        toast({
-          title: "مرحباً",
-          description: "تم تسجيل الدخول بنجاح",
-        });
-      } else {
-        // Final fallback
-        if (username === 'admin' && password === 'admin123') {
-          setIsAuthenticated(true);
-          await loadAdminData();
-          
-          toast({
-            title: "مرحباً", 
-            description: "تم تسجيل الدخول بنجاح",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "خطأ في تسجيل الدخول",
-            description: "اسم المستخدم أو كلمة المرور غير صحيحة",
-          });
-        }
-      }
+      // If we reach here, authentication failed
+      toast({
+        variant: "destructive",
+        title: "خطأ في تسجيل الدخول",
+        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+      });
+
     } catch (error) {
       console.error('Admin login error:', error);
-      
-      // Emergency fallback
-      if (username === 'admin' && password === 'admin123') {
-        setIsAuthenticated(true);
-        await loadAdminData();
-        
-        toast({
-          title: "مرحباً",
-          description: "تم تسجيل الدخول بنجاح",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: "حدث خطأ أثناء تسجيل الدخول",
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "حدث خطأ أثناء تسجيل الدخول",
+      });
     } finally {
       setIsLoggingIn(false);
     }
@@ -216,99 +159,14 @@ const Admin = () => {
           setStats(convertedStats);
         }
       }
-
-      // Load users
-      const { data: usersData, error: usersError } = await supabase.rpc('get_admin_users_list');
-      if (usersError) {
-        console.error('Error loading users:', usersError);
-      } else if (usersData) {
-        console.log('Loaded users:', usersData.length);
-        setUsers((usersData as User[]) || []);
-      }
     } catch (error) {
       console.error('Error loading admin data:', error);
-    }
-  };
-
-  // Upgrade user to premium
-  const upgradeUserToPremium = async (userId: string) => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error } = await supabase.rpc('upgrade_user_to_premium', {
-        target_user_id: userId,
-        admin_user_id: user.id
-      });
-
-      if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: (data && typeof data === 'object' && 'message' in data) ? String(data.message) : "فشل في ترقية المستخدم",
-        });
-        return;
-      }
-
-      toast({
-        title: "نجح",
-        description: "تم ترقية المستخدم بنجاح",
-      });
-
-      await loadAdminData();
-    } catch (error) {
-      console.error('Error upgrading user:', error);
-      toast({
-        variant: "destructive",
-        title: "خطأ",
-        description: "حدث خطأ أثناء ترقية المستخدم",
-      });
-    }
-  };
-
-  // Downgrade user to free
-  const downgradeUserToFree = async (userId: string) => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error } = await supabase.rpc('downgrade_user_to_free', {
-        target_user_id: userId,
-        admin_user_id: user.id
-      });
-
-      if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: (data && typeof data === 'object' && 'message' in data) ? String(data.message) : "فشل في إرجاع المستخدم للعضوية العادية",
-        });
-        return;
-      }
-
-      toast({
-        title: "نجح",
-        description: "تم إرجاع المستخدم للعضوية العادية",
-      });
-
-      await loadAdminData();
-    } catch (error) {
-      console.error('Error downgrading user:', error);
-      toast({
-        variant: "destructive",
-        title: "خطأ",
-        description: "حدث خطأ أثناء إرجاع المستخدم",
-      });
     }
   };
 
   useEffect(() => {
     checkAdminAccess();
   }, [user]);
-
-  const filteredUsers = users.filter(u => 
-    u.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.phone?.includes(searchTerm) ||
-    u.city?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (isLoading) {
     return (
@@ -439,83 +297,8 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Search */}
-        <Card>
-          <CardContent className="p-4">
-            <Input
-              placeholder="البحث بالاسم أو الهاتف أو المدينة..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-right"
-            />
-          </CardContent>
-        </Card>
-
-        {/* Users List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>إدارة المستخدمين ({filteredUsers.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredUsers.map((user) => (
-                <div key={user.user_id} className="border rounded-lg p-4 bg-white">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg">{user.display_name}</h3>
-                        {user.membership_type === 'premium' && (
-                          <Badge className="bg-yellow-100 text-yellow-800">مميز</Badge>
-                        )}
-                        {user.membership_type === 'admin' && (
-                          <Badge className="bg-red-100 text-red-800">مدير</Badge>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-gray-600">
-                        <div>📞 {user.phone}</div>
-                        <div>🏙️ {user.city}</div>
-                        <div>🔢 نقاط: {user.points}</div>
-                        <div>💳 كريديت: {user.credits}</div>
-                        <div>📝 إعلانات: {user.ads_count}</div>
-                        <div>📅 انضم: {new Date(user.created_at).toLocaleDateString('ar-SA')}</div>
-                        {user.premium_expires_at && (
-                          <div className={`${user.days_remaining < 7 ? 'text-red-600' : ''}`}>
-                            ⏰ باقي: {user.days_remaining} يوم
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {user.membership_type !== 'premium' && user.membership_type !== 'admin' && (
-                        <Button
-                          onClick={() => upgradeUserToPremium(user.user_id)}
-                          size="sm"
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                        >
-                          <UserPlus className="h-4 w-4 ml-1" />
-                          ترقية
-                        </Button>
-                      )}
-                      
-                      {user.membership_type === 'premium' && (
-                        <Button
-                          onClick={() => downgradeUserToFree(user.user_id)}
-                          size="sm"
-                          variant="outline"
-                          className="border-red-300 text-red-600 hover:bg-red-50"
-                        >
-                          <UserMinus className="h-4 w-4 ml-1" />
-                          إرجاع
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* User Management Component */}
+        <UserManagement />
       </div>
     </div>
   );
