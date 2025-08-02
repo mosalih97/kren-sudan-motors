@@ -19,6 +19,7 @@ import BoostAd from "./pages/BoostAd";
 import UploadReceipt from "./pages/UploadReceipt";
 import PasswordReset from "./pages/PasswordReset";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ function App() {
               <Route path="/search" element={<SearchResults />} />
               <Route path="/ad/:id" element={<AdDetails />} />
               <Route path="/seller/:userId" element={<SellerAds />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/add-ad" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
