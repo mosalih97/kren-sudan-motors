@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Users, Calendar, CreditCard, Crown } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { UserManagement } from '@/components/admin/UserManagement';
 
 interface AdminStats {
@@ -244,58 +244,6 @@ const Admin = () => {
             </CardTitle>
           </CardHeader>
         </Card>
-
-        {/* Statistics */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Users className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <p className="text-2xl font-bold">{stats.total_users}</p>
-                <p className="text-sm text-gray-600">إجمالي المستخدمين</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Crown className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
-                <p className="text-2xl font-bold">{stats.premium_users}</p>
-                <p className="text-sm text-gray-600">مستخدمين مميزين</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Calendar className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                <p className="text-2xl font-bold">{stats.total_ads}</p>
-                <p className="text-sm text-gray-600">إجمالي الإعلانات</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <CreditCard className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                <p className="text-2xl font-bold">{stats.active_ads}</p>
-                <p className="text-sm text-gray-600">إعلانات نشطة</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="h-8 w-8 mx-auto mb-2 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                  ↗️
-                </div>
-                <p className="text-2xl font-bold">{stats.total_boosts}</p>
-                <p className="text-sm text-gray-600">تعزيزات نشطة</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="h-8 w-8 mx-auto mb-2 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                  📊
-                </div>
-                <p className="text-2xl font-bold">{stats.new_users_this_month}</p>
-                <p className="text-sm text-gray-600">مستخدمين جدد هذا الشهر</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* User Management Component */}
         <UserManagement />

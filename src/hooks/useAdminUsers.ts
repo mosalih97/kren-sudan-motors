@@ -29,20 +29,31 @@ export const useAdminUsers = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
+      console.log('Loading users...');
       const { data, error } = await supabase.rpc('get_admin_users_list');
+      
+      console.log('Users data:', data);
+      console.log('Users error:', error);
       
       if (error) {
         console.error('Error loading users:', error);
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: "فشل في تحميل قائمة المستخدمين",
+          description: "فشل في تحميل قائمة المستخدمين: " + error.message,
         });
         return;
       }
 
-      setUsers((data as AdminUser[]) || []);
-      setFilteredUsers((data as AdminUser[]) || []);
+      if (data && Array.isArray(data)) {
+        console.log('Setting users data:', data.length, 'users');
+        setUsers(data as AdminUser[]);
+        setFilteredUsers(data as AdminUser[]);
+      } else {
+        console.log('No data received or data is not array:', data);
+        setUsers([]);
+        setFilteredUsers([]);
+      }
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -74,10 +85,13 @@ export const useAdminUsers = () => {
 
   const upgradeUserToPremium = async (userId: string, adminUserId: string) => {
     try {
+      console.log('Upgrading user to premium:', userId);
       const { data, error } = await supabase.rpc('upgrade_user_to_premium', {
         target_user_id: userId,
         admin_user_id: adminUserId
       });
+
+      console.log('Upgrade response:', data, error);
 
       if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
         toast({
@@ -110,10 +124,13 @@ export const useAdminUsers = () => {
 
   const downgradeUserToFree = async (userId: string, adminUserId: string) => {
     try {
+      console.log('Downgrading user to free:', userId);
       const { data, error } = await supabase.rpc('downgrade_user_to_free', {
         target_user_id: userId,
         admin_user_id: adminUserId
       });
+
+      console.log('Downgrade response:', data, error);
 
       if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
         toast({
