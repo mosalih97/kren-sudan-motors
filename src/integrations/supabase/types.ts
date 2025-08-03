@@ -150,84 +150,25 @@ export type Database = {
       }
       admin_credentials: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           password_hash: string
-          updated_at: string
+          updated_at: string | null
           username: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           password_hash: string
-          updated_at?: string
+          updated_at?: string | null
           username: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           password_hash?: string
-          updated_at?: string
+          updated_at?: string | null
           username?: string
-        }
-        Relationships: []
-      }
-      admin_sessions: {
-        Row: {
-          admin_user_id: string | null
-          created_at: string
-          expires_at: string
-          id: string
-          ip_address: string | null
-          is_active: boolean
-          session_token: string
-          user_agent: string | null
-        }
-        Insert: {
-          admin_user_id?: string | null
-          created_at?: string
-          expires_at?: string
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean
-          session_token: string
-          user_agent?: string | null
-        }
-        Update: {
-          admin_user_id?: string | null
-          created_at?: string
-          expires_at?: string
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean
-          session_token?: string
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_sessions_admin_user_id_fkey"
-            columns: ["admin_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_credentials"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      admin_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
         }
         Relationships: []
       }
@@ -487,30 +428,6 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
-      }
-      password_reset_attempts: {
-        Row: {
-          attempted_at: string | null
-          created_at: string | null
-          email: string
-          id: string
-          ip_address: string | null
-        }
-        Insert: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email: string
-          id?: string
-          ip_address?: string | null
-        }
-        Update: {
-          attempted_at?: string | null
-          created_at?: string | null
-          email?: string
-          id?: string
-          ip_address?: string | null
-        }
-        Relationships: []
       }
       password_reset_tokens: {
         Row: {
@@ -836,42 +753,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_sessions: {
-        Row: {
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          ip_address: string | null
-          is_active: boolean | null
-          last_activity: string | null
-          session_token: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          ip_address?: string | null
-          is_active?: boolean | null
-          last_activity?: string | null
-          session_token?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       verified_passports: {
         Row: {
           created_at: string
@@ -924,23 +805,7 @@ export type Database = {
       }
     }
     Views: {
-      admin_dashboard_stats: {
-        Row: {
-          active_ads: number | null
-          active_boosts: number | null
-          basic_boosts: number | null
-          deleted_ads: number | null
-          new_users_this_month: number | null
-          premium_ads: number | null
-          premium_boosts: number | null
-          premium_users: number | null
-          total_credits: number | null
-          total_points: number | null
-          total_users: number | null
-          ultimate_boosts: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       boost_ad: {
@@ -983,10 +848,6 @@ export type Database = {
         }
         Returns: Json
       }
-      check_admin_access: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
       cleanup_expired_boosts: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -999,19 +860,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      cleanup_old_reset_attempts: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      create_admin_session: {
-        Args: {
-          username_input: string
-          password_input: string
-          ip_addr?: string
-          user_agent_input?: string
-        }
-        Returns: Json
-      }
       create_password_reset_token: {
         Args: { user_email: string }
         Returns: Json
@@ -1020,10 +868,6 @@ export type Database = {
         Args: { user_id_param: string; points_to_deduct: number }
         Returns: boolean
       }
-      delete_ad_permanently: {
-        Args: { ad_id_param: string; admin_user_id: string }
-        Returns: Json
-      }
       downgrade_user_to_free: {
         Args: { target_user_id: string; admin_user_id: string }
         Returns: Json
@@ -1031,14 +875,6 @@ export type Database = {
       generate_unique_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
-      }
-      get_admin_dashboard_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_admin_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
       }
       get_admin_users_list: {
         Args: Record<PropertyKey, never>
@@ -1062,42 +898,13 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: Json
       }
-      get_dashboard_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
       get_user_total_points: {
         Args: { user_id_param: string }
         Returns: Json
       }
-      get_users_statistics: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          total_users: number
-          premium_users: number
-          free_users: number
-          total_ads: number
-          active_ads: number
-          total_boosts: number
-          new_users_this_month: number
-          premium_expiring_soon: number
-        }[]
-      }
-      is_admin: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
-      is_admin_user: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
       log_security_event: {
         Args: { event_type: string; event_data?: Json }
         Returns: undefined
-      }
-      logout_all_admin_sessions: {
-        Args: { admin_id: string }
-        Returns: Json
       }
       record_ad_view: {
         Args: { ad_id_param: string; viewer_user_id?: string }
@@ -1106,24 +913,6 @@ export type Database = {
       reset_password_with_token: {
         Args: { reset_token: string; new_password: string }
         Returns: Json
-      }
-      search_users: {
-        Args: { search_term: string }
-        Returns: {
-          user_id: string
-          display_name: string
-          phone: string
-          city: string
-          membership_type: string
-          is_premium: boolean
-          points: number
-          credits: number
-          created_at: string
-          upgraded_at: string
-          premium_expires_at: string
-          days_remaining: number
-          ads_count: number
-        }[]
       }
       update_admin_credentials: {
         Args: {
@@ -1135,10 +924,6 @@ export type Database = {
       }
       upgrade_user_to_premium: {
         Args: { target_user_id: string; admin_user_id: string }
-        Returns: Json
-      }
-      verify_admin_session: {
-        Args: { token: string }
         Returns: Json
       }
       verify_password_reset_token: {
