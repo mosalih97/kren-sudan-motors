@@ -1,16 +1,18 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { validatePassword } from "@/utils/passwordValidation";
-import { sanitizeInput } from "@/utils/inputSanitizer";
+import { Lock, Eye, EyeOff } from "lucide-react";
 
-export const NewPasswordForm = () => {
+interface NewPasswordFormProps {
+  token: string;
+}
+
+export const NewPasswordForm = ({ token }: NewPasswordFormProps) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,10 +22,7 @@ export const NewPasswordForm = () => {
   const navigate = useNavigate();
 
   const validatePasswords = () => {
-    const sanitizedPassword = sanitizeInput(password, 128);
-    const sanitizedConfirmPassword = sanitizeInput(confirmPassword, 128);
-    
-    if (!sanitizedPassword || !sanitizedConfirmPassword) {
+    if (!password.trim() || !confirmPassword.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال كلمة المرور وتأكيدها",
@@ -32,20 +31,19 @@ export const NewPasswordForm = () => {
       return false;
     }
 
-    const passwordValidation = validatePassword(sanitizedPassword);
-    if (!passwordValidation.isValid) {
+    if (password !== confirmPassword) {
       toast({
-        title: "خطأ في كلمة المرور",
-        description: passwordValidation.errors.join(', '),
+        title: "خطأ",
+        description: "كلمتا المرور غير متطابقتين",
         variant: "destructive"
       });
       return false;
     }
 
-    if (sanitizedPassword !== sanitizedConfirmPassword) {
+    if (password.length < 6) {
       toast({
         title: "خطأ",
-        description: "كلمات المرور غير متطابقة",
+        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
         variant: "destructive"
       });
       return false;
@@ -57,69 +55,45 @@ export const NewPasswordForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validatePasswords()) {
-      return;
-    }
+    if (!validatePasswords()) return;
 
     setLoading(true);
     try {
-      // استخدام Supabase Auth المدمج لتحديث كلمة المرور
-      const { error } = await supabase.auth.updateUser({
-        password: sanitizeInput(password, 128)
+      const { data, error } = await supabase.rpc('reset_password_with_token', {
+        reset_token: token,
+        new_password: password
       });
 
-      if (error) {
-        console.error('Password update error:', error);
-        
-        // تسجيل الحدث الأمني للفشل
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'password_reset_failed',
-            event_data: {
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
+      if (error) throw error;
 
-        toast({
-          title: "خطأ",
-          description: error.message.includes('session') ? 
-            "الرابط غير صحيح أو منتهي الصلاحية" : 
-            "حدث خطأ أثناء تحديث كلمة المرور",
-          variant: "destructive"
-        });
-      } else {
-        // تسجيل الحدث الأمني للنجاح
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'password_reset_successful',
-            event_data: {
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
+      const result = data as { success: boolean; message: string };
+      
+      if (result.success) {
         toast({
           title: "تم بنجاح",
           description: "تم تحديث كلمة المرور بنجاح",
         });
         
-        // التوجه إلى صفحة تسجيل الدخول
         setTimeout(() => {
           navigate('/auth');
         }, 2000);
+      } else {
+        toast({
+          title: "خطأ",
+          description: result.message || "حدث خطأ أثناء تحديث كلمة المرور",
+          variant: "destructive"
+        });
       }
     } catch (error: any) {
-      console.error('Password update error:', error);
+      let errorMessage = "حدث خطأ أثناء تحديث كلمة المرور";
+      
+      if (error?.message?.includes('token')) {
+        errorMessage = "الرمز غير صحيح أو منتهي الصلاحية";
+      }
       
       toast({
         title: "خطأ",
-        description: "حدث خطأ أثناء تحديث كلمة المرور",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -141,13 +115,12 @@ export const NewPasswordForm = () => {
             onChange={(e) => setPassword(e.target.value)}
             className="pr-10 pl-10"
             required
-            maxLength={128}
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            className="absolute left-1 top-1 h-8 w-8 p-0"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -162,18 +135,17 @@ export const NewPasswordForm = () => {
           <Input
             id="confirmPassword"
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="أعد إدخال كلمة المرور"
+            placeholder="أدخل كلمة المرور مرة أخرى"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="pr-10 pl-10"
             required
-            maxLength={128}
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute left-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            className="absolute left-1 top-1 h-8 w-8 p-0"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
           >
             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

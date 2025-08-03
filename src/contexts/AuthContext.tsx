@@ -34,36 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
-        // Log security events
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            await supabase.rpc('log_security_event', {
-              event_type: 'user_login',
-              event_data: {
-                user_id: session.user.id,
-                timestamp: new Date().toISOString()
-              }
-            });
-          } catch (error) {
-            console.error('Failed to log security event:', error);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          try {
-            await supabase.rpc('log_security_event', {
-              event_type: 'user_logout',
-              event_data: {
-                timestamp: new Date().toISOString()
-              }
-            });
-          } catch (error) {
-            console.error('Failed to log security event:', error);
-          }
-        }
         
         // Handle auth events - only show toast for actual sign in/out actions, not initial load
         if (event === 'SIGNED_IN' && !isInitialLoad && !hasShownWelcome) {
@@ -107,20 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        // Log failed signup attempt
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'signup_failed',
-            event_data: {
-              email,
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
         let errorMessage = "حدث خطأ أثناء التسجيل";
         if (error.message.includes('already registered')) {
           errorMessage = "هذا البريد الإلكتروني مسجل مسبقاً";
@@ -136,19 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: errorMessage,
         });
       } else {
-        // Log successful signup
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'signup_successful',
-            event_data: {
-              email,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
         toast({
           title: "تم إنشاء الحساب بنجاح",
           description: "يمكنك الآن تسجيل الدخول",
@@ -170,20 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        // Log failed login attempt
-        try {
-          await supabase.rpc('log_security_event', {
-            event_type: 'login_failed',
-            event_data: {
-              email,
-              error: error.message,
-              timestamp: new Date().toISOString()
-            }
-          });
-        } catch (logError) {
-          console.error('Failed to log security event:', logError);
-        }
-
         let errorMessage = "خطأ في البريد الإلكتروني أو كلمة المرور";
         if (error.message.includes('Invalid login credentials')) {
           errorMessage = "البريد الإلكتروني أو كلمة المرور غير صحيحة";

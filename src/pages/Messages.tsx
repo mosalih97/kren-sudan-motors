@@ -12,7 +12,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
 import { Send, MessageCircle, Search, MoreVertical, Check, CheckCheck, Users, Clock, AlertCircle, Phone, Star, ArrowRight } from "lucide-react";
-import { filterSensitiveInfo } from "@/utils/messageFilter";
+import { filterMessage } from "@/utils/messageFilter";
 
 const Messages = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -271,16 +271,15 @@ const Messages = () => {
     e.preventDefault();
     if (!user || !selectedChat || !newMessage.trim()) return;
 
-    // فلترة الرسالة للتأكد من عدم وجود معلومات حساسة
-    const filteredMessage = filterSensitiveInfo(newMessage.trim());
-    
-    // التحقق من وجود معلومات حساسة مُفلترة
-    if (filteredMessage !== newMessage.trim()) {
+    // فلترة الرسالة للتأكد من عدم وجود أرقام
+    const messageFilter = filterMessage(newMessage.trim());
+    if (!messageFilter.isValid) {
       toast({
-        title: "تم فلترة المحتوى",
-        description: "تم إزالة معلومات حساسة من الرسالة لحمايتك",
+        title: "رسالة غير مسموحة",
+        description: messageFilter.errorMessage,
         variant: "destructive"
       });
+      return;
     }
 
     setSending(true);
@@ -290,7 +289,7 @@ const Messages = () => {
         .insert({
           sender_id: user.id,
           receiver_id: selectedChat.userId,
-          content: filteredMessage,
+          content: newMessage.trim(),
           ad_id: selectedChat.adId
         });
 

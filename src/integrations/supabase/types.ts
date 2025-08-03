@@ -435,7 +435,6 @@ export type Database = {
           expires_at: string
           id: string
           token: string
-          updated_at: string | null
           used: boolean | null
           user_id: string
         }
@@ -444,7 +443,6 @@ export type Database = {
           expires_at: string
           id?: string
           token: string
-          updated_at?: string | null
           used?: boolean | null
           user_id: string
         }
@@ -453,7 +451,6 @@ export type Database = {
           expires_at?: string
           id?: string
           token?: string
-          updated_at?: string | null
           used?: boolean | null
           user_id?: string
         }
@@ -636,36 +633,6 @@ export type Database = {
           transaction_number?: string | null
           user_id?: string
           verified_at?: string | null
-        }
-        Relationships: []
-      }
-      security_logs: {
-        Row: {
-          created_at: string | null
-          event_data: Json | null
-          event_type: string
-          id: string
-          ip_address: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          event_data?: Json | null
-          event_type: string
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          event_data?: Json | null
-          event_type?: string
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -901,10 +868,6 @@ export type Database = {
       get_user_total_points: {
         Args: { user_id_param: string }
         Returns: Json
-      }
-      log_security_event: {
-        Args: { event_type: string; event_data?: Json }
-        Returns: undefined
       }
       record_ad_view: {
         Args: { ad_id_param: string; viewer_user_id?: string }
