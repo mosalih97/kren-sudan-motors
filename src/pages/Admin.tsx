@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,17 +32,16 @@ const Admin = () => {
       setIsLoading(true);
       console.log('Checking admin access...');
       
-      // السماح بالدخول باستخدام بيانات الدخول المباشرة أولاً
+      // التحقق من session token المحفوظ محلياً أولاً
       const adminCredentials = localStorage.getItem('admin_session_token');
       if (adminCredentials) {
-        console.log('Found admin session token');
+        console.log('Found admin session token - allowing access');
         setIsAuthenticated(true);
         await loadAdminData();
-        setIsLoading(false);
         return;
       }
 
-      // التحقق من بيانات المستخدم المسجل دخوله
+      // التحقق من المستخدم المسجل دخوله
       if (user?.email) {
         console.log('Checking user email:', user.email);
         
@@ -56,7 +56,7 @@ const Admin = () => {
           console.log('User is admin via email check');
           
           // التأكد من وجود ملف شخصي للمدير
-          const { data: profile, error: profileError } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('user_id', user.id)
@@ -64,7 +64,7 @@ const Admin = () => {
 
           if (!profile) {
             // إنشاء ملف شخصي للمدير
-            const { error: insertError } = await supabase
+            await supabase
               .from('profiles')
               .insert({
                 user_id: user.id,
@@ -74,29 +74,25 @@ const Admin = () => {
                 points: 1000,
                 credits: 1000
               });
-
-            if (insertError) {
-              console.error('Error creating admin profile:', insertError);
-            }
           } else if (profile.membership_type !== 'admin') {
             // تحديث الملف الشخصي ليكون مدير
-            const { error: updateError } = await supabase
+            await supabase
               .from('profiles')
               .update({ 
                 membership_type: 'admin',
                 is_premium: true 
               })
               .eq('user_id', user.id);
-
-            if (updateError) {
-              console.error('Error updating profile to admin:', updateError);
-            }
           }
 
           setIsAuthenticated(true);
           await loadAdminData();
+          return;
         }
       }
+      
+      // إذا لم يتم العثور على صلاحيات، اظهر نموذج تسجيل الدخول
+      console.log('No admin access found');
     } catch (error) {
       console.error('Error checking admin access:', error);
     } finally {
@@ -120,7 +116,7 @@ const Admin = () => {
     try {
       // بيانات الدخول المباشرة
       if (username === 'admin' && password === 'admin123') {
-        console.log('Using hardcoded admin credentials - successful');
+        console.log('Login successful with hardcoded credentials');
         localStorage.setItem('admin_session_token', 'admin_session_' + Date.now());
         setIsAuthenticated(true);
         await loadAdminData();
@@ -191,7 +187,7 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري تحميل...</p>
+          <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
         </div>
       </div>
     );
