@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,43 +28,43 @@ const Admin = () => {
 
   const checkAdminAccess = async () => {
     try {
-      console.log('Starting admin access check...');
+      setIsLoading(true);
+      console.log('Checking admin access...');
       
-      // التحقق السريع من session token المحفوظ محلياً
+      // السماح بالدخول باستخدام بيانات الدخول المباشرة أولاً
       const adminCredentials = localStorage.getItem('admin_session_token');
       if (adminCredentials) {
-        console.log('Found valid admin session - quick login');
+        console.log('Found admin session token');
         setIsAuthenticated(true);
+        await loadAdminData();
         setIsLoading(false);
-        // تحميل البيانات في الخلفية
-        loadAdminData();
         return;
       }
 
-      // التحقق السريع من المستخدم المسجل دخوله
+      // التحقق من بيانات المستخدم المسجل دخوله
       if (user?.email) {
-        console.log('Checking authenticated user:', user.email);
+        console.log('Checking user email:', user.email);
         
-        // استعلام سريع للتحقق من صلاحيات الإدارة
-        const { data: adminCheck, error } = await supabase
+        // التحقق من جدول admin_users
+        const { data: adminCheck } = await supabase
           .from('admin_users')
           .select('email')
           .eq('email', user.email)
           .single();
 
-        if (!error && adminCheck) {
-          console.log('User verified as admin');
+        if (adminCheck) {
+          console.log('User is admin via email check');
           
-          // التحقق السريع من الملف الشخصي والتحديث إذا لزم الأمر
-          const { data: profile } = await supabase
+          // التأكد من وجود ملف شخصي للمدير
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('membership_type, is_premium')
+            .select('*')
             .eq('user_id', user.id)
             .single();
 
           if (!profile) {
-            // إنشاء ملف شخصي سريع للمدير
-            supabase
+            // إنشاء ملف شخصي للمدير
+            const { error: insertError } = await supabase
               .from('profiles')
               .insert({
                 user_id: user.id,
@@ -74,33 +73,33 @@ const Admin = () => {
                 is_premium: true,
                 points: 1000,
                 credits: 1000
-              })
-              .then(() => console.log('Admin profile created'));
+              });
+
+            if (insertError) {
+              console.error('Error creating admin profile:', insertError);
+            }
           } else if (profile.membership_type !== 'admin') {
-            // تحديث سريع للملف الشخصي
-            supabase
+            // تحديث الملف الشخصي ليكون مدير
+            const { error: updateError } = await supabase
               .from('profiles')
               .update({ 
                 membership_type: 'admin',
                 is_premium: true 
               })
-              .eq('user_id', user.id)
-              .then(() => console.log('Profile updated to admin'));
+              .eq('user_id', user.id);
+
+            if (updateError) {
+              console.error('Error updating profile to admin:', updateError);
+            }
           }
 
           setIsAuthenticated(true);
-          setIsLoading(false);
-          // تحميل البيانات في الخلفية
-          loadAdminData();
-          return;
+          await loadAdminData();
         }
       }
-      
-      // إذا لم يتم العثور على صلاحيات
-      console.log('No admin access found - showing login form');
-      setIsLoading(false);
     } catch (error) {
-      console.error('Error in admin access check:', error);
+      console.error('Error checking admin access:', error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -116,18 +115,15 @@ const Admin = () => {
     }
 
     setIsLoggingIn(true);
-    console.log('Attempting quick admin login...');
+    console.log('Attempting admin login with username:', username);
 
     try {
-      // التحقق السريع من بيانات الدخول
+      // بيانات الدخول المباشرة
       if (username === 'admin' && password === 'admin123') {
-        console.log('Quick login successful');
+        console.log('Using hardcoded admin credentials - successful');
         localStorage.setItem('admin_session_token', 'admin_session_' + Date.now());
         setIsAuthenticated(true);
-        setIsLoggingIn(false);
-        
-        // تحميل البيانات في الخلفية
-        loadAdminData();
+        await loadAdminData();
         
         toast({
           title: "مرحباً بك في لوحة التحكم",
@@ -156,65 +152,20 @@ const Admin = () => {
 
   const loadAdminData = async () => {
     try {
-      console.log('Loading admin data in background...');
+      console.log('Loading admin data...');
       
       // تحميل الإحصائيات
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
-      
       if (!statsError && statsData) {
-        console.log('Stats loaded successfully:', statsData);
-        
-        // التحقق من أن البيانات من النوع الصحيح
-        if (typeof statsData === 'object' && statsData !== null && !Array.isArray(statsData)) {
-          const adminStats: AdminStats = {
-            total_users: Number(statsData.total_users) || 0,
-            total_ads: Number(statsData.total_ads) || 0,
-            active_ads: Number(statsData.active_ads) || 0,
-            premium_users: Number(statsData.premium_users) || 0,
-            total_boosts: Number(statsData.total_boosts) || 0,
-            new_users_this_month: Number(statsData.new_users_this_month) || 0
-          };
-          setStats(adminStats);
-        } else {
-          console.error('Invalid stats data format:', statsData);
-          // تعيين قيم افتراضية في حالة فشل التحميل
-          setStats({
-            total_users: 0,
-            total_ads: 0,
-            active_ads: 0,
-            premium_users: 0,
-            total_boosts: 0,
-            new_users_this_month: 0
-          });
-        }
-      } else {
-        console.error('Error loading stats:', statsError);
-        // تعيين قيم افتراضية
-        setStats({
-          total_users: 0,
-          total_ads: 0,
-          active_ads: 0,
-          premium_users: 0,
-          total_boosts: 0,
-          new_users_this_month: 0
-        });
+        console.log('Stats loaded:', statsData);
+        setStats(statsData as AdminStats);
       }
     } catch (error) {
-      console.error('Error in loadAdminData:', error);
-      // تعيين قيم افتراضية في حالة الخطأ
-      setStats({
-        total_users: 0,
-        total_ads: 0,
-        active_ads: 0,
-        premium_users: 0,
-        total_boosts: 0,
-        new_users_this_month: 0
-      });
+      console.error('Error loading admin data:', error);
     }
   };
 
   useEffect(() => {
-    // بدء التحقق فور تحميل المكون
     checkAdminAccess();
   }, [user]);
 
@@ -223,7 +174,7 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">جاري التحقق من الصلاحيات...</p>
+          <p className="text-muted-foreground">جاري تحميل...</p>
         </div>
       </div>
     );
