@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -159,15 +160,17 @@ const Admin = () => {
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
       if (!statsError && statsData) {
         console.log('Stats loaded:', statsData);
-        // إصلاح تحويل البيانات
-        if (typeof statsData === 'object' && statsData !== null) {
+        
+        // إصلاح تحويل البيانات مع type casting آمن
+        if (typeof statsData === 'object' && statsData !== null && !Array.isArray(statsData)) {
+          const data = statsData as Record<string, unknown>;
           const adminStats: AdminStats = {
-            total_users: Number(statsData.total_users) || 0,
-            total_ads: Number(statsData.total_ads) || 0,
-            active_ads: Number(statsData.active_ads) || 0,
-            premium_users: Number(statsData.premium_users) || 0,
-            total_boosts: Number(statsData.total_boosts) || 0,
-            new_users_this_month: Number(statsData.new_users_this_month) || 0
+            total_users: Number(data.total_users) || 0,
+            total_ads: Number(data.total_ads) || 0,
+            active_ads: Number(data.active_ads) || 0,
+            premium_users: Number(data.premium_users) || 0,
+            total_boosts: Number(data.total_boosts) || 0,
+            new_users_this_month: Number(data.new_users_this_month) || 0
           };
           setStats(adminStats);
         }
@@ -266,3 +269,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
