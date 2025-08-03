@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,10 +29,10 @@ export const useAdminUsers = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      console.log('Loading users - attempting direct query first...');
+      console.log('Loading users...');
       
-      // محاولة الحصول على البيانات مباشرة من جدول profiles
-      const { data: directData, error: directError } = await supabase
+      // استعلام مباشر من جدول profiles
+      const { data, error } = await supabase
         .from('profiles')
         .select(`
           user_id,
@@ -48,71 +49,45 @@ export const useAdminUsers = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (!directError && directData && directData.length > 0) {
-        console.log('Direct query successful:', directData.length, 'users found');
-        
-        // تحويل البيانات إلى التنسيق المطلوب
-        const processedUsers = directData.map(user => ({
-          ...user,
-          display_name: user.display_name || 'غير محدد',
-          phone: user.phone || 'غير محدد',
-          city: user.city || 'غير محدد',
-          days_remaining: user.premium_expires_at 
-            ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-            : 0,
-          ads_count: 0 // سيتم تحديثها لاحقاً
-        }));
-
-        setUsers(processedUsers as AdminUser[]);
-        setFilteredUsers(processedUsers as AdminUser[]);
-        
+      if (error) {
+        console.error('Error loading users:', error);
         toast({
-          title: "تم التحميل",
-          description: `تم تحميل ${processedUsers.length} مستخدم بنجاح`,
+          variant: "destructive",
+          title: "خطأ",
+          description: "حدث خطأ أثناء تحميل المستخدمين",
         });
         return;
       }
 
-      // إذا فشل الاستعلام المباشر، جرب استخدام الدالة
-      console.log('Direct query failed, trying RPC function...');
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_users_list');
+      if (!data || data.length === 0) {
+        console.log('No users found');
+        setUsers([]);
+        setFilteredUsers([]);
+        return;
+      }
+
+      // تحويل البيانات إلى التنسيق المطلوب
+      const processedUsers = data.map(user => ({
+        ...user,
+        display_name: user.display_name || 'غير محدد',
+        phone: user.phone || 'غير محدد',
+        city: user.city || 'غير محدد',
+        upgraded_at: user.upgraded_at || '',
+        premium_expires_at: user.premium_expires_at || '',
+        days_remaining: user.premium_expires_at 
+          ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : 0,
+        ads_count: 0 // سيتم تحديثها لاحقاً إذا أردنا
+      }));
+
+      console.log('Users loaded:', processedUsers.length);
+      setUsers(processedUsers as AdminUser[]);
+      setFilteredUsers(processedUsers as AdminUser[]);
       
-      if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
-        console.log('RPC function successful:', rpcData.length, 'users found');
-        setUsers(rpcData as AdminUser[]);
-        setFilteredUsers(rpcData as AdminUser[]);
-        
-        toast({
-          title: "تم التحميل",
-          description: `تم تحميل ${rpcData.length} مستخدم بنجاح`,
-        });
-        return;
-      }
-
-      // إذا لم توجد بيانات، تحقق من وجود جدول profiles
-      const { data: tableCheck } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .limit(1);
-
-      if (!tableCheck || tableCheck.length === 0) {
-        console.log('No users found in profiles table');
-        toast({
-          variant: "destructive",
-          title: "تنبيه",
-          description: "لا توجد مستخدمين مسجلين في النظام حالياً",
-        });
-      } else {
-        console.log('Users exist but access might be restricted');
-        toast({
-          variant: "destructive",
-          title: "خطأ في الصلاحيات",
-          description: "تحتاج لصلاحيات إدارية للوصول إلى قائمة المستخدمين",
-        });
-      }
-
-      setUsers([]);
-      setFilteredUsers([]);
+      toast({
+        title: "تم التحميل",
+        description: `تم تحميل ${processedUsers.length} مستخدم بنجاح`,
+      });
 
     } catch (error) {
       console.error('Error loading users:', error);
@@ -121,8 +96,6 @@ export const useAdminUsers = () => {
         title: "خطأ",
         description: "حدث خطأ أثناء تحميل المستخدمين",
       });
-      setUsers([]);
-      setFilteredUsers([]);
     } finally {
       setLoading(false);
     }
@@ -226,7 +199,7 @@ export const useAdminUsers = () => {
     console.log('useAdminUsers: Starting to load users...');
     loadUsers();
 
-    // Set up real-time subscription for profile changes
+    // إعداد الاشتراك في الوقت الفعلي لتغييرات الملفات الشخصية
     const profilesChannel = supabase
       .channel('admin-profiles-changes')
       .on(
