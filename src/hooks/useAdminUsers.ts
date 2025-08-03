@@ -28,91 +28,46 @@ export const useAdminUsers = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      console.log('Loading users - attempting direct query first...');
+      console.log('Loading users using get_admin_users_list function...');
       
-      // محاولة الحصول على البيانات مباشرة من جدول profiles
-      const { data: directData, error: directError } = await supabase
-        .from('profiles')
-        .select(`
-          user_id,
-          display_name,
-          phone,
-          city,
-          membership_type,
-          is_premium,
-          points,
-          credits,
-          created_at,
-          upgraded_at,
-          premium_expires_at
-        `)
-        .order('created_at', { ascending: false });
-
-      if (!directError && directData && directData.length > 0) {
-        console.log('Direct query successful:', directData.length, 'users found');
+      const { data, error } = await supabase.rpc('get_admin_users_list');
+      
+      if (error) {
+        console.error('Error loading users:', error);
         
-        // تحويل البيانات إلى التنسيق المطلوب
-        const processedUsers = directData.map(user => ({
-          ...user,
-          display_name: user.display_name || 'غير محدد',
-          phone: user.phone || 'غير محدد',
-          city: user.city || 'غير محدد',
-          days_remaining: user.premium_expires_at 
-            ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-            : 0,
-          ads_count: 0 // سيتم تحديثها لاحقاً
-        }));
-
-        setUsers(processedUsers as AdminUser[]);
-        setFilteredUsers(processedUsers as AdminUser[]);
-        
-        toast({
-          title: "تم التحميل",
-          description: `تم تحميل ${processedUsers.length} مستخدم بنجاح`,
-        });
+        // إذا كان الخطأ متعلق بالصلاحيات، نعرض رسالة مناسبة
+        if (error.message?.includes('Access denied')) {
+          toast({
+            variant: "destructive",
+            title: "خطأ في الصلاحيات",
+            description: "تحتاج لصلاحيات إدارية للوصول إلى قائمة المستخدمين",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "خطأ",
+            description: "فشل في تحميل قائمة المستخدمين",
+          });
+        }
         return;
       }
 
-      // إذا فشل الاستعلام المباشر، جرب استخدام الدالة
-      console.log('Direct query failed, trying RPC function...');
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_users_list');
-      
-      if (!rpcError && rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
-        console.log('RPC function successful:', rpcData.length, 'users found');
-        setUsers(rpcData as AdminUser[]);
-        setFilteredUsers(rpcData as AdminUser[]);
+      if (data && Array.isArray(data)) {
+        console.log('Users loaded successfully:', data.length, 'users');
+        setUsers(data as AdminUser[]);
+        setFilteredUsers(data as AdminUser[]);
         
-        toast({
-          title: "تم التحميل",
-          description: `تم تحميل ${rpcData.length} مستخدم بنجاح`,
-        });
-        return;
-      }
-
-      // إذا لم توجد بيانات، تحقق من وجود جدول profiles
-      const { data: tableCheck } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .limit(1);
-
-      if (!tableCheck || tableCheck.length === 0) {
-        console.log('No users found in profiles table');
-        toast({
-          variant: "destructive",
-          title: "تنبيه",
-          description: "لا توجد مستخدمين مسجلين في النظام حالياً",
-        });
+        if (data.length > 0) {
+          toast({
+            title: "تم التحميل",
+            description: `تم تحميل ${data.length} مستخدم بنجاح`,
+          });
+        }
       } else {
-        console.log('Users exist but access might be restricted');
-        toast({
-          variant: "destructive",
-          title: "خطأ في الصلاحيات",
-          description: "تحتاج لصلاحيات إدارية للوصول إلى قائمة المستخدمين",
-        });
+        console.log('No users found or invalid data structure');
+        setUsers([]);
+        setFilteredUsers([]);
       }
-
-      setUsers([]);
-      setFilteredUsers([]);
 
     } catch (error) {
       console.error('Error loading users:', error);
@@ -121,27 +76,52 @@ export const useAdminUsers = () => {
         title: "خطأ",
         description: "حدث خطأ أثناء تحميل المستخدمين",
       });
-      setUsers([]);
-      setFilteredUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const searchUsers = (term: string) => {
+  const searchUsers = async (term: string) => {
     setSearchTerm(term);
     if (!term.trim()) {
       setFilteredUsers(users);
       return;
     }
 
-    const filtered = users.filter(user => 
-      user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
-      user.phone?.includes(term) ||
-      user.city?.toLowerCase().includes(term.toLowerCase()) ||
-      user.user_id?.includes(term)
-    );
-    setFilteredUsers(filtered);
+    try {
+      console.log('Searching users with term:', term);
+      const { data, error } = await supabase.rpc('search_users', {
+        search_term: term
+      });
+
+      if (error) {
+        console.error('Search error:', error);
+        // Fallback to client-side filtering
+        const filtered = users.filter(user => 
+          user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
+          user.phone?.includes(term) ||
+          user.city?.toLowerCase().includes(term.toLowerCase()) ||
+          user.user_id?.includes(term)
+        );
+        setFilteredUsers(filtered);
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        console.log('Search results:', data.length, 'users');
+        setFilteredUsers(data as AdminUser[]);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      // Fallback to client-side filtering
+      const filtered = users.filter(user => 
+        user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
+        user.phone?.includes(term) ||
+        user.city?.toLowerCase().includes(term.toLowerCase()) ||
+        user.user_id?.includes(term)
+      );
+      setFilteredUsers(filtered);
+    }
   };
 
   const upgradeUserToPremium = async (userId: string, adminUserId: string) => {
@@ -238,6 +218,7 @@ export const useAdminUsers = () => {
         },
         (payload) => {
           console.log('Real-time profile change:', payload);
+          // Reload data when changes occur
           loadUsers();
         }
       )
