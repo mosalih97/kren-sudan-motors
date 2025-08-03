@@ -156,9 +156,26 @@ const Admin = () => {
       
       // تحميل الإحصائيات
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
+      
       if (!statsError && statsData) {
         console.log('Stats loaded:', statsData);
-        setStats(statsData as AdminStats);
+        
+        // التحقق من أن البيانات من النوع الصحيح
+        if (typeof statsData === 'object' && statsData !== null && !Array.isArray(statsData)) {
+          const adminStats: AdminStats = {
+            total_users: Number(statsData.total_users) || 0,
+            total_ads: Number(statsData.total_ads) || 0,
+            active_ads: Number(statsData.active_ads) || 0,
+            premium_users: Number(statsData.premium_users) || 0,
+            total_boosts: Number(statsData.total_boosts) || 0,
+            new_users_this_month: Number(statsData.new_users_this_month) || 0
+          };
+          setStats(adminStats);
+        } else {
+          console.error('Invalid stats data format:', statsData);
+        }
+      } else {
+        console.error('Error loading stats:', statsError);
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
