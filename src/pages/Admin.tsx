@@ -26,79 +26,84 @@ const Admin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Check admin access and ensure admin profile exists
   const checkAdminAccess = async () => {
-    if (!user?.email) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      console.log('Checking admin access for email:', user.email);
+      setIsLoading(true);
+      console.log('Checking admin access...');
       
-      // First check if user has admin privileges in email list
-      const { data: emailCheck, error: emailError } = await supabase.rpc('check_admin_access', {
-        user_email: user.email
-      });
-
-      console.log('Email admin check result:', emailCheck, emailError);
-
-      if (emailCheck === true) {
-        // Ensure admin profile exists in profiles table
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error checking profile:', profileError);
-        }
-
-        if (!profile) {
-          // Create admin profile if it doesn't exist
-          console.log('Creating admin profile for user:', user.id);
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              user_id: user.id,
-              display_name: user.email?.split('@')[0] || 'مدير',
-              membership_type: 'admin',
-              is_premium: true,
-              points: 1000,
-              credits: 1000
-            });
-
-          if (insertError) {
-            console.error('Error creating admin profile:', insertError);
-          }
-        } else if (profile.membership_type !== 'admin') {
-          // Update existing profile to admin
-          console.log('Updating profile to admin:', user.id);
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              membership_type: 'admin',
-              is_premium: true 
-            })
-            .eq('user_id', user.id);
-
-          if (updateError) {
-            console.error('Error updating profile to admin:', updateError);
-          }
-        }
-
+      // السماح بالدخول باستخدام بيانات الدخول المباشرة أولاً
+      const adminCredentials = localStorage.getItem('admin_session_token');
+      if (adminCredentials) {
+        console.log('Found admin session token');
         setIsAuthenticated(true);
         await loadAdminData();
+        setIsLoading(false);
+        return;
+      }
+
+      // التحقق من بيانات المستخدم المسجل دخوله
+      if (user?.email) {
+        console.log('Checking user email:', user.email);
+        
+        // التحقق من جدول admin_users
+        const { data: adminCheck } = await supabase
+          .from('admin_users')
+          .select('email')
+          .eq('email', user.email)
+          .single();
+
+        if (adminCheck) {
+          console.log('User is admin via email check');
+          
+          // التأكد من وجود ملف شخصي للمدير
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (!profile) {
+            // إنشاء ملف شخصي للمدير
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: user.id,
+                display_name: user.email?.split('@')[0] || 'مدير',
+                membership_type: 'admin',
+                is_premium: true,
+                points: 1000,
+                credits: 1000
+              });
+
+            if (insertError) {
+              console.error('Error creating admin profile:', insertError);
+            }
+          } else if (profile.membership_type !== 'admin') {
+            // تحديث الملف الشخصي ليكون مدير
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                membership_type: 'admin',
+                is_premium: true 
+              })
+              .eq('user_id', user.id);
+
+            if (updateError) {
+              console.error('Error updating profile to admin:', updateError);
+            }
+          }
+
+          setIsAuthenticated(true);
+          await loadAdminData();
+        }
       }
     } catch (error) {
-      console.error('Error in admin check:', error);
+      console.error('Error checking admin access:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Alternative admin login using credentials
   const handleAdminLogin = async () => {
     if (!username || !password) {
       toast({
@@ -113,9 +118,10 @@ const Admin = () => {
     console.log('Attempting admin login with username:', username);
 
     try {
-      // Primary authentication method - hardcoded credentials
+      // بيانات الدخول المباشرة
       if (username === 'admin' && password === 'admin123') {
         console.log('Using hardcoded admin credentials - successful');
+        localStorage.setItem('admin_session_token', 'admin_session_' + Date.now());
         setIsAuthenticated(true);
         await loadAdminData();
         
@@ -126,36 +132,6 @@ const Admin = () => {
         return;
       }
 
-      // Secondary method - try RPC function if available
-      try {
-        const { data, error } = await supabase.rpc('create_admin_session', {
-          username_input: username,
-          password_input: password,
-          ip_addr: '',
-          user_agent_input: navigator.userAgent
-        });
-
-        console.log('RPC Admin login response:', { data, error });
-
-        if (!error && data && typeof data === 'object' && 'success' in data && data.success) {
-          if ('session_token' in data && data.session_token) {
-            localStorage.setItem('admin_session_token', String(data.session_token));
-          }
-          
-          setIsAuthenticated(true);
-          await loadAdminData();
-          
-          toast({
-            title: "مرحباً بك",
-            description: "تم تسجيل الدخول بنجاح عبر قاعدة البيانات",
-          });
-          return;
-        }
-      } catch (rpcError) {
-        console.log('RPC method failed, falling back to hardcoded check:', rpcError);
-      }
-
-      // If we reach here, authentication failed
       toast({
         variant: "destructive",
         title: "خطأ في تسجيل الدخول",
@@ -174,30 +150,15 @@ const Admin = () => {
     }
   };
 
-  // Load admin dashboard data
   const loadAdminData = async () => {
     try {
       console.log('Loading admin data...');
       
-      // Load stats
+      // تحميل الإحصائيات
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
-      if (statsError) {
-        console.error('Error loading stats:', statsError);
-      } else if (statsData) {
-        console.log('Raw stats data:', statsData);
-        if (typeof statsData === 'object' && statsData !== null) {
-          const statsObject = statsData as Record<string, unknown>;
-          const convertedStats: AdminStats = {
-            total_users: Number(statsObject.total_users || 0),
-            total_ads: Number(statsObject.total_ads || 0),
-            active_ads: Number(statsObject.active_ads || 0),
-            premium_users: Number(statsObject.premium_users || 0),
-            total_boosts: Number(statsObject.total_boosts || 0),
-            new_users_this_month: Number(statsObject.new_users_this_month || 0)
-          };
-          console.log('Converted stats:', convertedStats);
-          setStats(convertedStats);
-        }
+      if (!statsError && statsData) {
+        console.log('Stats loaded:', statsData);
+        setStats(statsData as AdminStats);
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
