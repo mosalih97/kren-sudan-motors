@@ -1070,6 +1070,19 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: Json
       }
+      get_users_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_users: number
+          premium_users: number
+          free_users: number
+          total_ads: number
+          active_ads: number
+          total_boosts: number
+          new_users_this_month: number
+          premium_expiring_soon: number
+        }[]
+      }
       is_admin: {
         Args: { user_email: string }
         Returns: boolean
@@ -1093,6 +1106,24 @@ export type Database = {
       reset_password_with_token: {
         Args: { reset_token: string; new_password: string }
         Returns: Json
+      }
+      search_users: {
+        Args: { search_term: string }
+        Returns: {
+          user_id: string
+          display_name: string
+          phone: string
+          city: string
+          membership_type: string
+          is_premium: boolean
+          points: number
+          credits: number
+          created_at: string
+          upgraded_at: string
+          premium_expires_at: string
+          days_remaining: number
+          ads_count: number
+        }[]
       }
       update_admin_credentials: {
         Args: {

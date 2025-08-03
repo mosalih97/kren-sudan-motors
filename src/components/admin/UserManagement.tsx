@@ -35,25 +35,10 @@ export const UserManagement = () => {
     refetch();
   };
 
-  // Calculate stats from users data
-  const stats = {
-    totalUsers: users.length,
-    premiumUsers: users.filter(u => u.membership_type === 'premium').length,
-    totalAds: users.reduce((sum, u) => sum + u.ads_count, 0),
-    activeAds: users.reduce((sum, u) => sum + u.ads_count, 0),
-    totalBoosts: 0,
-    newUsersThisMonth: users.filter(u => {
-      const userDate = new Date(u.created_at);
-      const currentDate = new Date();
-      return userDate.getMonth() === currentDate.getMonth() && 
-             userDate.getFullYear() === currentDate.getFullYear();
-    }).length
-  };
-
   return (
     <div className="space-y-6">
       {/* Statistics */}
-      <UsersStats {...stats} />
+      <UsersStats />
 
       {/* Search Bar */}
       <Card>

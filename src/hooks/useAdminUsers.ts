@@ -22,74 +22,34 @@ interface AdminUser {
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(false); // Changed to false to disable loading
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const loadUsers = async () => {
-    // Remove setLoading(true) to disable loading state
     try {
-      console.log('Loading users from get_admin_users_list...');
+      console.log('Loading users using get_admin_users_list function...');
       
-      // Try the RPC function first
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_users_list');
+      const { data, error } = await supabase.rpc('get_admin_users_list');
       
-      if (rpcError) {
-        console.log('RPC function failed, trying direct query:', rpcError);
-        
-        // Fallback to direct query if RPC fails
-        const { data: directData, error: directError } = await supabase
-          .from('profiles')
-          .select(`
-            user_id,
-            display_name,
-            phone,
-            city,
-            membership_type,
-            is_premium,
-            points,
-            credits,
-            created_at,
-            upgraded_at,
-            premium_expires_at
-          `)
-          .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error loading users:', error);
+        toast({
+          variant: "destructive",
+          title: "خطأ",
+          description: "فشل في تحميل قائمة المستخدمين",
+        });
+        return;
+      }
 
-        if (directError) {
-          console.error('Direct query also failed:', directError);
-          toast({
-            variant: "destructive",
-            title: "خطأ",
-            description: "فشل في تحميل قائمة المستخدمين",
-          });
-          return;
-        }
-
-        if (directData && Array.isArray(directData)) {
-          // Transform data to match expected format
-          const transformedData = directData.map(user => ({
-            ...user,
-            days_remaining: user.premium_expires_at 
-              ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-              : 0,
-            ads_count: 0 // Will be updated if we can fetch ads data
-          }));
-
-          console.log('Direct query successful:', transformedData.length, 'users');
-          setUsers(transformedData);
-          setFilteredUsers(transformedData);
-        }
+      if (data && Array.isArray(data)) {
+        console.log('Users loaded successfully:', data.length, 'users');
+        setUsers(data as AdminUser[]);
+        setFilteredUsers(data as AdminUser[]);
       } else {
-        // RPC function succeeded
-        if (rpcData && Array.isArray(rpcData)) {
-          console.log('RPC function successful:', rpcData.length, 'users');
-          setUsers(rpcData as AdminUser[]);
-          setFilteredUsers(rpcData as AdminUser[]);
-        } else {
-          console.log('No data received from RPC function');
-          setUsers([]);
-          setFilteredUsers([]);
-        }
+        console.log('No users found');
+        setUsers([]);
+        setFilteredUsers([]);
       }
 
     } catch (error) {
@@ -100,24 +60,49 @@ export const useAdminUsers = () => {
         description: "حدث خطأ أثناء تحميل المستخدمين",
       });
     }
-    // Remove setLoading(false) since we're not using loading state
   };
 
-  const searchUsers = (term: string) => {
+  const searchUsers = async (term: string) => {
     setSearchTerm(term);
     if (!term.trim()) {
       setFilteredUsers(users);
       return;
     }
 
-    const filtered = users.filter(user => 
-      user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
-      user.phone?.includes(term) ||
-      user.city?.toLowerCase().includes(term.toLowerCase()) ||
-      user.user_id?.includes(term)
-    );
-    
-    setFilteredUsers(filtered);
+    try {
+      console.log('Searching users with term:', term);
+      const { data, error } = await supabase.rpc('search_users', {
+        search_term: term
+      });
+
+      if (error) {
+        console.error('Search error:', error);
+        // Fallback to client-side filtering
+        const filtered = users.filter(user => 
+          user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
+          user.phone?.includes(term) ||
+          user.city?.toLowerCase().includes(term.toLowerCase()) ||
+          user.user_id?.includes(term)
+        );
+        setFilteredUsers(filtered);
+        return;
+      }
+
+      if (data && Array.isArray(data)) {
+        console.log('Search results:', data.length, 'users');
+        setFilteredUsers(data as AdminUser[]);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      // Fallback to client-side filtering
+      const filtered = users.filter(user => 
+        user.display_name?.toLowerCase().includes(term.toLowerCase()) ||
+        user.phone?.includes(term) ||
+        user.city?.toLowerCase().includes(term.toLowerCase()) ||
+        user.user_id?.includes(term)
+      );
+      setFilteredUsers(filtered);
+    }
   };
 
   const upgradeUserToPremium = async (userId: string, adminUserId: string) => {
