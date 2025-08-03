@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,17 +27,28 @@ export const useAdminUsers = () => {
 
   const loadUsers = async () => {
     try {
+      setLoading(true);
       console.log('Loading users using get_admin_users_list function...');
       
       const { data, error } = await supabase.rpc('get_admin_users_list');
       
       if (error) {
         console.error('Error loading users:', error);
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: "فشل في تحميل قائمة المستخدمين",
-        });
+        
+        // إذا كان الخطأ متعلق بالصلاحيات، نعرض رسالة مناسبة
+        if (error.message?.includes('Access denied')) {
+          toast({
+            variant: "destructive",
+            title: "خطأ في الصلاحيات",
+            description: "تحتاج لصلاحيات إدارية للوصول إلى قائمة المستخدمين",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "خطأ",
+            description: "فشل في تحميل قائمة المستخدمين",
+          });
+        }
         return;
       }
 
@@ -46,8 +56,15 @@ export const useAdminUsers = () => {
         console.log('Users loaded successfully:', data.length, 'users');
         setUsers(data as AdminUser[]);
         setFilteredUsers(data as AdminUser[]);
+        
+        if (data.length > 0) {
+          toast({
+            title: "تم التحميل",
+            description: `تم تحميل ${data.length} مستخدم بنجاح`,
+          });
+        }
       } else {
-        console.log('No users found');
+        console.log('No users found or invalid data structure');
         setUsers([]);
         setFilteredUsers([]);
       }
@@ -59,6 +76,8 @@ export const useAdminUsers = () => {
         title: "خطأ",
         description: "حدث خطأ أثناء تحميل المستخدمين",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +26,7 @@ const Admin = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Check admin access through email first
+  // Check admin access and ensure admin profile exists
   const checkAdminAccess = async () => {
     if (!user?.email) {
       setIsLoading(false);
@@ -36,23 +35,64 @@ const Admin = () => {
 
     try {
       console.log('Checking admin access for email:', user.email);
-      const { data, error } = await supabase.rpc('check_admin_access', {
+      
+      // First check if user has admin privileges in email list
+      const { data: emailCheck, error: emailError } = await supabase.rpc('check_admin_access', {
         user_email: user.email
       });
 
-      if (error) {
-        console.error('Error checking admin access:', error);
-        setIsLoading(false);
-        return;
-      }
+      console.log('Email admin check result:', emailCheck, emailError);
 
-      console.log('Admin access result:', data);
-      if (data === true) {
+      if (emailCheck === true) {
+        // Ensure admin profile exists in profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error checking profile:', profileError);
+        }
+
+        if (!profile) {
+          // Create admin profile if it doesn't exist
+          console.log('Creating admin profile for user:', user.id);
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              display_name: user.email?.split('@')[0] || 'مدير',
+              membership_type: 'admin',
+              is_premium: true,
+              points: 1000,
+              credits: 1000
+            });
+
+          if (insertError) {
+            console.error('Error creating admin profile:', insertError);
+          }
+        } else if (profile.membership_type !== 'admin') {
+          // Update existing profile to admin
+          console.log('Updating profile to admin:', user.id);
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              membership_type: 'admin',
+              is_premium: true 
+            })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.error('Error updating profile to admin:', updateError);
+          }
+        }
+
         setIsAuthenticated(true);
         await loadAdminData();
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in admin check:', error);
     } finally {
       setIsLoading(false);
     }
