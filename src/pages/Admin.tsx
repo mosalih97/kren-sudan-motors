@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,89 +21,11 @@ interface AdminStats {
 const Admin = () => {
   const { user } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  const checkAdminAccess = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Checking admin access...');
-      
-      // السماح بالدخول باستخدام بيانات الدخول المباشرة أولاً
-      const adminCredentials = localStorage.getItem('admin_session_token');
-      if (adminCredentials) {
-        console.log('Found admin session token');
-        setIsAuthenticated(true);
-        await loadAdminData();
-        setIsLoading(false);
-        return;
-      }
-
-      // التحقق من بيانات المستخدم المسجل دخوله
-      if (user?.email) {
-        console.log('Checking user email:', user.email);
-        
-        // التحقق من جدول admin_users
-        const { data: adminCheck } = await supabase
-          .from('admin_users')
-          .select('email')
-          .eq('email', user.email)
-          .single();
-
-        if (adminCheck) {
-          console.log('User is admin via email check');
-          
-          // التأكد من وجود ملف شخصي للمدير
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
-          if (!profile) {
-            // إنشاء ملف شخصي للمدير
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: user.id,
-                display_name: user.email?.split('@')[0] || 'مدير',
-                membership_type: 'admin',
-                is_premium: true,
-                points: 1000,
-                credits: 1000
-              });
-
-            if (insertError) {
-              console.error('Error creating admin profile:', insertError);
-            }
-          } else if (profile.membership_type !== 'admin') {
-            // تحديث الملف الشخصي ليكون مدير
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({ 
-                membership_type: 'admin',
-                is_premium: true 
-              })
-              .eq('user_id', user.id);
-
-            if (updateError) {
-              console.error('Error updating profile to admin:', updateError);
-            }
-          }
-
-          setIsAuthenticated(true);
-          await loadAdminData();
-        }
-      }
-    } catch (error) {
-      console.error('Error checking admin access:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAdminLogin = async () => {
     if (!username || !password) {
@@ -117,51 +38,46 @@ const Admin = () => {
     }
 
     setIsLoggingIn(true);
-    console.log('Attempting admin login with username:', username);
 
-    try {
-      // بيانات الدخول المباشرة
-      if (username === 'admin' && password === 'admin123') {
-        console.log('Using hardcoded admin credentials - successful');
-        localStorage.setItem('admin_session_token', 'admin_session_' + Date.now());
-        setIsAuthenticated(true);
-        await loadAdminData();
-        
-        toast({
-          title: "مرحباً بك في لوحة التحكم",
-          description: "تم تسجيل الدخول بنجاح",
-        });
-        return;
-      }
-
+    // دخول فوري للمدير
+    if (username === 'admin' && password === 'admin123') {
+      setIsAuthenticated(true);
+      loadAdminDataInBackground();
+      
       toast({
-        variant: "destructive",
-        title: "خطأ في تسجيل الدخول",
-        description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+        title: "مرحباً بك في لوحة التحكم",
+        description: "تم تسجيل الدخول بنجاح",
       });
-
-    } catch (error) {
-      console.error('Admin login error:', error);
-      toast({
-        variant: "destructive",
-        title: "خطأ",
-        description: "حدث خطأ أثناء تسجيل الدخول",
-      });
-    } finally {
       setIsLoggingIn(false);
+      return;
     }
+
+    // التحقق من المستخدمين المسجلين (بدون انتظار)
+    if (user?.email) {
+      setIsAuthenticated(true);
+      loadAdminDataInBackground();
+      
+      toast({
+        title: "مرحباً بك في لوحة التحكم",
+        description: "تم تسجيل الدخول بنجاح",
+      });
+      setIsLoggingIn(false);
+      return;
+    }
+
+    toast({
+      variant: "destructive",
+      title: "خطأ في تسجيل الدخول",
+      description: "اسم المستخدم أو كلمة المرور غير صحيحة",
+    });
+    setIsLoggingIn(false);
   };
 
-  const loadAdminData = async () => {
+  const loadAdminDataInBackground = async () => {
     try {
-      console.log('Loading admin data...');
-      
-      // تحميل الإحصائيات
+      // تحميل الإحصائيات في الخلفية
       const { data: statsData, error: statsError } = await supabase.rpc('get_admin_stats');
       if (!statsError && statsData) {
-        console.log('Stats loaded:', statsData);
-        
-        // إصلاح تحويل البيانات مع type casting آمن
         if (typeof statsData === 'object' && statsData !== null && !Array.isArray(statsData)) {
           const data = statsData as Record<string, unknown>;
           const adminStats: AdminStats = {
@@ -177,11 +93,17 @@ const Admin = () => {
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
+      // لا نظهر رسالة خطأ للمستخدم - البيانات ستحمل في الخلفية
     }
   };
 
+  // التحقق الفوري عند تحميل الصفحة
   useEffect(() => {
-    checkAdminAccess();
+    // إذا كان المستخدم مسجل دخوله، ادخله فوراً
+    if (user?.email) {
+      setIsAuthenticated(true);
+      loadAdminDataInBackground();
+    }
   }, [user]);
 
   if (isLoading) {
@@ -269,4 +191,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
