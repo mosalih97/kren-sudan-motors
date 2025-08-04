@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface SearchFilters {
   searchQuery: string;
   brand: string;
+  price: string;
   minPrice: string;
   maxPrice: string;
   minYear: string;
@@ -21,6 +22,7 @@ export const useSearchFilters = () => {
   const [filters, setFilters] = useState<SearchFilters>({
     searchQuery: '',
     brand: '',
+    price: '',
     minPrice: '',
     maxPrice: '',
     minYear: '',
@@ -29,6 +31,10 @@ export const useSearchFilters = () => {
     transmission: '',
     city: ''
   });
+
+  const performSearch = async () => {
+    await searchCars(filters);
+  };
 
   const searchCars = async (searchFilters: Partial<SearchFilters>) => {
     setLoading(true);
@@ -63,6 +69,10 @@ export const useSearchFilters = () => {
       
       if (searchFilters.maxPrice) {
         query = query.lte('price', parseInt(searchFilters.maxPrice));
+      }
+
+      if (searchFilters.price) {
+        query = query.lte('price', parseInt(searchFilters.price));
       }
       
       if (searchFilters.minYear) {
@@ -99,12 +109,13 @@ export const useSearchFilters = () => {
     }
   };
 
-  const clearSearch = () => {
+  const clearFilters = () => {
     setSearchResults([]);
     setHasSearched(false);
     setFilters({
       searchQuery: '',
       brand: '',
+      price: '',
       minPrice: '',
       maxPrice: '',
       minYear: '',
@@ -115,12 +126,17 @@ export const useSearchFilters = () => {
     });
   };
 
+  const clearSearch = clearFilters;
+
   return {
     searchResults,
     loading,
     hasSearched,
     filters,
+    setFilters,
+    performSearch,
     searchCars,
+    clearFilters,
     clearSearch
   };
 };

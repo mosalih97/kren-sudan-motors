@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -43,10 +42,18 @@ const AddAd = () => {
       const { error } = await supabase
         .from("ads")
         .insert({
-          ...formData,
+          title: formData.title,
+          brand: formData.brand,
+          model: formData.model,
           year: parseInt(formData.year),
-          mileage: parseInt(formData.mileage),
-          price: parseFloat(formData.price),
+          mileage: formData.mileage,
+          fuel_type: formData.fuel_type,
+          transmission: formData.transmission,
+          price: parseInt(formData.price),
+          city: formData.city,
+          description: formData.description,
+          phone: formData.phone,
+          whatsapp: formData.whatsapp,
           user_id: user.id,
           status: "active"
         });
@@ -116,6 +123,8 @@ const AddAd = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                
                 
                 <div className="space-y-2">
                   <Label htmlFor="model">الموديل</Label>
