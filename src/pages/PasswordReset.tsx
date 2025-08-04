@@ -23,6 +23,8 @@ const PasswordReset = () => {
         const type = searchParams.get('type');
         const mode = searchParams.get('mode');
 
+        console.log('Password reset params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type, mode });
+
         if (type === 'recovery' && accessToken && refreshToken) {
           // This is a password reset callback from email
           const { error } = await supabase.auth.setSession({
@@ -37,6 +39,7 @@ const PasswordReset = () => {
               description: "الرابط غير صحيح أو منتهي الصلاحية",
               variant: "destructive"
             });
+            setIsResetMode(false);
           } else {
             setIsResetMode(true);
           }
@@ -54,6 +57,7 @@ const PasswordReset = () => {
           description: "حدث خطأ أثناء معالجة الطلب",
           variant: "destructive"
         });
+        setIsResetMode(false);
       } finally {
         setLoading(false);
       }
