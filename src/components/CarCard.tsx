@@ -63,8 +63,6 @@ export function CarCard({
   
   // تحديد ما إذا كان الإعلان في Top Spot نشط
   const isActiveTopSpot = topSpot && topSpotUntil && new Date(topSpotUntil) > new Date();
-  
-  // تحديد هل هذا إعلان المستخدم الحالي
   const isOwnerAd = user?.id === userId;
 
   // تحديد نمط البطاقة بناءً على النوع
