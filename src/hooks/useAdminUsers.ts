@@ -137,7 +137,7 @@ export const useAdminUsers = () => {
         return false;
       }
 
-      const response = data as RpcResponse;
+      const response = data as unknown as RpcResponse;
       if (!response?.success) {
         toast({
           variant: "destructive",
@@ -183,7 +183,7 @@ export const useAdminUsers = () => {
         return false;
       }
 
-      const response = data as RpcResponse;
+      const response = data as unknown as RpcResponse;
       if (!response?.success) {
         toast({
           variant: "destructive",
