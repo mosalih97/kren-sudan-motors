@@ -19,6 +19,11 @@ interface AdminUser {
   ads_count: number;
 }
 
+interface RpcResponse {
+  success: boolean;
+  message: string;
+}
+
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
@@ -122,11 +127,22 @@ export const useAdminUsers = () => {
         admin_user_id: adminUserId
       });
 
-      if (error || !data?.success) {
+      if (error) {
+        console.error('RPC error:', error);
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: data?.message || "فشل في ترقية المستخدم",
+          description: "فشل في ترقية المستخدم",
+        });
+        return false;
+      }
+
+      const response = data as RpcResponse;
+      if (!response?.success) {
+        toast({
+          variant: "destructive",
+          title: "خطأ",
+          description: response?.message || "فشل في ترقية المستخدم",
         });
         return false;
       }
@@ -157,11 +173,22 @@ export const useAdminUsers = () => {
         admin_user_id: adminUserId
       });
 
-      if (error || !data?.success) {
+      if (error) {
+        console.error('RPC error:', error);
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: data?.message || "فشل في إرجاع المستخدم للعضوية العادية",
+          description: "فشل في إرجاع المستخدم للعضوية العادية",
+        });
+        return false;
+      }
+
+      const response = data as RpcResponse;
+      if (!response?.success) {
+        toast({
+          variant: "destructive",
+          title: "خطأ",
+          description: response?.message || "فشل في إرجاع المستخدم للعضوية العادية",
         });
         return false;
       }
