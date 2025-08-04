@@ -22,31 +22,18 @@ interface AdminUser {
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      console.log('Loading users...');
+      console.log('Loading users from profiles table...');
       
-      // استعلام مباشر من جدول profiles
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          user_id,
-          display_name,
-          phone,
-          city,
-          membership_type,
-          is_premium,
-          points,
-          credits,
-          created_at,
-          upgraded_at,
-          premium_expires_at
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -59,28 +46,38 @@ export const useAdminUsers = () => {
         return;
       }
 
+      console.log('Raw profiles data:', data);
+
       if (!data || data.length === 0) {
-        console.log('No users found');
+        console.log('No users found in profiles table');
         setUsers([]);
         setFilteredUsers([]);
+        toast({
+          title: "لا توجد بيانات",
+          description: "لا يوجد مستخدمون مسجلون بعد",
+        });
         return;
       }
 
-      // تحويل البيانات إلى التنسيق المطلوب
-      const processedUsers = data.map(user => ({
-        ...user,
-        display_name: user.display_name || 'غير محدد',
-        phone: user.phone || 'غير محدد',
-        city: user.city || 'غير محدد',
-        upgraded_at: user.upgraded_at || '',
-        premium_expires_at: user.premium_expires_at || '',
-        days_remaining: user.premium_expires_at 
-          ? Math.max(0, Math.ceil((new Date(user.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      const processedUsers = data.map(profile => ({
+        user_id: profile.user_id || '',
+        display_name: profile.display_name || 'غير محدد',
+        phone: profile.phone || 'غير محدد',
+        city: profile.city || 'غير محدد',
+        membership_type: profile.membership_type || 'free',
+        is_premium: profile.is_premium || false,
+        points: profile.points || 0,
+        credits: profile.credits || 0,
+        created_at: profile.created_at || '',
+        upgraded_at: profile.upgraded_at || '',
+        premium_expires_at: profile.premium_expires_at || '',
+        days_remaining: profile.premium_expires_at 
+          ? Math.max(0, Math.ceil((new Date(profile.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
           : 0,
-        ads_count: 0 // سيتم تحديثها لاحقاً إذا أردنا
+        ads_count: 0
       }));
 
-      console.log('Users loaded:', processedUsers.length);
+      console.log('Processed users:', processedUsers);
       setUsers(processedUsers as AdminUser[]);
       setFilteredUsers(processedUsers as AdminUser[]);
       
@@ -90,11 +87,11 @@ export const useAdminUsers = () => {
       });
 
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('Unexpected error loading users:', error);
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "حدث خطأ أثناء تحميل المستخدمين",
+        description: "حدث خطأ غير متوقع أثناء تحميل المستخدمين",
       });
     } finally {
       setLoading(false);
@@ -125,22 +122,18 @@ export const useAdminUsers = () => {
         admin_user_id: adminUserId
       });
 
-      console.log('Upgrade response:', data, error);
-
-      if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
+      if (error || !data?.success) {
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: (data && typeof data === 'object' && 'message' in data) 
-            ? String(data.message) 
-            : "فشل في ترقية المستخدم",
+          description: data?.message || "فشل في ترقية المستخدم",
         });
         return false;
       }
 
       toast({
         title: "نجح",
-        description: "تم ترقية المستخدم إلى العضوية المميزة لمدة 30 يوم",
+        description: "تم ترقية المستخدم إلى العضوية المميزة",
       });
 
       await loadUsers();
@@ -164,15 +157,11 @@ export const useAdminUsers = () => {
         admin_user_id: adminUserId
       });
 
-      console.log('Downgrade response:', data, error);
-
-      if (error || !data || typeof data !== 'object' || !('success' in data) || !data.success) {
+      if (error || !data?.success) {
         toast({
           variant: "destructive",
           title: "خطأ",
-          description: (data && typeof data === 'object' && 'message' in data) 
-            ? String(data.message) 
-            : "فشل في إرجاع المستخدم للعضوية العادية",
+          description: data?.message || "فشل في إرجاع المستخدم للعضوية العادية",
         });
         return false;
       }
@@ -196,29 +185,8 @@ export const useAdminUsers = () => {
   };
 
   useEffect(() => {
-    console.log('useAdminUsers: Starting to load users...');
+    console.log('useAdminUsers: Component mounted, loading users...');
     loadUsers();
-
-    // إعداد الاشتراك في الوقت الفعلي لتغييرات الملفات الشخصية
-    const profilesChannel = supabase
-      .channel('admin-profiles-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
-        },
-        (payload) => {
-          console.log('Real-time profile change:', payload);
-          loadUsers();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(profilesChannel);
-    };
   }, []);
 
   return {

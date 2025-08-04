@@ -1,165 +1,131 @@
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Users, Crown, Calendar, CreditCard } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, UserCheck, Calendar, TrendingUp } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface StatsData {
-  total_users: number;
-  premium_users: number;
-  free_users: number;
-  total_ads: number;
-  active_ads: number;
-  total_boosts: number;
-  new_users_this_month: number;
-  premium_expiring_soon: number;
-}
+export const UsersStats = () => {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      console.log('Fetching admin stats...');
+      
+      // Get basic counts from profiles table
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, membership_type, is_premium, created_at, premium_expires_at');
 
-interface StatsProps {
-  totalUsers?: number;
-  premiumUsers?: number;
-  totalAds?: number;
-  activeAds?: number;
-  totalBoosts?: number;
-  newUsersThisMonth?: number;
-}
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        return {
+          total_users: 0,
+          premium_users: 0,
+          new_users_this_month: 0,
+          total_ads: 0,
+          active_ads: 0,
+          total_boosts: 0
+        };
+      }
 
-export const UsersStats = ({ 
-  totalUsers = 0, 
-  premiumUsers = 0, 
-  totalAds = 0, 
-  activeAds = 0, 
-  totalBoosts = 0, 
-  newUsersThisMonth = 0 
-}: StatsProps) => {
-  const [stats, setStats] = useState<StatsData>({
-    total_users: totalUsers,
-    premium_users: premiumUsers,
-    free_users: 0,
-    total_ads: totalAds,
-    active_ads: activeAds,
-    total_boosts: totalBoosts,
-    new_users_this_month: newUsersThisMonth,
-    premium_expiring_soon: 0
+      console.log('Profiles data:', profiles);
+
+      const total_users = profiles?.length || 0;
+      const premium_users = profiles?.filter(p => p.membership_type === 'premium' || p.is_premium).length || 0;
+      const new_users_this_month = profiles?.filter(p => {
+        const createdDate = new Date(p.created_at);
+        const now = new Date();
+        return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
+      }).length || 0;
+
+      // Get ads count
+      const { count: ads_count } = await supabase
+        .from('ads')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: active_ads_count } = await supabase
+        .from('ads')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      const { count: boosts_count } = await supabase
+        .from('ad_boosts')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      const stats = {
+        total_users,
+        premium_users,
+        new_users_this_month,
+        total_ads: ads_count || 0,
+        active_ads: active_ads_count || 0,
+        total_boosts: boosts_count || 0
+      };
+
+      console.log('Calculated stats:', stats);
+      return stats;
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
   });
 
-  const loadStats = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_users_statistics');
-      
-      if (error) {
-        console.error('Error loading statistics:', error);
-        return;
-      }
-
-      if (data && Array.isArray(data) && data.length > 0) {
-        console.log('Statistics loaded:', data[0]);
-        setStats(data[0] as StatsData);
-      }
-    } catch (error) {
-      console.error('Error loading statistics:', error);
+  const statsCards = [
+    {
+      title: 'إجمالي المستخدمين',
+      value: stats?.total_users || 0,
+      icon: Users,
+      color: 'text-blue-600'
+    },
+    {
+      title: 'مستخدمين مميزين',
+      value: stats?.premium_users || 0,
+      icon: UserCheck,
+      color: 'text-green-600'
+    },
+    {
+      title: 'مستخدمين جدد هذا الشهر',
+      value: stats?.new_users_this_month || 0,
+      icon: Calendar,
+      color: 'text-purple-600'
+    },
+    {
+      title: 'إجمالي الإعلانات',
+      value: stats?.total_ads || 0,
+      icon: TrendingUp,
+      color: 'text-orange-600'
+    },
+    {
+      title: 'إعلانات نشطة',
+      value: stats?.active_ads || 0,
+      icon: TrendingUp,
+      color: 'text-red-600'
+    },
+    {
+      title: 'تعزيزات نشطة',
+      value: stats?.total_boosts || 0,
+      icon: TrendingUp,
+      color: 'text-yellow-600'
     }
-  };
-
-  useEffect(() => {
-    loadStats();
-
-    // Set up real-time updates for statistics
-    const statsChannel = supabase
-      .channel('admin-stats-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
-        },
-        () => {
-          loadStats();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ads'
-        },
-        () => {
-          loadStats();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ad_boosts'
-        },
-        () => {
-          loadStats();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(statsChannel);
-    };
-  }, []);
+  ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <Card>
-        <CardContent className="p-4 text-center">
-          <Users className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-          <p className="text-2xl font-bold">{stats.total_users}</p>
-          <p className="text-sm text-gray-600">إجمالي المستخدمين</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4 text-center">
-          <Crown className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
-          <p className="text-2xl font-bold">{stats.premium_users}</p>
-          <p className="text-sm text-gray-600">مستخدمين مميزين</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4 text-center">
-          <Calendar className="h-8 w-8 mx-auto mb-2 text-green-600" />
-          <p className="text-2xl font-bold">{stats.total_ads}</p>
-          <p className="text-sm text-gray-600">إجمالي الإعلانات</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4 text-center">
-          <CreditCard className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-          <p className="text-2xl font-bold">{stats.active_ads}</p>
-          <p className="text-sm text-gray-600">إعلانات نشطة</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4 text-center">
-          <div className="h-8 w-8 mx-auto mb-2 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-            ↗️
-          </div>
-          <p className="text-2xl font-bold">{stats.total_boosts}</p>
-          <p className="text-sm text-gray-600">تعزيزات نشطة</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4 text-center">
-          <div className="h-8 w-8 mx-auto mb-2 bg-red-600 rounded-full flex items-center justify-center text-white font-bold">
-            📊
-          </div>
-          <p className="text-2xl font-bold">{stats.new_users_this_month}</p>
-          <p className="text-sm text-gray-600">مستخدمين جدد هذا الشهر</p>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {statsCards.map((stat, index) => {
+        const Icon = stat.icon;
+        return (
+          <Card key={index} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                {stat.title}
+              </CardTitle>
+              <Icon className={`h-5 w-5 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isLoading ? '...' : stat.value.toLocaleString()}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };
