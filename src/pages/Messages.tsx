@@ -13,9 +13,33 @@ import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
+interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+  sender?: {
+    display_name: string;
+    avatar_url?: string;
+  };
+  receiver?: {
+    display_name: string;
+    avatar_url?: string;
+  };
+}
+
+interface Conversation {
+  userId: string;
+  userName: string;
+  lastMessage: Message;
+  messages: Message[];
+}
+
 export default function Messages() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -89,14 +113,14 @@ export default function Messages() {
     if (!acc[otherUserId]) {
       acc[otherUserId] = {
         userId: otherUserId,
-        userName: message.sender_id === user?.id ? message.receiver?.display_name : message.sender?.display_name,
+        userName: message.sender_id === user?.id ? message.receiver?.display_name || 'مستخدم' : message.sender?.display_name || 'مستخدم',
         lastMessage: message,
         messages: []
       };
     }
     acc[otherUserId].messages.push(message);
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, Conversation>);
 
   const conversationList = Object.values(conversations);
   const currentConversation = selectedConversation ? conversations[selectedConversation] : null;
@@ -155,7 +179,7 @@ export default function Messages() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">
-                              {conversation.userName || 'مستخدم'}
+                              {conversation.userName}
                             </div>
                             <div className="text-sm text-muted-foreground truncate">
                               {conversation.lastMessage.content}
@@ -200,7 +224,7 @@ export default function Messages() {
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                         <User className="h-4 w-4 text-primary" />
                       </div>
-                      {currentConversation?.userName || 'مستخدم'}
+                      {currentConversation?.userName}
                     </CardTitle>
                   </CardHeader>
 
@@ -208,8 +232,8 @@ export default function Messages() {
                     {/* الرسائل */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {currentConversation?.messages
-                        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                        .map((message: any) => (
+                        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                        .map((message) => (
                         <div
                           key={message.id}
                           className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
