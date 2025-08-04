@@ -64,6 +64,20 @@ export const useAdminUsers = () => {
         return;
       }
 
+      // Get ads count for each user
+      const { data: adsData } = await supabase
+        .from('ads')
+        .select('user_id')
+        .eq('status', 'active');
+
+      const adsCountMap = new Map();
+      if (adsData) {
+        adsData.forEach(ad => {
+          const count = adsCountMap.get(ad.user_id) || 0;
+          adsCountMap.set(ad.user_id, count + 1);
+        });
+      }
+
       const processedUsers = data.map(profile => ({
         user_id: profile.user_id || '',
         display_name: profile.display_name || 'غير محدد',
@@ -79,7 +93,7 @@ export const useAdminUsers = () => {
         days_remaining: profile.premium_expires_at 
           ? Math.max(0, Math.ceil((new Date(profile.premium_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
           : 0,
-        ads_count: 0
+        ads_count: adsCountMap.get(profile.user_id) || 0
       }));
 
       console.log('Processed users:', processedUsers);
@@ -122,27 +136,28 @@ export const useAdminUsers = () => {
   const upgradeUserToPremium = async (userId: string, adminUserId: string) => {
     try {
       console.log('Upgrading user to premium:', userId);
-      const { data, error } = await supabase.rpc('upgrade_user_to_premium', {
-        target_user_id: userId,
-        admin_user_id: adminUserId
-      });
+      
+      // Calculate expiry date (30 days from now)
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          membership_type: 'premium',
+          is_premium: true,
+          premium_expires_at: expiryDate.toISOString(),
+          upgraded_at: new Date().toISOString(),
+          credits: 130 // Add 130 credits for premium users
+        })
+        .eq('user_id', userId);
 
       if (error) {
-        console.error('RPC error:', error);
+        console.error('Error upgrading user:', error);
         toast({
           variant: "destructive",
           title: "خطأ",
           description: "فشل في ترقية المستخدم",
-        });
-        return false;
-      }
-
-      const response = data as unknown as RpcResponse;
-      if (!response?.success) {
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: response?.message || "فشل في ترقية المستخدم",
         });
         return false;
       }
@@ -168,27 +183,23 @@ export const useAdminUsers = () => {
   const downgradeUserToFree = async (userId: string, adminUserId: string) => {
     try {
       console.log('Downgrading user to free:', userId);
-      const { data, error } = await supabase.rpc('downgrade_user_to_free', {
-        target_user_id: userId,
-        admin_user_id: adminUserId
-      });
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          membership_type: 'free',
+          is_premium: false,
+          premium_expires_at: null,
+          credits: 5 // Reset to basic credits
+        })
+        .eq('user_id', userId);
 
       if (error) {
-        console.error('RPC error:', error);
+        console.error('Error downgrading user:', error);
         toast({
           variant: "destructive",
           title: "خطأ",
           description: "فشل في إرجاع المستخدم للعضوية العادية",
-        });
-        return false;
-      }
-
-      const response = data as unknown as RpcResponse;
-      if (!response?.success) {
-        toast({
-          variant: "destructive",
-          title: "خطأ",
-          description: response?.message || "فشل في إرجاع المستخدم للعضوية العادية",
         });
         return false;
       }
