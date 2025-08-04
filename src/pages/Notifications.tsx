@@ -1,43 +1,79 @@
+import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { User, Session } from "@supabase/supabase-js";
+import { Bell, Check, CheckCheck, Trash2, Filter, Settings, MessageCircle } from "lucide-react";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Header } from '@/components/Header';
-import { BackButton } from '@/components/BackButton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Bell, Check, Trash2, Info, AlertCircle, CheckCircle } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
-
-export default function Notifications() {
-  const { user } = useAuth();
+const Notifications = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (!session?.user) {
+          navigate("/auth");
+        }
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session?.user) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
     }
-  }, [user]);
+  }, [user, filter]);
 
   const fetchNotifications = async () => {
+    if (!user) return;
+    
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+      let query = supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (filter === "unread") {
+        query = query.eq("is_read", false);
+      } else if (filter === "read") {
+        query = query.eq("is_read", true);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
       toast({
-        title: "خطأ في جلب الإشعارات",
-        description: "حدث خطأ أثناء جلب الإشعارات",
+        title: "خطأ في التحميل",
+        description: "حدث خطأ أثناء تحميل الإشعارات",
         variant: "destructive"
       });
     } finally {
@@ -48,44 +84,47 @@ export default function Notifications() {
   const markAsRead = async (notificationId: string) => {
     try {
       const { error } = await supabase
-        .from('notifications')
+        .from("notifications")
         .update({ is_read: true })
-        .eq('id', notificationId);
+        .eq("id", notificationId);
 
       if (error) throw error;
-
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === notificationId ? { ...notif, is_read: true } : notif
-        )
-      );
+      
+      setNotifications(notifications.map(notif => 
+        notif.id === notificationId 
+          ? { ...notif, is_read: true }
+          : notif
+      ));
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تحديث الإشعار",
+        variant: "destructive"
+      });
     }
   };
 
   const markAllAsRead = async () => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
-        .from('notifications')
+        .from("notifications")
         .update({ is_read: true })
-        .eq('user_id', user?.id)
-        .eq('is_read', false);
+        .eq("user_id", user.id)
+        .eq("is_read", false);
 
       if (error) throw error;
-
-      setNotifications(prev =>
-        prev.map(notif => ({ ...notif, is_read: true }))
-      );
-
+      
+      setNotifications(notifications.map(notif => ({ ...notif, is_read: true })));
+      
       toast({
-        title: "تم تحديث الإشعارات",
-        description: "تم تمييز جميع الإشعارات كمقروءة"
+        title: "تم",
+        description: "تم وضع علامة قراءة على جميع الإشعارات"
       });
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
       toast({
-        title: "خطأ في التحديث",
+        title: "خطأ",
         description: "حدث خطأ أثناء تحديث الإشعارات",
         variant: "destructive"
       });
@@ -94,24 +133,40 @@ export default function Notifications() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case "message":
+        return "💬";
+      case "favorite":
+        return "❤️";
+      case "ad_update":
+        return "🚗";
+      case "system":
+        return "⚙️";
       default:
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return "🔔";
     }
   };
 
-  const unreadCount = notifications.filter(notif => !notif.is_read).length;
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case "message":
+        return "text-blue-500";
+      case "favorite":
+        return "text-red-500";
+      case "ad_update":
+        return "text-green-500";
+      case "system":
+        return "text-gray-500";
+      default:
+        return "text-blue-500";
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <BackButton />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">جاري التحميل...</div>
         </div>
@@ -119,113 +174,178 @@ export default function Notifications() {
     );
   }
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Bell className="h-6 w-6 text-primary" />
-              <h1 className="text-3xl font-bold">الإشعارات</h1>
-              {unreadCount > 0 && (
-                <Badge variant="destructive">
-                  {unreadCount} جديد
-                </Badge>
-              )}
-            </div>
-            
-            {unreadCount > 0 && (
-              <Button variant="outline" onClick={markAllAsRead}>
-                <Check className="h-4 w-4 ml-2" />
-                تمييز الكل كمقروء
-              </Button>
-            )}
+          {/* Header */}
+          <Card className="card-gradient border-0 shadow-lg mb-6">
+            <CardHeader>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-3 text-2xl">
+                    <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center">
+                      <Bell className="h-5 w-5 text-white" />
+                    </div>
+                    الإشعارات
+                    {unreadCount > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <p className="text-muted-foreground mt-1">
+                    تابع آخر التحديثات والرسائل
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Button variant="outline" onClick={markAllAsRead} className="gap-2">
+                      <CheckCheck className="h-4 w-4" />
+                      وضع علامة قراءة على الكل
+                    </Button>
+                  )}
+                  
+                  <Button variant="ghost" className="gap-2" onClick={() => navigate('/messages')}>
+                    <MessageCircle className="h-4 w-4" />
+                    الرسائل
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Filter Tabs */}
+          <div className="flex gap-2 mb-6">
+            <Button
+              variant={filter === "all" ? "default" : "outline"}
+              onClick={() => setFilter("all")}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              الكل ({notifications.length})
+            </Button>
+            <Button
+              variant={filter === "unread" ? "default" : "outline"}
+              onClick={() => setFilter("unread")}
+            >
+              غير مقروءة ({unreadCount})
+            </Button>
+            <Button
+              variant={filter === "read" ? "default" : "outline"}
+              onClick={() => setFilter("read")}
+            >
+              مقروءة ({notifications.length - unreadCount})
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            {notifications.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Bell className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-bold mb-2">لا توجد إشعارات</h3>
-                  <p className="text-muted-foreground">
-                    ستظهر إشعاراتك هنا عند وصولها
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              notifications.map((notification) => (
-                <Card
-                  key={notification.id}
-                  className={`transition-all ${
-                    !notification.is_read 
-                      ? 'border-primary/50 bg-primary/5' 
-                      : 'hover:bg-muted/50'
+          {/* Notifications List */}
+          {notifications.length === 0 ? (
+            <Card className="card-gradient border-0 shadow-lg">
+              <CardContent className="p-12 text-center">
+                <Bell className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-bold mb-2">
+                  {filter === "all" ? "لا توجد إشعارات" : 
+                   filter === "unread" ? "لا توجد إشعارات غير مقروءة" : 
+                   "لا توجد إشعارات مقروءة"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {filter === "all" 
+                    ? "ستظهر إشعاراتك هنا عند وصولها"
+                    : "ستظهر الإشعارات المطابقة للفلتر المحدد هنا"
+                  }
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <Card 
+                  key={notification.id} 
+                  className={`card-gradient border-0 shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                    !notification.is_read ? "ring-2 ring-primary/20 bg-primary/5" : ""
                   }`}
+                  onClick={() => !notification.is_read && markAsRead(notification.id)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      {/* Notification Icon */}
+                      <div className={`text-2xl ${getNotificationColor(notification.type)}`}>
                         {getNotificationIcon(notification.type)}
-                        <div>
-                          <CardTitle className="text-base">{notification.title}</CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            {formatDistanceToNow(new Date(notification.created_at), {
-                              addSuffix: true,
-                              locale: ar
-                            })}
+                      </div>
+
+                      {/* Notification Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">
+                              {notification.title}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {notification.message}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(notification.created_at).toLocaleDateString("ar-SA", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
+                            </span>
+                            
                             {!notification.is_read && (
-                              <Badge variant="outline" className="text-xs">
-                                جديد
-                              </Badge>
+                              <div className="w-2 h-2 bg-primary rounded-full" />
                             )}
-                          </CardDescription>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 mt-3">
+                          {!notification.is_read && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(notification.id);
+                              }}
+                              className="gap-1 text-xs h-7"
+                            >
+                              <Check className="h-3 w-3" />
+                              وضع علامة قراءة
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs h-7 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            حذف
+                          </Button>
                         </div>
                       </div>
-                      
-                      {!notification.is_read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <p className="text-sm text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    
-                    {notification.data && (
-                      <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                        <pre className="text-xs text-muted-foreground overflow-x-auto">
-                          {JSON.stringify(notification.data, null, 2)}
-                        </pre>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
-
-          {notifications.length > 0 && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                إجمالي الإشعارات: {notifications.length} | 
-                غير مقروءة: {unreadCount}
-              </p>
+              ))}
             </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default Notifications;

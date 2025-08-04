@@ -1,116 +1,172 @@
+import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
+import { BackButton } from "@/components/BackButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { User, Session } from "@supabase/supabase-js";
+import { Edit, Star, Car, Heart, Settings, LogOut, Crown, Coins, CreditCard } from "lucide-react";
+import { CarCard } from "@/components/CarCard";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Header } from '@/components/Header';
-import { BackButton } from '@/components/BackButton';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
-import { 
-  User, 
-  Settings, 
-  Car, 
-  Crown, 
-  Star, 
-  Phone, 
-  Mail, 
-  MapPin,
-  Edit3,
-  Save,
-  X
-} from 'lucide-react';
-
-export default function Profile() {
-  const { user, signOut } = useAuth();
+const Profile = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [userAds, setUserAds] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    display_name: '',
-    phone: '',
-    city: ''
+  const [updating, setUpdating] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    displayName: "",
+    phone: "",
+    city: ""
   });
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (!session?.user) {
+          navigate("/auth");
+        }
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (!session?.user) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchUserAds();
+      fetchFavorites();
     }
   }, [user]);
 
   const fetchProfile = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
         .single();
 
       if (error) throw error;
-      
+
       setProfile(data);
-      setEditData({
-        display_name: data.display_name || '',
-        phone: data.phone || '',
-        city: data.city || ''
+      setProfileData({
+        displayName: data.display_name || "",
+        phone: data.phone || "",
+        city: data.city || ""
       });
     } catch (error) {
-      console.error('Error fetching profile:', error);
-      toast({
-        title: "خطأ في جلب البيانات",
-        description: "حدث خطأ أثناء جلب بيانات الملف الشخصي",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const fetchUserAds = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ads')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUserAds(data || []);
-    } catch (error) {
-      console.error('Error fetching ads:', error);
+      console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveProfile = async () => {
+  const fetchUserAds = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setUserAds(data || []);
+    } catch (error) {
+      console.error("Error fetching user ads:", error);
+    }
+  };
+
+  const fetchFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("favorites")
+        .select(`
+          *,
+          ads (*)
+        `)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setFavorites(data || []);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+    }
+  };
+
+  const updateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setUpdating(true);
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
-          display_name: editData.display_name,
-          phone: editData.phone,
-          city: editData.city
+          display_name: profileData.displayName,
+          phone: profileData.phone,
+          city: profileData.city
         })
-        .eq('user_id', user?.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
-      await fetchProfile();
-      setEditing(false);
       toast({
-        title: "تم حفظ التغييرات",
-        description: "تم تحديث بياناتك الشخصية بنجاح"
+        title: "تم تحديث الملف الشخصي",
+        description: "تم حفظ التغييرات بنجاح"
       });
+
+      fetchProfile();
     } catch (error) {
-      console.error('Error updating profile:', error);
       toast({
-        title: "خطأ في الحفظ",
+        title: "خطأ في التحديث",
         description: "حدث خطأ أثناء حفظ التغييرات",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء تسجيل الخروج",
         variant: "destructive"
       });
     }
@@ -120,7 +176,7 @@ export default function Profile() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <BackButton />
+        <BackButton to="/" />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">جاري التحميل...</div>
         </div>
@@ -128,237 +184,254 @@ export default function Profile() {
     );
   }
 
+  if (!user || !profile) {
+    return null;
+  }
+
+  // Calculate total points properly
+  const basePoints = profile.points || 0;
+  const premiumCredits = profile.credits || 0;
+  const totalPoints = profile.membership_type === 'premium' 
+    ? basePoints + premiumCredits 
+    : basePoints;
+
+  // Premium users get 40 ads per month
+  const monthlyAdsLimit = profile.membership_type === 'premium' ? 40 : 5;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <BackButton />
+      <BackButton to="/" />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Profile Header */}
-          <Card className="card-gradient border-0 shadow-lg mb-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                    <User className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl">{profile?.display_name || 'مستخدم جديد'}</CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <Badge variant={profile?.membership_type === 'premium' ? 'default' : 'secondary'}>
-                        {profile?.membership_type === 'premium' ? (
-                          <><Crown className="h-3 w-3 ml-1" /> عضوية مميزة</>
-                        ) : (
-                          'عضوية عادية'
-                        )}
+          <Card className="card-gradient border-0 shadow-lg mb-8">
+            <CardContent className="p-8">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-24 h-24 rounded-full primary-gradient flex items-center justify-center">
+                  <span className="text-white text-3xl font-bold">
+                    {profile.display_name?.charAt(0) || user.email?.charAt(0)}
+                  </span>
+                </div>
+                
+                <div className="flex-1 text-center md:text-right">
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {profile.display_name || "مستخدم جديد"}
+                  </h1>
+                  <p className="text-muted-foreground text-lg">ID: {profile.user_id_display}</p>
+                  {profile.city && (
+                    <p className="text-muted-foreground">{profile.city}</p>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
+                    {profile.membership_type === 'premium' ? (
+                      <Badge variant="premium" className="gap-1 text-sm">
+                        <Crown className="h-4 w-4" />
+                        عضو مميز
                       </Badge>
-                      {profile?.user_id_display && (
-                        <span className="text-sm text-muted-foreground">
-                          ID: {profile.user_id_display}
+                    ) : (
+                      <Badge variant="secondary" className="gap-1 text-sm">
+                        عضو عادي
+                      </Badge>
+                    )}
+                    <Badge variant="accent" className="gap-1 text-sm">
+                      <Coins className="h-4 w-4" />
+                      {totalPoints} نقطة
+                      {profile.membership_type === 'premium' && (
+                        <span className="text-xs">
+                          ({basePoints} أساسي + {premiumCredits} مميز)
                         </span>
                       )}
-                    </CardDescription>
+                    </Badge>
+                    <Badge variant="outline" className="gap-1 text-sm">
+                      <Car className="h-4 w-4" />
+                      إعلانات شهرية: {profile.monthly_ads_count || 0}/{monthlyAdsLimit}
+                    </Badge>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  {!editing ? (
-                    <Button variant="outline" onClick={() => setEditing(true)}>
-                      <Edit3 className="h-4 w-4 ml-2" />
-                      تعديل
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button onClick={handleSaveProfile}>
-                        <Save className="h-4 w-4 ml-2" />
-                        حفظ
-                      </Button>
-                      <Button variant="outline" onClick={() => setEditing(false)}>
-                        <X className="h-4 w-4" />
+
+                  {/* زر تفعيل العضوية المميزة */}
+                  {profile.membership_type !== 'premium' && (
+                    <div className="mt-4">
+                      <Button 
+                        onClick={() => navigate('/upload-receipt')}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        تفعيل العضوية المميزة
                       </Button>
                     </div>
                   )}
                 </div>
+
+                <Button variant="outline" onClick={handleLogout} className="gap-2">
+                  <LogOut className="h-4 w-4" />
+                  تسجيل الخروج
+                </Button>
               </div>
-            </CardHeader>
-            
-            {editing && (
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="display_name">الاسم الكامل</Label>
-                    <Input
-                      id="display_name"
-                      value={editData.display_name}
-                      onChange={(e) => setEditData({...editData, display_name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">رقم الهاتف</Label>
-                    <Input
-                      id="phone"
-                      value={editData.phone}
-                      onChange={(e) => setEditData({...editData, phone: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city">المدينة</Label>
-                    <Input
-                      id="city"
-                      value={editData.city}
-                      onChange={(e) => setEditData({...editData, city: e.target.value})}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            )}
+            </CardContent>
           </Card>
 
           {/* Profile Tabs */}
-          <Tabs defaultValue="info" className="w-full">
+          <Tabs defaultValue="settings" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="info">المعلومات</TabsTrigger>
-              <TabsTrigger value="ads">إعلاناتي ({userAds.length})</TabsTrigger>
-              <TabsTrigger value="membership">العضوية</TabsTrigger>
-              <TabsTrigger value="settings">الإعدادات</TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2">
+                <Settings className="h-4 w-4" />
+                الإعدادات
+              </TabsTrigger>
+              <TabsTrigger value="ads" className="gap-2">
+                <Car className="h-4 w-4" />
+                إعلاناتي ({userAds.length})
+              </TabsTrigger>
+              <TabsTrigger value="favorites" className="gap-2">
+                <Heart className="h-4 w-4" />
+                المفضلة ({favorites.length})
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="gap-2">
+                <Star className="h-4 w-4" />
+                التقييمات
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="info" className="mt-6">
-              <Card>
+            <TabsContent value="settings" className="mt-6">
+              <Card className="card-gradient border-0 shadow-lg">
                 <CardHeader>
-                  <CardTitle>المعلومات الشخصية</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Edit className="h-5 w-5" />
+                    تحديث الملف الشخصي
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user?.email}</span>
+                <CardContent>
+                  <form onSubmit={updateProfile} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="display-name">الاسم الكامل</Label>
+                      <Input
+                        id="display-name"
+                        value={profileData.displayName}
+                        onChange={(e) => setProfileData({...profileData, displayName: e.target.value})}
+                        placeholder="أدخل اسمك الكامل"
+                      />
                     </div>
-                    {profile?.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{profile.phone}</span>
-                      </div>
-                    )}
-                    {profile?.city && (
-                      <div className="flex items-center gap-3">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{profile.city}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <Star className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">النقاط: {profile?.points || 0}</span>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">رقم الهاتف</Label>
+                      <Input
+                        id="phone"
+                        value={profileData.phone}
+                        onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                        placeholder="أدخل رقم هاتفك"
+                      />
                     </div>
-                  </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="city">المدينة</Label>
+                      <Input
+                        id="city"
+                        value={profileData.city}
+                        onChange={(e) => setProfileData({...profileData, city: e.target.value})}
+                        placeholder="أدخل مدينتك"
+                      />
+                    </div>
+
+                    <Button type="submit" disabled={updating} className="w-full">
+                      {updating ? "جاري الحفظ..." : "حفظ التغييرات"}
+                    </Button>
+                  </form>
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="ads" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">إعلاناتي</h2>
+                  <Button onClick={() => navigate("/add-ad")}>
+                    إضافة إعلان جديد
+                  </Button>
+                </div>
+
                 {userAds.length === 0 ? (
-                  <Card className="col-span-full">
+                  <Card className="card-gradient border-0 shadow-lg">
                     <CardContent className="p-8 text-center">
                       <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-bold mb-2">لا توجد إعلانات</h3>
-                      <p className="text-muted-foreground mb-4">
-                        لم تقم بإضافة أي إعلانات بعد
-                      </p>
-                      <Button>إضافة إعلان جديد</Button>
+                      <h3 className="text-xl font-bold mb-2">لا توجد إعلانات</h3>
+                      <p className="text-muted-foreground mb-4">لم تقم بإضافة أي إعلانات بعد</p>
+                      <Button onClick={() => navigate("/add-ad")}>
+                        أضف إعلانك الأول
+                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
-                  userAds.map((ad) => (
-                    <Card key={ad.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{ad.title}</CardTitle>
-                        <CardDescription>
-                          {ad.brand} {ad.model} - {ad.year}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">السعر:</span>
-                            <span className="font-bold">
-                              {parseInt(ad.price).toLocaleString('ar-SD')} جنيه
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-muted-foreground">المشاهدات:</span>
-                            <span>{ad.view_count || 0}</span>
-                          </div>
-                          <Badge variant={ad.status === 'active' ? 'default' : 'secondary'}>
-                            {ad.status === 'active' ? 'نشط' : 'غير نشط'}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userAds.map((ad) => (
+                      <CarCard
+                        key={ad.id}
+                        id={ad.id}
+                        title={ad.title}
+                        price={ad.price}
+                        location={ad.city}
+                        year={ad.year}
+                        mileage={ad.mileage}
+                        fuelType={ad.fuel_type}
+                        transmission={ad.transmission}
+                        image={ad.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
+                        isPremium={ad.is_premium}
+                        isFeatured={ad.is_featured}
+                        viewCount={ad.view_count}
+                        creditsRequired={1}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             </TabsContent>
 
-            <TabsContent value="membership" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Crown className="h-5 w-5" />
-                    معلومات العضوية
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div>
-                        <h4 className="font-medium">نوع العضوية الحالي</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {profile?.membership_type === 'premium' ? 'عضوية مميزة' : 'عضوية عادية'}
-                        </p>
-                      </div>
-                      <Badge variant={profile?.membership_type === 'premium' ? 'default' : 'secondary'}>
-                        {profile?.membership_type === 'premium' ? 'مميز' : 'عادي'}
-                      </Badge>
-                    </div>
+            <TabsContent value="favorites" className="mt-6">
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold">السيارات المفضلة</h2>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-muted/30 rounded-lg">
-                        <div className="text-2xl font-bold text-primary">{profile?.points || 0}</div>
-                        <div className="text-sm text-muted-foreground">النقاط المتاحة</div>
-                      </div>
-                      <div className="text-center p-4 bg-muted/30 rounded-lg">
-                        <div className="text-2xl font-bold text-primary">{profile?.credits || 0}</div>
-                        <div className="text-sm text-muted-foreground">كريديت العضوية</div>
-                      </div>
-                    </div>
-
-                    {profile?.membership_type !== 'premium' && (
-                      <div className="p-4 bg-primary/10 rounded-lg">
-                        <h4 className="font-medium mb-2">ترقية للعضوية المميزة</h4>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          احصل على مزايا إضافية مع العضوية المميزة
-                        </p>
-                        <Button>ترقية الآن</Button>
-                      </div>
-                    )}
+                {favorites.length === 0 ? (
+                  <Card className="card-gradient border-0 shadow-lg">
+                    <CardContent className="p-8 text-center">
+                      <Heart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-xl font-bold mb-2">لا توجد مفضلات</h3>
+                      <p className="text-muted-foreground mb-4">لم تقم بإضافة أي سيارات للمفضلة</p>
+                      <Button onClick={() => navigate("/")}>
+                        تصفح السيارات
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favorites.map((favorite) => (
+                      <CarCard
+                        key={favorite.ads.id}
+                        id={favorite.ads.id}
+                        title={favorite.ads.title}
+                        price={favorite.ads.price}
+                        location={favorite.ads.city}
+                        year={favorite.ads.year}
+                        mileage={favorite.ads.mileage}
+                        fuelType={favorite.ads.fuel_type}
+                        transmission={favorite.ads.transmission}
+                        image={favorite.ads.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
+                        isPremium={favorite.ads.is_premium}
+                        isFeatured={favorite.ads.is_featured}
+                        viewCount={favorite.ads.view_count}
+                        creditsRequired={1}
+                      />
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
             </TabsContent>
 
-            <TabsContent value="settings" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    إعدادات الحساب
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button variant="destructive" onClick={signOut}>
-                    تسجيل الخروج
-                  </Button>
+            <TabsContent value="reviews" className="mt-6">
+              <Card className="card-gradient border-0 shadow-lg">
+                <CardContent className="p-8 text-center">
+                  <Star className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-bold mb-2">التقييمات</h3>
+                  <p className="text-muted-foreground">سيتم إضافة نظام التقييمات قريباً</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -367,4 +440,6 @@ export default function Profile() {
       </div>
     </div>
   );
-}
+};
+
+export default Profile;
