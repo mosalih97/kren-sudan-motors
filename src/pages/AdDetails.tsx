@@ -183,7 +183,7 @@ const AdDetails = () => {
         {otherSellerAds.length > 0 && (
           <div className="mt-12">
             <h2 className="text-2xl font-bold mb-6">إعلانات أخرى للبائع</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
               {otherSellerAds.map((otherAd: any) => (
                 <CarCard
                   key={otherAd.id}
