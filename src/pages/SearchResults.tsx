@@ -19,9 +19,12 @@ const SearchResults = () => {
   const [sortBy, setSortBy] = useState("newest");
   const { toast } = useToast();
 
-  const searchQuery = searchParams.get('q') || '';
-  const city = searchParams.get('city') || '';
+  // Decode URL parameters properly
+  const searchQuery = searchParams.get('q') ? decodeURIComponent(searchParams.get('q')!) : '';
+  const city = searchParams.get('city') ? decodeURIComponent(searchParams.get('city')!) : '';
   const price = searchParams.get('price') || '';
+
+  console.log('Search params:', { searchQuery, city, price });
 
   useEffect(() => {
     performSearch();
@@ -46,16 +49,19 @@ const SearchResults = () => {
 
       // Apply search filters - each filter works independently
       if (searchQuery && searchQuery.trim()) {
+        console.log('Applying search query filter:', searchQuery);
         query = query.or(`title.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,model.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
       }
 
       if (city && city.trim()) {
+        console.log('Applying city filter:', city);
         query = query.ilike('city', `%${city}%`);
       }
 
       if (price && price.trim()) {
         const priceNum = parseInt(price);
         if (!isNaN(priceNum) && priceNum > 0) {
+          console.log('Applying price filter:', priceNum);
           query = query.lte('price', priceNum);
         }
       }
@@ -73,6 +79,7 @@ const SearchResults = () => {
         return;
       }
 
+      console.log('Search results:', data?.length || 0, 'items');
       let searchResults = data || [];
 
       // Apply sorting
@@ -132,7 +139,7 @@ const SearchResults = () => {
            (price && price.trim() && !isNaN(parseInt(price)) && parseInt(price) > 0);
   };
 
-  // If no valid search parameters, redirect to cars page
+  // If no valid search parameters, show message but don't redirect
   if (!hasValidSearchParams()) {
     return (
       <div className="min-h-screen bg-background">

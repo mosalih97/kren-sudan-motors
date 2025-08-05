@@ -43,7 +43,7 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/password-reset" element={<PasswordReset />} />
               <Route path="/cars" element={<Cars />} />
-              <Route path="/search" element={<SearchResults />} />
+              <Route path="/search-results" element={<SearchResults />} />
               <Route path="/ads/:id" element={<AdDetails />} />
               <Route path="/seller/:userId" element={<SellerAds />} />
               <Route path="/add-ad" element={<ProtectedRoute><AddAd /></ProtectedRoute>} />
