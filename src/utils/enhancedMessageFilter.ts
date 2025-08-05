@@ -33,6 +33,12 @@ export const enhancedFilterSensitiveInfo = (message: string): string => {
   // Location coordinates
   const coordinatesRegex = /\b\d+\.\d+,\s*\d+\.\d+\b/g;
   
+  // Arabic numerals (٠-٩)
+  const arabicNumeralsRegex = /[٠-٩]/g;
+  
+  // Location-related keywords
+  const locationKeywordsRegex = /\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi;
+  
   // Apply filters with Arabic replacements
   filteredMessage = filteredMessage.replace(phoneRegex, '[رقم هاتف محذوف]');
   filteredMessage = filteredMessage.replace(generalPhoneRegex, '[رقم محذوف]');
@@ -46,6 +52,8 @@ export const enhancedFilterSensitiveInfo = (message: string): string => {
   filteredMessage = filteredMessage.replace(passwordRegex, '[كلمة مرور محذوفة]');
   filteredMessage = filteredMessage.replace(otpRegex, '[رمز التحقق محذوف]');
   filteredMessage = filteredMessage.replace(coordinatesRegex, '[إحداثيات محذوفة]');
+  filteredMessage = filteredMessage.replace(arabicNumeralsRegex, '[رقم محذوف]');
+  filteredMessage = filteredMessage.replace(locationKeywordsRegex, '[كلمة محظورة]');
   
   return filteredMessage;
 };
@@ -55,4 +63,24 @@ export const containsSensitiveInfo = (message: string): boolean => {
   const original = message;
   const filtered = enhancedFilterSensitiveInfo(message);
   return original !== filtered;
+};
+
+// Real-time filter for input prevention
+export const filterInputRealTime = (input: string): string => {
+  if (!input) return '';
+  
+  // Remove Arabic numerals and location keywords immediately
+  let filtered = input
+    .replace(/[٠-٩]/g, '')
+    .replace(/\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi, '');
+  
+  return filtered;
+};
+
+// Check if input contains forbidden content for real-time validation
+export const containsForbiddenContent = (input: string): boolean => {
+  const arabicNumeralsRegex = /[٠-٩]/;
+  const locationKeywordsRegex = /\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi;
+  
+  return arabicNumeralsRegex.test(input) || locationKeywordsRegex.test(input);
 };

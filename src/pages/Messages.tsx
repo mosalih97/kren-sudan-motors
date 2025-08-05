@@ -12,7 +12,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
 import { Send, MessageCircle, Search, MoreVertical, Check, CheckCheck, Users, Clock, AlertCircle, Phone, Star, ArrowRight } from "lucide-react";
-import { filterSensitiveInfo } from "@/utils/messageFilter";
+import { useSecureMessageInput } from "@/hooks/useSecureMessageInput";
 
 const Messages = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -20,7 +20,6 @@ const Messages = () => {
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,6 +28,9 @@ const Messages = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  // Use secure message input hook
+  const { value: newMessage, onChange: setNewMessage, warning: inputWarning, getFinalMessage, reset: resetMessage } = useSecureMessageInput();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -271,9 +273,18 @@ const Messages = () => {
     e.preventDefault();
     if (!user || !selectedChat || !newMessage.trim()) return;
 
-    // فلترة الرسالة للتأكد من عدم وجود معلومات حساسة
-    const filteredMessage = filterSensitiveInfo(newMessage.trim());
+    // Get the filtered message
+    const filteredMessage = getFinalMessage();
     
+    if (!filteredMessage.trim()) {
+      toast({
+        title: "رسالة فارغة",
+        description: "لا يمكن إرسال رسالة فارغة",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // التحقق من وجود معلومات حساسة مُفلترة
     if (filteredMessage !== newMessage.trim()) {
       toast({
@@ -296,7 +307,7 @@ const Messages = () => {
 
       if (error) throw error;
 
-      setNewMessage("");
+      resetMessage();
       await fetchMessages();
       await fetchConversations();
     } catch (error) {
@@ -605,6 +616,14 @@ const Messages = () => {
 
                       {/* Message Input */}
                       <div className="border-t border-border p-4 bg-gradient-to-r from-background to-muted/20">
+                        {inputWarning && (
+                          <div className="mb-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                            <div className="flex items-center gap-2 text-destructive text-sm">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>{inputWarning}</span>
+                            </div>
+                          </div>
+                        )}
                         <form onSubmit={sendMessage} className="flex gap-3">
                           <div className="flex-1 relative">
                             <Input
