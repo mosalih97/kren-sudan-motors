@@ -24,11 +24,15 @@ export const useSearchFilters = () => {
   const navigate = useNavigate();
 
   const performSearch = async () => {
-    // Check if at least one filter is provided
-    if (!filters.searchQuery && !filters.city && !filters.price) {
+    // Check if at least one filter is provided and has valid content
+    const hasSearchQuery = filters.searchQuery && filters.searchQuery.trim();
+    const hasCity = filters.city && filters.city.trim();
+    const hasPrice = filters.price && filters.price.trim() && !isNaN(parseInt(filters.price)) && parseInt(filters.price) > 0;
+
+    if (!hasSearchQuery && !hasCity && !hasPrice) {
       toast({
         title: "تنبيه",
-        description: "يرجى إدخال معايير البحث",
+        description: "يرجى إدخال كلمة بحث أو تحديد مدينة أو سعر",
         variant: "destructive"
       });
       return;
@@ -51,20 +55,18 @@ export const useSearchFilters = () => {
         `)
         .eq('status', 'active');
 
-      // Apply search filters
-      if (filters.searchQuery) {
-        query = query.or(`title.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%,model.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%`);
+      // Apply search filters - each works independently
+      if (hasSearchQuery) {
+        query = query.or(`title.ilike.%${filters.searchQuery.trim()}%,brand.ilike.%${filters.searchQuery.trim()}%,model.ilike.%${filters.searchQuery.trim()}%,description.ilike.%${filters.searchQuery.trim()}%`);
       }
 
-      if (filters.city) {
-        query = query.ilike('city', `%${filters.city}%`);
+      if (hasCity) {
+        query = query.ilike('city', `%${filters.city.trim()}%`);
       }
 
-      if (filters.price) {
-        const priceNum = parseInt(filters.price);
-        if (!isNaN(priceNum)) {
-          query = query.lte('price', priceNum);
-        }
+      if (hasPrice) {
+        const priceNum = parseInt(filters.price.trim());
+        query = query.lte('price', priceNum);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -76,6 +78,7 @@ export const useSearchFilters = () => {
           description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
+        setSearchResults([]);
         return;
       }
 
@@ -83,9 +86,9 @@ export const useSearchFilters = () => {
       
       // Navigate to search results page with search params
       const searchParams = new URLSearchParams();
-      if (filters.searchQuery) searchParams.set('q', filters.searchQuery);
-      if (filters.city) searchParams.set('city', filters.city);
-      if (filters.price) searchParams.set('price', filters.price);
+      if (hasSearchQuery) searchParams.set('q', filters.searchQuery.trim());
+      if (hasCity) searchParams.set('city', filters.city.trim());
+      if (hasPrice) searchParams.set('price', filters.price.trim());
       
       navigate(`/search-results?${searchParams.toString()}`);
       
@@ -96,6 +99,7 @@ export const useSearchFilters = () => {
         description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }

@@ -44,18 +44,18 @@ const SearchResults = () => {
         `)
         .eq('status', 'active');
 
-      // Apply search filters
-      if (searchQuery) {
+      // Apply search filters - each filter works independently
+      if (searchQuery && searchQuery.trim()) {
         query = query.or(`title.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,model.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
       }
 
-      if (city) {
+      if (city && city.trim()) {
         query = query.ilike('city', `%${city}%`);
       }
 
-      if (price) {
+      if (price && price.trim()) {
         const priceNum = parseInt(price);
-        if (!isNaN(priceNum)) {
+        if (!isNaN(priceNum) && priceNum > 0) {
           query = query.lte('price', priceNum);
         }
       }
@@ -69,6 +69,7 @@ const SearchResults = () => {
           description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
           variant: "destructive"
         });
+        setResults([]);
         return;
       }
 
@@ -105,6 +106,7 @@ const SearchResults = () => {
         description: "حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى",
         variant: "destructive"
       });
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -112,12 +114,52 @@ const SearchResults = () => {
 
   const getSearchSummary = () => {
     const parts = [];
-    if (searchQuery) parts.push(`"${searchQuery}"`);
-    if (city) parts.push(`في ${city}`);
-    if (price) parts.push(`بسعر أقل من ${parseInt(price).toLocaleString('ar-SD')} جنيه`);
+    if (searchQuery && searchQuery.trim()) parts.push(`"${searchQuery}"`);
+    if (city && city.trim()) parts.push(`في ${city}`);
+    if (price && price.trim()) {
+      const priceNum = parseInt(price);
+      if (!isNaN(priceNum) && priceNum > 0) {
+        parts.push(`بسعر أقل من ${priceNum.toLocaleString('ar-SD')} جنيه`);
+      }
+    }
     
     return parts.length > 0 ? `البحث عن: ${parts.join(' - ')}` : 'نتائج البحث';
   };
+
+  const hasValidSearchParams = () => {
+    return (searchQuery && searchQuery.trim()) || 
+           (city && city.trim()) || 
+           (price && price.trim() && !isNaN(parseInt(price)) && parseInt(price) > 0);
+  };
+
+  // If no valid search parameters, redirect to cars page
+  if (!hasValidSearchParams()) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4 text-center">
+            <Card className="card-gradient border-0 shadow-lg max-w-md mx-auto">
+              <CardContent className="p-12">
+                <Search className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-bold mb-2">لم يتم تحديد معايير البحث</h3>
+                <p className="text-muted-foreground mb-6">
+                  يرجى إدخال كلمة بحث أو تحديد مدينة أو سعر للبحث
+                </p>
+                <Link to="/cars">
+                  <Button variant="default">
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                    تصفح جميع السيارات
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -213,7 +255,7 @@ const SearchResults = () => {
                 <p className="text-sm text-muted-foreground mb-6">
                   جرب تعديل معايير البحث أو إزالة بعض الفلاتر
                 </p>
-                <Link to="/">
+                <Link to="/cars">
                   <Button variant="outline">
                     العودة للبحث
                   </Button>
