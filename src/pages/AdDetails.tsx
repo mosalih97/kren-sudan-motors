@@ -54,11 +54,12 @@ const AdDetails = () => {
         .update({ view_count: (adData.view_count || 0) + 1 })
         .eq("id", adId);
 
-      // Fetch seller's ads
+      // Fetch seller's other ads (excluding current ad)
       const { data: sellerAdsData, error: sellerAdsError } = await supabase
         .from("ads")
         .select("*")
         .eq("user_id", adData.user_id)
+        .neq("id", adId)
         .limit(6);
 
       if (sellerAdsError) throw sellerAdsError;
@@ -100,6 +101,9 @@ const AdDetails = () => {
   if (!ad) {
     return null;
   }
+
+  // Filter out current ad from seller's other ads
+  const otherSellerAds = sellerAds.filter(otherAd => otherAd.id !== ad.id);
 
   return (
     <div className="min-h-screen bg-background">
@@ -176,33 +180,30 @@ const AdDetails = () => {
         </div>
 
         {/* Seller's Other Ads */}
-        {sellerAds.length > 0 && (
+        {otherSellerAds.length > 0 && (
           <div className="mt-12">
-            <h2 className="text-2xl font-bold mb-4">إعلانات أخرى للبائع</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sellerAds.map(
-                (otherAd: any) =>
-                  otherAd.id !== ad.id && (
-                    <CarCard
-                      key={otherAd.id}
-                      id={otherAd.id}
-                      title={otherAd.title}
-                      price={otherAd.price}
-                      location={otherAd.city}
-                      year={otherAd.year}
-                      mileage={otherAd.mileage}
-                      fuelType={otherAd.fuel_type}
-                      transmission={otherAd.transmission}
-                      image={
-                        otherAd.images?.[0] ||
-                        "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"
-                      }
-                      isPremium={otherAd.is_premium}
-                      isFeatured={otherAd.is_featured}
-                      viewCount={otherAd.view_count}
-                    />
-                  )
-              )}
+            <h2 className="text-2xl font-bold mb-6">إعلانات أخرى للبائع</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {otherSellerAds.map((otherAd: any) => (
+                <CarCard
+                  key={otherAd.id}
+                  id={otherAd.id}
+                  title={otherAd.title}
+                  price={otherAd.price}
+                  location={otherAd.city}
+                  year={otherAd.year}
+                  mileage={otherAd.mileage}
+                  fuelType={otherAd.fuel_type}
+                  transmission={otherAd.transmission}
+                  image={
+                    otherAd.images?.[0] ||
+                    "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"
+                  }
+                  isPremium={otherAd.is_premium}
+                  isFeatured={otherAd.is_featured}
+                  viewCount={otherAd.view_count}
+                />
+              ))}
             </div>
           </div>
         )}
