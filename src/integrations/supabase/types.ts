@@ -943,6 +943,28 @@ export type Database = {
       }
     }
     Functions: {
+      admin_search_users: {
+        Args: {
+          search_term?: string
+          membership_filter?: string
+          limit_count?: number
+        }
+        Returns: {
+          user_id: string
+          display_name: string
+          phone: string
+          city: string
+          membership_type: string
+          is_premium: boolean
+          points: number
+          credits: number
+          created_at: string
+          premium_expires_at: string
+          days_remaining: number
+          ads_count: number
+          user_id_display: string
+        }[]
+      }
       boost_ad: {
         Args: {
           ad_id_param: string
