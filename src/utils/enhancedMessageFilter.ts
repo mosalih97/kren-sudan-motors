@@ -36,10 +36,19 @@ export const enhancedFilterSensitiveInfo = (message: string): string => {
   // Arabic numerals (٠-٩)
   const arabicNumeralsRegex = /[٠-٩]/g;
   
-  // Location-related keywords
-  const locationKeywordsRegex = /\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi;
+  // Enhanced location-related keywords (individual word blocking)
+  const blockedWords = [
+    'الرقم', 'العنوان', 'مكانك', 'وين', 'الموقع', 'موقع', 'موقعك', 'لوكيشن',
+    'رقم', 'عنوان', 'مكان', 'اين', 'location'
+  ];
   
-  // Apply filters with Arabic replacements
+  // Create regex for each blocked word individually
+  blockedWords.forEach(word => {
+    const wordRegex = new RegExp(`\\b${word}\\b`, 'gi');
+    filteredMessage = filteredMessage.replace(wordRegex, '[كلمة محظورة]');
+  });
+  
+  // Apply other filters with Arabic replacements
   filteredMessage = filteredMessage.replace(phoneRegex, '[رقم هاتف محذوف]');
   filteredMessage = filteredMessage.replace(generalPhoneRegex, '[رقم محذوف]');
   filteredMessage = filteredMessage.replace(emailRegex, '[بريد إلكتروني محذوف]');
@@ -53,7 +62,6 @@ export const enhancedFilterSensitiveInfo = (message: string): string => {
   filteredMessage = filteredMessage.replace(otpRegex, '[رمز التحقق محذوف]');
   filteredMessage = filteredMessage.replace(coordinatesRegex, '[إحداثيات محذوفة]');
   filteredMessage = filteredMessage.replace(arabicNumeralsRegex, '[رقم محذوف]');
-  filteredMessage = filteredMessage.replace(locationKeywordsRegex, '[كلمة محظورة]');
   
   return filteredMessage;
 };
@@ -69,10 +77,22 @@ export const containsSensitiveInfo = (message: string): boolean => {
 export const filterInputRealTime = (input: string): string => {
   if (!input) return '';
   
-  // Remove Arabic numerals and location keywords immediately
-  let filtered = input
-    .replace(/[٠-٩]/g, '')
-    .replace(/\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi, '');
+  // Enhanced blocked words list
+  const blockedWords = [
+    'الرقم', 'العنوان', 'مكانك', 'وين', 'الموقع', 'موقع', 'موقعك', 'لوكيشن',
+    'رقم', 'عنوان', 'مكان', 'اين', 'location'
+  ];
+  
+  let filtered = input;
+  
+  // Remove Arabic numerals immediately
+  filtered = filtered.replace(/[٠-٩]/g, '');
+  
+  // Remove blocked words individually
+  blockedWords.forEach(word => {
+    const wordRegex = new RegExp(`\\b${word}\\b`, 'gi');
+    filtered = filtered.replace(wordRegex, '');
+  });
   
   return filtered;
 };
@@ -80,7 +100,40 @@ export const filterInputRealTime = (input: string): string => {
 // Check if input contains forbidden content for real-time validation
 export const containsForbiddenContent = (input: string): boolean => {
   const arabicNumeralsRegex = /[٠-٩]/;
-  const locationKeywordsRegex = /\b(?:الرقم|العنوان|مكانك|وين|الموقع|موقع|موقعك|لوكيشن)\b/gi;
   
-  return arabicNumeralsRegex.test(input) || locationKeywordsRegex.test(input);
+  // Enhanced blocked words list
+  const blockedWords = [
+    'الرقم', 'العنوان', 'مكانك', 'وين', 'الموقع', 'موقع', 'موقعك', 'لوكيشن',
+    'رقم', 'عنوان', 'مكان', 'اين', 'location'
+  ];
+  
+  // Check for Arabic numerals
+  if (arabicNumeralsRegex.test(input)) return true;
+  
+  // Check for each blocked word individually
+  for (const word of blockedWords) {
+    const wordRegex = new RegExp(`\\b${word}\\b`, 'i');
+    if (wordRegex.test(input)) return true;
+  }
+  
+  return false;
+};
+
+// Get the specific forbidden word that was detected
+export const getForbiddenWord = (input: string): string => {
+  const blockedWords = [
+    'الرقم', 'العنوان', 'مكانك', 'وين', 'الموقع', 'موقع', 'موقعك', 'لوكيشن',
+    'رقم', 'عنوان', 'مكان', 'اين', 'location'
+  ];
+  
+  // Check for Arabic numerals first
+  if (/[٠-٩]/.test(input)) return 'الأرقام العربية';
+  
+  // Check for each blocked word
+  for (const word of blockedWords) {
+    const wordRegex = new RegExp(`\\b${word}\\b`, 'i');
+    if (wordRegex.test(input)) return word;
+  }
+  
+  return '';
 };

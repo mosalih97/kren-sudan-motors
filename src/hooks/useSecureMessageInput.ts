@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { filterInputRealTime, containsForbiddenContent, enhancedFilterSensitiveInfo } from '@/utils/enhancedMessageFilter';
+import { filterInputRealTime, containsForbiddenContent, enhancedFilterSensitiveInfo, getForbiddenWord } from '@/utils/enhancedMessageFilter';
 
 export const useSecureMessageInput = (initialValue: string = '') => {
   const [value, setValue] = useState(initialValue);
@@ -9,7 +9,9 @@ export const useSecureMessageInput = (initialValue: string = '') => {
   const handleChange = useCallback((newValue: string) => {
     // Check for forbidden content
     if (containsForbiddenContent(newValue)) {
-      setWarning('لا يُسمح بكتابة أرقام أو معلومات موقع في الرسائل');
+      const forbiddenWord = getForbiddenWord(newValue);
+      setWarning(`لا يُسمح بكتابة "${forbiddenWord}" في الرسائل`);
+      
       // Filter out forbidden content
       const filteredValue = filterInputRealTime(newValue);
       setValue(filteredValue);
