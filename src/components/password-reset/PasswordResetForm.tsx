@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail } from "lucide-react";
 import { sanitizeEmail, isValidEmail } from "@/utils/inputSanitizer";
+import { PasswordResetSuccess } from "./PasswordResetSuccess";
 
 interface PasswordResetFormProps {
   onSuccess?: (email: string) => void;
@@ -15,6 +16,8 @@ interface PasswordResetFormProps {
 export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successEmail, setSuccessEmail] = useState('');
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,11 +86,8 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
           console.error('Failed to log security event:', logError);
         }
 
-        toast({
-          title: "تم إرسال الطلب",
-          description: "تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني",
-        });
-        
+        setSuccessEmail(sanitizedEmail);
+        setShowSuccess(true);
         onSuccess?.(sanitizedEmail);
       }
     } catch (error: any) {
@@ -102,6 +102,22 @@ export const PasswordResetForm = ({ onSuccess }: PasswordResetFormProps) => {
       setLoading(false);
     }
   };
+
+  const handleResendCode = () => {
+    toast({
+      title: "تم إرسال الكود",
+      description: "تم إرسال رابط استعادة كلمة المرور مرة أخرى",
+    });
+  };
+
+  if (showSuccess) {
+    return (
+      <PasswordResetSuccess 
+        email={successEmail} 
+        onResendCode={handleResendCode}
+      />
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

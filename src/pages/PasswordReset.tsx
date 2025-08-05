@@ -79,17 +79,23 @@ const PasswordReset = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <PasswordResetHeader isResetMode={isResetMode} />
-        
-        <CardContent>
-          {isResetMode ? (
+      {isResetMode ? (
+        <Card className="w-full max-w-md">
+          <PasswordResetHeader isResetMode={isResetMode} />
+          <CardContent>
             <NewPasswordForm />
-          ) : (
-            <PasswordResetForm />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="w-full max-w-md">
+          <Card>
+            <PasswordResetHeader isResetMode={isResetMode} />
+            <CardContent>
+              <PasswordResetForm />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
