@@ -38,14 +38,22 @@ const UserUpgradeDialog: React.FC<UserUpgradeDialogProps> = ({
   loading = false
 }) => {
   const [notes, setNotes] = useState('');
+  const [upgrading, setUpgrading] = useState(false);
 
   if (!user) return null;
 
   const handleUpgrade = async (targetMembership: string) => {
-    const success = await onUpgrade(user.user_id, targetMembership, notes);
-    if (success) {
-      setNotes('');
-      onClose();
+    setUpgrading(true);
+    try {
+      const success = await onUpgrade(user.user_id, targetMembership, notes);
+      if (success) {
+        setNotes('');
+        onClose();
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error);
+    } finally {
+      setUpgrading(false);
     }
   };
 
@@ -141,20 +149,20 @@ const UserUpgradeDialog: React.FC<UserUpgradeDialogProps> = ({
             <Button 
               onClick={() => handleUpgrade('premium')}
               className="flex-1"
-              disabled={user.membership_type === 'premium' || loading}
+              disabled={user.membership_type === 'premium' || loading || upgrading}
             >
               <Crown className="h-4 w-4 mr-2" />
-              ترقية إلى مميز (30 يوم)
+              {upgrading ? 'جاري الترقية...' : 'ترقية إلى مميز (30 يوم)'}
             </Button>
             
             <Button 
               onClick={() => handleUpgrade('free')}
               variant="outline"
               className="flex-1"
-              disabled={user.membership_type === 'free' || loading}
+              disabled={user.membership_type === 'free' || loading || upgrading}
             >
               <User className="h-4 w-4 mr-2" />
-              تحويل إلى مجاني
+              {upgrading ? 'جاري التحويل...' : 'تحويل إلى مجاني'}
             </Button>
           </div>
 

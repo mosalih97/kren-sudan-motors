@@ -77,8 +77,15 @@ const AdminDashboard = () => {
   };
 
   const openUpgradeDialog = (user: UserProfile) => {
+    console.log('Opening upgrade dialog for user:', user); // للتصحيح
     setSelectedUser(user);
     setIsUpgradeDialogOpen(true);
+  };
+
+  const closeUpgradeDialog = () => {
+    console.log('Closing upgrade dialog'); // للتصحيح
+    setIsUpgradeDialogOpen(false);
+    setSelectedUser(null);
   };
 
   const getMembershipBadgeColor = (membership: string) => {
@@ -254,6 +261,7 @@ const AdminDashboard = () => {
                             variant="outline"
                             onClick={() => openUpgradeDialog(user)}
                             className="flex items-center gap-2"
+                            disabled={hookLoading}
                           >
                             <Crown className="h-4 w-4" />
                             إدارة الترقية
@@ -272,7 +280,7 @@ const AdminDashboard = () => {
         <UserUpgradeDialog
           user={selectedUser}
           isOpen={isUpgradeDialogOpen}
-          onClose={() => setIsUpgradeDialogOpen(false)}
+          onClose={closeUpgradeDialog}
           onUpgrade={handleUpgrade}
           loading={hookLoading}
         />
