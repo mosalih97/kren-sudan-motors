@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -10,6 +10,7 @@ interface AdminProtectedRouteProps {
 
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading } = useAdminAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -23,7 +24,14 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/admin-login" replace />;
+    // حفظ المسار الحالي للعودة إليه بعد تسجيل الدخول
+    return (
+      <Navigate 
+        to="/admin-login" 
+        state={{ from: location.pathname }} 
+        replace 
+      />
+    );
   }
 
   return <>{children}</>;

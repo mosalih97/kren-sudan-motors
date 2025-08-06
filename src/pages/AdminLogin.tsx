@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,16 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   
   const { login, isAuthenticated, loading: authLoading } = useAdminAuth();
+  const navigate = useNavigate();
 
-  // إذا كان المدير مسجل دخول بالفعل، توجيهه لوحة التحكم
+  // التحقق من حالة المصادقة مرة واحدة فقط
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/admin-dashboard', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  // إظهار شاشة التحميل أثناء التحقق من الجلسة
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -27,10 +35,6 @@ const AdminLogin = () => {
         </div>
       </div>
     );
-  }
-
-  if (isAuthenticated) {
-    return <Navigate to="/admin-dashboard" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,13 +48,20 @@ const AdminLogin = () => {
       return;
     }
 
-    const result = await login(username.trim(), password);
-    
-    if (!result.success) {
-      setError(result.error || 'فشل في تسجيل الدخول');
+    try {
+      const result = await login(username.trim(), password);
+      
+      if (!result.success) {
+        setError(result.error || 'فشل في تسجيل الدخول');
+      } else {
+        // سيتم التوجيه تلقائياً عبر useEffect أعلاه
+        return;
+      }
+    } catch (error) {
+      setError('حدث خطأ غير متوقع');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -86,6 +97,7 @@ const AdminLogin = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   className="pr-10"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -102,6 +114,7 @@ const AdminLogin = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pr-10"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
