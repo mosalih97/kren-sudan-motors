@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -64,14 +63,12 @@ const AdminDashboard = () => {
   };
 
   const handleUpgrade = async (userId: string, targetMembership: string, notes: string): Promise<boolean> => {
-    const user = users.find(u => u.user_id === userId);
-    if (!user) return false;
-
-    const success = await upgradeUser(userId, targetMembership, user.membership_type, notes);
+    console.log('Upgrade request:', { userId, targetMembership, notes });
+    const success = await upgradeUser(userId, targetMembership, notes);
     if (success) {
       // Refresh the users list
-      handleSearch();
-      getDashboardStats();
+      await handleSearch();
+      await getDashboardStats();
     }
     return success;
   };

@@ -117,70 +117,90 @@ export const useAdminDashboard = () => {
   const upgradeUser = async (
     userId: string, 
     targetMembership: string, 
-    currentMembership: string,
     notes?: string
   ): Promise<boolean> => {
     setLoading(true);
     try {
-      // Calculate expiration date (30 days from now)
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 30);
+      console.log('Starting upgrade process:', { userId, targetMembership, notes });
 
-      // Get current user data
+      // Get current user data first
       const { data: currentUser, error: fetchError } = await supabase
         .from('profiles')
-        .select('credits')
+        .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching current user:', fetchError);
+        throw fetchError;
+      }
 
-      // Update user profile
+      console.log('Current user data:', currentUser);
+
+      // تحضير البيانات للتحديث
       const updateData: any = {
         membership_type: targetMembership,
         is_premium: targetMembership === 'premium',
-        premium_expires_at: targetMembership === 'premium' ? expirationDate.toISOString() : null,
-        upgraded_at: new Date().toISOString(),
+        upgraded_at: new Date().toISOString()
       };
 
-      // Add premium credits if upgrading to premium
+      // إضافة تاريخ انتهاء الصلاحية إذا كانت ترقية إلى مميز
       if (targetMembership === 'premium') {
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 30);
+        updateData.premium_expires_at = expirationDate.toISOString();
+        // إضافة 100 رصيد إضافي للعضوية المميزة
         updateData.credits = (currentUser.credits || 0) + 100;
+      } else {
+        // إذا كان تحويل إلى مجاني، إزالة تاريخ انتهاء الصلاحية
+        updateData.premium_expires_at = null;
+        updateData.credits = 5; // رصيد أساسي للمستخدمين العاديين
       }
 
+      console.log('Update data:', updateData);
+
+      // تحديث بيانات المستخدم
       const { error: profileError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('user_id', userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        throw profileError;
+      }
 
-      // Log the upgrade
+      console.log('Profile updated successfully');
+
+      // تسجيل العملية في upgrade_logs
       const { error: logError } = await supabase
         .from('upgrade_logs')
         .insert({
           user_id: userId,
-          admin_id: 'admin', // Replace with actual admin ID when available
-          action: 'upgrade',
-          from_membership: currentMembership,
+          admin_id: userId, // استخدام نفس المستخدم كمدير مؤقتاً
+          action: targetMembership === 'premium' ? 'upgrade' : 'downgrade',
+          from_membership: currentUser.membership_type,
           to_membership: targetMembership,
-          expires_at: targetMembership === 'premium' ? expirationDate.toISOString() : null,
+          expires_at: targetMembership === 'premium' ? updateData.premium_expires_at : null,
           notes: notes || ''
         });
 
-      if (logError) throw logError;
+      if (logError) {
+        console.error('Error logging upgrade:', logError);
+        // لا نرفع خطأ هنا لأن الترقية تمت بنجاح
+      }
 
       toast({
-        title: "تم الترقية بنجاح",
-        description: `تم ${targetMembership === 'premium' ? 'ترقية المستخدم إلى مميز' : 'تحويل المستخدم إلى مجاني'} لمدة 30 يوم`,
+        title: "تم بنجاح",
+        description: `تم ${targetMembership === 'premium' ? 'ترقية المستخدم إلى مميز' : 'تحويل المستخدم إلى مجاني'} بنجاح`,
       });
 
       return true;
     } catch (error) {
       console.error('Error upgrading user:', error);
       toast({
-        title: "خطأ في الترقية",
-        description: "حدث خطأ أثناء ترقية المستخدم",
+        title: "خطأ في العملية",
+        description: "حدث خطأ أثناء تنفيذ العملية",
         variant: "destructive"
       });
       return false;
