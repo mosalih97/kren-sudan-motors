@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SecurityProvider } from "@/contexts/SecurityContext";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import PasswordReset from "@/pages/PasswordReset";
