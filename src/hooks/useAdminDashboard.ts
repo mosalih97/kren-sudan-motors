@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -58,14 +57,9 @@ export const useAdminDashboard = () => {
         query = query.eq('membership_type', membershipFilter);
       }
 
-      // إضافة فلترة البحث
+      // إضافة فلترة البحث - تم إصلاح الصيغة
       if (searchTerm.trim()) {
-        query = query.or(`
-          display_name.ilike.%${searchTerm}%,
-          phone.ilike.%${searchTerm}%,
-          city.ilike.%${searchTerm}%,
-          user_id_display.ilike.%${searchTerm}%
-        `);
+        query = query.or(`display_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,user_id_display.ilike.%${searchTerm}%`);
       }
 
       const { data: users, error } = await query;
