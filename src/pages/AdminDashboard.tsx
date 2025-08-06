@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import UserUpgradeDialog from '@/components/admin/UserUpgradeDialog';
+import UserSearchBox from '@/components/admin/UserSearchBox';
 import { Search, Users, Crown, BarChart3, RefreshCw } from 'lucide-react';
 
 interface UserProfile {
@@ -32,6 +33,8 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
   
   const { 
     loading: hookLoading, 
@@ -71,6 +74,17 @@ const AdminDashboard = () => {
       await getDashboardStats();
     }
     return success;
+  };
+
+  const handleUserFound = (user: UserProfile) => {
+    setFoundUser(user);
+    // إخفاء نتائج البحث العادية وإظهار المستخدم المطلوب فقط
+    setUsers([user]);
+  };
+
+  const clearUserSearch = () => {
+    setFoundUser(null);
+    handleSearch(); // إعادة تحميل جميع المستخدمين
   };
 
   const openUpgradeDialog = (user: UserProfile) => {
@@ -159,22 +173,46 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* User ID Search Box */}
+        <UserSearchBox
+          onUserFound={handleUserFound}
+          onSearchUsers={searchUsers}
+          loading={loading}
+        />
+
+        {foundUser && (
+          <Card className="mb-4 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>نتيجة البحث بـ ID: {foundUser.user_id_display}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearUserSearch}
+                >
+                  مسح البحث
+                </Button>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        )}
+
         {/* Search Section */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-6 w-6" />
-              لوحة تحكم الإدارة - البحث عن المستخدمين
+              البحث العام في المستخدمين
             </CardTitle>
             <CardDescription>
-              ابحث عن المستخدمين وقم بإدارة عضوياتهم وترقياتهم تلقائياً لمدة 30 يوم
+              ابحث عن المستخدمين بالاسم، الهاتف، المدينة أو قم بإدارة عضوياتهم
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <Input
-                  placeholder="ابحث بالاسم، الهاتف، المدينة، أو رقم المستخدم..."
+                  placeholder="ابحث بالاسم، الهاتف، المدينة..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -206,7 +244,12 @@ const AdminDashboard = () => {
         {/* Results Section */}
         <Card>
           <CardHeader>
-            <CardTitle>نتائج البحث ({users.length} مستخدم)</CardTitle>
+            <CardTitle>
+              {foundUser 
+                ? `المستخدم المطلوب` 
+                : `نتائج البحث (${users.length} مستخدم)`
+              }
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -225,7 +268,9 @@ const AdminDashboard = () => {
                           <h3 className="font-semibold text-lg">{user.display_name || 'غير محدد'}</h3>
                           <p className="text-sm text-gray-600">{user.phone || 'لا يوجد هاتف'}</p>
                           <p className="text-sm text-gray-600">{user.city || 'غير محدد'}</p>
-                          <p className="text-xs text-gray-500">ID: {user.user_id_display}</p>
+                          <p className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded inline-block">
+                            ID: {user.user_id_display}
+                          </p>
                           <p className="text-xs text-gray-500">
                             انضم في: {new Date(user.created_at).toLocaleDateString('ar-SA')}
                           </p>
@@ -258,10 +303,10 @@ const AdminDashboard = () => {
                             variant="outline"
                             onClick={() => openUpgradeDialog(user)}
                             className="flex items-center gap-2"
-                            disabled={hookLoading}
+                            disabled={upgrading}
                           >
                             <Crown className="h-4 w-4" />
-                            إدارة الترقية
+                            {upgrading ? 'جاري المعالجة...' : 'إدارة الترقية'}
                           </Button>
                         </div>
                       </div>
