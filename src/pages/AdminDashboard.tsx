@@ -45,6 +45,7 @@ const AdminDashboard = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    // تحميل جميع المستخدمين في البداية
     handleSearch();
     getDashboardStats();
   }, []);
@@ -54,6 +55,7 @@ const AdminDashboard = () => {
     try {
       const results = await searchUsers(searchTerm, membershipFilter, 50);
       setUsers(results);
+      console.log('Search results:', results); // للتصحيح
     } catch (error) {
       console.error('Search error:', error);
     } finally {

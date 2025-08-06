@@ -34,14 +34,75 @@ export const useAdminDashboard = () => {
 
   const searchUsers = async (searchTerm: string, membershipFilter: string, limit: number = 50): Promise<UserProfile[]> => {
     try {
-      const { data, error } = await supabase.rpc('admin_search_users', {
-        search_term: searchTerm,
-        membership_filter: membershipFilter,
-        limit_count: limit
-      });
+      // استخدام استعلام مباشر بدلاً من دالة RPC
+      let query = supabase
+        .from('profiles')
+        .select(`
+          user_id,
+          display_name,
+          phone,
+          city,
+          membership_type,
+          is_premium,
+          points,
+          credits,
+          created_at,
+          premium_expires_at,
+          user_id_display
+        `)
+        .limit(limit)
+        .order('created_at', { ascending: false });
+
+      // إضافة فلترة العضوية
+      if (membershipFilter !== 'all') {
+        query = query.eq('membership_type', membershipFilter);
+      }
+
+      // إضافة فلترة البحث
+      if (searchTerm.trim()) {
+        query = query.or(`
+          display_name.ilike.%${searchTerm}%,
+          phone.ilike.%${searchTerm}%,
+          city.ilike.%${searchTerm}%,
+          user_id_display.ilike.%${searchTerm}%
+        `);
+      }
+
+      const { data: users, error } = await query;
 
       if (error) throw error;
-      return data || [];
+
+      // جلب عدد الإعلانات لكل مستخدم
+      const usersWithAds = await Promise.all((users || []).map(async (user) => {
+        const { data: ads, error: adsError } = await supabase
+          .from('ads')
+          .select('id')
+          .eq('user_id', user.user_id)
+          .eq('status', 'active');
+
+        if (adsError) console.error('Error fetching ads count:', adsError);
+
+        const adsCount = ads?.length || 0;
+        
+        // حساب الأيام المتبقية
+        let daysRemaining = 0;
+        if (user.premium_expires_at) {
+          const expiryDate = new Date(user.premium_expires_at);
+          const today = new Date();
+          const diffTime = expiryDate.getTime() - today.getTime();
+          daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+
+        return {
+          ...user,
+          ads_count: adsCount,
+          days_remaining: daysRemaining,
+          points: user.points || 0,
+          credits: user.credits || 0
+        };
+      }));
+
+      return usersWithAds;
     } catch (error) {
       console.error('Error searching users:', error);
       toast({
