@@ -64,7 +64,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         localStorage.removeItem('admin_session_token');
         setAdminUser(null);
       } else {
-        const sessionData = data as VerifySessionResponse;
+        const sessionData = data as unknown as VerifySessionResponse;
         if (!sessionData.valid) {
           localStorage.removeItem('admin_session_token');
           setAdminUser(null);
@@ -100,7 +100,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
       }
 
-      const sessionData = data as CreateSessionResponse;
+      const sessionData = data as unknown as CreateSessionResponse;
       
       if (!sessionData.success) {
         return { 
