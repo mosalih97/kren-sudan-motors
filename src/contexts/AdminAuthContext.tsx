@@ -15,6 +15,21 @@ interface AdminAuthContextType {
   isAuthenticated: boolean;
 }
 
+// تعريف أنواع البيانات المُرجعة من دوال Supabase
+interface VerifySessionResponse {
+  valid: boolean;
+  username?: string;
+  admin_id?: string;
+  message?: string;
+}
+
+interface CreateSessionResponse {
+  success: boolean;
+  session_token?: string;
+  message?: string;
+  expires_at?: string;
+}
+
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
 export const useAdminAuth = () => {
@@ -45,14 +60,20 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         token: token 
       });
 
-      if (error || !data?.valid) {
+      if (error || !data) {
         localStorage.removeItem('admin_session_token');
         setAdminUser(null);
       } else {
-        setAdminUser({
-          id: data.admin_id,
-          username: data.username
-        });
+        const sessionData = data as VerifySessionResponse;
+        if (!sessionData.valid) {
+          localStorage.removeItem('admin_session_token');
+          setAdminUser(null);
+        } else {
+          setAdminUser({
+            id: sessionData.admin_id || '',
+            username: sessionData.username || ''
+          });
+        }
       }
     } catch (error) {
       console.error('Error checking admin session:', error);
@@ -72,15 +93,26 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         user_agent_input: navigator.userAgent
       });
 
-      if (error || !data?.success) {
+      if (error || !data) {
         return { 
           success: false, 
-          error: data?.message || 'حدث خطأ في تسجيل الدخول' 
+          error: 'حدث خطأ في تسجيل الدخول' 
         };
       }
 
-      localStorage.setItem('admin_session_token', data.session_token);
-      await checkAdminSession();
+      const sessionData = data as CreateSessionResponse;
+      
+      if (!sessionData.success) {
+        return { 
+          success: false, 
+          error: sessionData.message || 'حدث خطأ في تسجيل الدخول' 
+        };
+      }
+
+      if (sessionData.session_token) {
+        localStorage.setItem('admin_session_token', sessionData.session_token);
+        await checkAdminSession();
+      }
 
       return { success: true };
     } catch (error) {
