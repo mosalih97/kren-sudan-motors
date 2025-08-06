@@ -9,6 +9,7 @@ import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import UserUpgradeDialog from '@/components/admin/UserUpgradeDialog';
 import UserSearchBox from '@/components/admin/UserSearchBox';
 import { Search, Users, Crown, BarChart3, RefreshCw } from 'lucide-react';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 interface UserProfile {
   user_id: string;
@@ -116,216 +117,219 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Dashboard Stats */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">إجمالي المستخدمين</p>
-                    <p className="text-2xl font-bold">{stats.total_users}</p>
+    <div className="min-h-screen bg-background">
+      <AdminHeader />
+      <div className="p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Dashboard Stats */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">إجمالي المستخدمين</p>
+                      <p className="text-2xl font-bold">{stats.total_users}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
                   </div>
-                  <Users className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">العضويات المميزة</p>
-                    <p className="text-2xl font-bold">{stats.premium_users}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">العضويات المميزة</p>
+                      <p className="text-2xl font-bold">{stats.premium_users}</p>
+                    </div>
+                    <Crown className="h-8 w-8 text-yellow-500" />
                   </div>
-                  <Crown className="h-8 w-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">الإعلانات النشطة</p>
-                    <p className="text-2xl font-bold">{stats.active_ads}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">الإعلانات النشطة</p>
+                      <p className="text-2xl font-bold">{stats.active_ads}</p>
+                    </div>
+                    <BarChart3 className="h-8 w-8 text-green-500" />
                   </div>
-                  <BarChart3 className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">إجمالي النقاط</p>
-                    <p className="text-2xl font-bold">{stats.total_points}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">إجمالي النقاط</p>
+                      <p className="text-2xl font-bold">{stats.total_points}</p>
+                    </div>
+                    <div className="h-8 w-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                      P
+                    </div>
                   </div>
-                  <div className="h-8 w-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                    P
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-        {/* User ID Search Box */}
-        <UserSearchBox
-          onUserFound={handleUserFound}
-          onSearchUsers={searchUsers}
-          loading={loading}
-        />
+          {/* User ID Search Box */}
+          <UserSearchBox
+            onUserFound={handleUserFound}
+            onSearchUsers={searchUsers}
+            loading={loading}
+          />
 
-        {foundUser && (
-          <Card className="mb-4 border-blue-200 bg-blue-50">
+          {foundUser && (
+            <Card className="mb-4 border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>نتيجة البحث بـ ID: {foundUser.user_id_display}</span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={clearUserSearch}
+                  >
+                    مسح البحث
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          )}
+
+          {/* Search Section */}
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>نتيجة البحث بـ ID: {foundUser.user_id_display}</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={clearUserSearch}
-                >
-                  مسح البحث
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-6 w-6" />
+                البحث العام في المستخدمين
+              </CardTitle>
+              <CardDescription>
+                ابحث عن المستخدمين بالاسم، الهاتف، المدينة أو قم بإدارة عضوياتهم
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="ابحث بالاسم، الهاتف، المدينة..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    className="w-full"
+                  />
+                </div>
+                <Select value={membershipFilter} onValueChange={setMembershipFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="نوع العضوية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع العضويات</SelectItem>
+                    <SelectItem value="free">مجاني</SelectItem>
+                    <SelectItem value="premium">مميز</SelectItem>
+                    <SelectItem value="admin">إداري</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleSearch} disabled={loading}>
+                  <Search className="h-4 w-4 mr-2" />
+                  بحث
                 </Button>
+                <Button onClick={() => { handleSearch(); getDashboardStats(); }} variant="outline">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {foundUser 
+                  ? `المستخدم المطلوب` 
+                  : `نتائج البحث (${users.length} مستخدم)`
+                }
               </CardTitle>
             </CardHeader>
-          </Card>
-        )}
+            <CardContent>
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="text-center py-8">جاري التحميل...</div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    لا توجد نتائج للبحث المحدد
+                  </div>
+                ) : (
+                  users.map((user) => (
+                    <Card key={user.user_id} className="border hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                          <div className="md:col-span-2">
+                            <h3 className="font-semibold text-lg">{user.display_name || 'غير محدد'}</h3>
+                            <p className="text-sm text-gray-600">{user.phone || 'لا يوجد هاتف'}</p>
+                            <p className="text-sm text-gray-600">{user.city || 'غير محدد'}</p>
+                            <p className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded inline-block">
+                              ID: {user.user_id_display}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              انضم في: {new Date(user.created_at).toLocaleDateString('ar-SA')}
+                            </p>
+                          </div>
+                          
+                          <div className="text-center">
+                            <Badge className={getMembershipBadgeColor(user.membership_type)}>
+                              {getMembershipText(user.membership_type)}
+                            </Badge>
+                            {user.is_premium && (
+                              <div className="text-xs mt-1">
+                                {user.days_remaining > 0 ? 
+                                  `${user.days_remaining} يوم متبقي` : 
+                                  <span className="text-red-500">منتهية الصلاحية</span>}
+                              </div>
+                            )}
+                          </div>
 
-        {/* Search Section */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-6 w-6" />
-              البحث العام في المستخدمين
-            </CardTitle>
-            <CardDescription>
-              ابحث عن المستخدمين بالاسم، الهاتف، المدينة أو قم بإدارة عضوياتهم
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 mb-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="ابحث بالاسم، الهاتف، المدينة..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full"
-                />
-              </div>
-              <Select value={membershipFilter} onValueChange={setMembershipFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="نوع العضوية" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع العضويات</SelectItem>
-                  <SelectItem value="free">مجاني</SelectItem>
-                  <SelectItem value="premium">مميز</SelectItem>
-                  <SelectItem value="admin">إداري</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={handleSearch} disabled={loading}>
-                <Search className="h-4 w-4 mr-2" />
-                بحث
-              </Button>
-              <Button onClick={() => { handleSearch(); getDashboardStats(); }} variant="outline">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {foundUser 
-                ? `المستخدم المطلوب` 
-                : `نتائج البحث (${users.length} مستخدم)`
-              }
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {loading ? (
-                <div className="text-center py-8">جاري التحميل...</div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  لا توجد نتائج للبحث المحدد
-                </div>
-              ) : (
-                users.map((user) => (
-                  <Card key={user.user_id} className="border hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                        <div className="md:col-span-2">
-                          <h3 className="font-semibold text-lg">{user.display_name || 'غير محدد'}</h3>
-                          <p className="text-sm text-gray-600">{user.phone || 'لا يوجد هاتف'}</p>
-                          <p className="text-sm text-gray-600">{user.city || 'غير محدد'}</p>
-                          <p className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded inline-block">
-                            ID: {user.user_id_display}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            انضم في: {new Date(user.created_at).toLocaleDateString('ar-SA')}
-                          </p>
-                        </div>
-                        
-                        <div className="text-center">
-                          <Badge className={getMembershipBadgeColor(user.membership_type)}>
-                            {getMembershipText(user.membership_type)}
-                          </Badge>
-                          {user.is_premium && (
-                            <div className="text-xs mt-1">
-                              {user.days_remaining > 0 ? 
-                                `${user.days_remaining} يوم متبقي` : 
-                                <span className="text-red-500">منتهية الصلاحية</span>}
+                          <div className="text-center">
+                            <div className="text-sm space-y-1">
+                              <div>النقاط: <span className="font-semibold">{user.points}</span></div>
+                              <div>الأرصدة: <span className="font-semibold">{user.credits}</span></div>
+                              <div>الإعلانات: <span className="font-semibold">{user.ads_count}</span></div>
                             </div>
-                          )}
-                        </div>
+                          </div>
 
-                        <div className="text-center">
-                          <div className="text-sm space-y-1">
-                            <div>النقاط: <span className="font-semibold">{user.points}</span></div>
-                            <div>الأرصدة: <span className="font-semibold">{user.credits}</span></div>
-                            <div>الإعلانات: <span className="font-semibold">{user.ads_count}</span></div>
+                          <div className="flex justify-center">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => openUpgradeDialog(user)}
+                              className="flex items-center gap-2"
+                              disabled={upgrading}
+                            >
+                              <Crown className="h-4 w-4" />
+                              {upgrading ? 'جاري المعالجة...' : 'إدارة الترقية'}
+                            </Button>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-                        <div className="flex justify-center">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => openUpgradeDialog(user)}
-                            className="flex items-center gap-2"
-                            disabled={upgrading}
-                          >
-                            <Crown className="h-4 w-4" />
-                            {upgrading ? 'جاري المعالجة...' : 'إدارة الترقية'}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upgrade Dialog */}
-        <UserUpgradeDialog
-          user={selectedUser}
-          isOpen={isUpgradeDialogOpen}
-          onClose={closeUpgradeDialog}
-          onUpgrade={handleUpgrade}
-          loading={hookLoading}
-        />
+          {/* Upgrade Dialog */}
+          <UserUpgradeDialog
+            user={selectedUser}
+            isOpen={isUpgradeDialogOpen}
+            onClose={closeUpgradeDialog}
+            onUpgrade={handleUpgrade}
+            loading={hookLoading}
+          />
+        </div>
       </div>
     </div>
   );
