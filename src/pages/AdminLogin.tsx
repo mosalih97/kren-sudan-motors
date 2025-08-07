@@ -136,6 +136,15 @@ const AdminLogin = () => {
               {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
           </form>
+          
+          <div className="mt-4 text-center">
+            <a 
+              href="/admin-password-reset" 
+              className="text-sm text-blue-600 hover:underline"
+            >
+              نسيت كلمة المرور؟ إعادة تعيين
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>

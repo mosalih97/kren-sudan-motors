@@ -1129,6 +1129,10 @@ export type Database = {
         Args: { ad_id_param: string; viewer_user_id?: string }
         Returns: undefined
       }
+      reset_admin_password: {
+        Args: { admin_username: string; new_password: string }
+        Returns: Json
+      }
       reset_password_with_token: {
         Args: { reset_token: string; new_password: string }
         Returns: Json
@@ -1150,6 +1154,10 @@ export type Database = {
           days_remaining: number
           ads_count: number
         }[]
+      }
+      set_default_admin_password: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       update_admin_credentials: {
         Args: {
