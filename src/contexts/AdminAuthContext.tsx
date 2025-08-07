@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -155,11 +156,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       console.log('Attempting to change password for admin:', adminUser.id);
 
-      // استخدام الدالة المنشأة في قاعدة البيانات
+      // استخدام الدالة المحدثة في قاعدة البيانات
       const { data, error } = await supabase.rpc('change_admin_password', {
         admin_id: adminUser.id,
         new_password: newPassword
       });
+
+      console.log('change_admin_password response:', { data, error });
 
       if (error) {
         console.error('Password change error:', error);
@@ -171,8 +174,14 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (data && typeof data === 'object' && data !== null) {
         const result = data as any;
+        console.log('Password change result:', result);
+        
         if (result.success) {
           console.log('Password changed successfully');
+          // إعادة تحديث الجلسة للتأكد من استمرار العمل
+          setTimeout(() => {
+            checkAdminSession();
+          }, 1000);
           return { success: true };
         } else {
           return { 
