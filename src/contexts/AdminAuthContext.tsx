@@ -12,22 +12,8 @@ interface AdminAuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   isAuthenticated: boolean;
-}
-
-// تعريف أنواع البيانات المُرجعة من دوال Supabase
-interface VerifySessionResponse {
-  valid: boolean;
-  username?: string;
-  admin_id?: string;
-  message?: string;
-}
-
-interface CreateSessionResponse {
-  success: boolean;
-  session_token?: string;
-  message?: string;
-  expires_at?: string;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -70,10 +56,10 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error('Error verifying session:', error);
         localStorage.removeItem('admin_session_token');
         setAdminUser(null);
-      } else if (data) {
-        const sessionData = data as VerifySessionResponse;
-        console.log('Session data:', sessionData);
+      } else if (data && typeof data === 'object' && data !== null) {
+        console.log('Session data:', data);
         
+        const sessionData = data as any;
         if (!sessionData.valid) {
           console.log('Session not valid:', sessionData.message);
           localStorage.removeItem('admin_session_token');
@@ -120,7 +106,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
       }
 
-      if (!data) {
+      if (!data || typeof data !== 'object' || data === null) {
         console.error('No data returned from create_admin_session');
         return { 
           success: false, 
@@ -128,7 +114,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
       }
 
-      const sessionData = data as CreateSessionResponse;
+      const sessionData = data as any;
       console.log('Session creation data:', sessionData);
       
       if (!sessionData.success) {
@@ -143,7 +129,6 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.log('Session token received, saving to localStorage');
         localStorage.setItem('admin_session_token', sessionData.session_token);
         
-        // التحقق من الجلسة الجديدة فوراً
         await checkAdminSession();
         console.log('Login successful');
         return { success: true };
@@ -156,6 +141,47 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     } catch (error) {
       console.error('Unexpected login error:', error);
+      return { 
+        success: false, 
+        error: `خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}` 
+      };
+    }
+  };
+
+  const changePassword = async (newPassword: string) => {
+    try {
+      if (!adminUser) {
+        return { success: false, error: 'يجب تسجيل الدخول أولاً' };
+      }
+
+      const { data, error } = await supabase.rpc('change_admin_password', {
+        admin_id: adminUser.id,
+        new_password: newPassword
+      });
+
+      if (error) {
+        console.error('Password change error:', error);
+        return { 
+          success: false, 
+          error: `خطأ في تغيير كلمة المرور: ${error.message}` 
+        };
+      }
+
+      if (data && typeof data === 'object' && data !== null) {
+        const result = data as any;
+        if (result.success) {
+          return { success: true };
+        } else {
+          return { 
+            success: false, 
+            error: result.message || 'فشل في تغيير كلمة المرور' 
+          };
+        }
+      }
+
+      return { success: false, error: 'استجابة غير متوقعة من الخادم' };
+    } catch (error) {
+      console.error('Unexpected password change error:', error);
       return { 
         success: false, 
         error: `خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}` 
@@ -185,6 +211,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     loading,
     login,
     logout,
+    changePassword,
     isAuthenticated: !!adminUser
   };
 

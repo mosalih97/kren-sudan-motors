@@ -18,7 +18,6 @@ const AdminLogin = () => {
   const { login, isAuthenticated, loading: authLoading } = useAdminAuth();
   const navigate = useNavigate();
 
-  // التحقق من حالة المصادقة مرة واحدة فقط
   useEffect(() => {
     console.log('AdminLogin - Auth state changed:', { authLoading, isAuthenticated });
     if (!authLoading && isAuthenticated) {
@@ -27,7 +26,6 @@ const AdminLogin = () => {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  // إظهار شاشة التحميل أثناء التحقق من الجلسة
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -66,7 +64,6 @@ const AdminLogin = () => {
         setError(result.error || 'فشل في تسجيل الدخول');
       } else {
         console.log('Login successful! Waiting for navigation...');
-        // التوجيه سيتم تلقائياً عبر useEffect
       }
     } catch (error) {
       console.error('Unexpected error during login process:', error);
@@ -139,14 +136,6 @@ const AdminLogin = () => {
               {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </Button>
           </form>
-          
-          <div className="mt-6 text-center">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">بيانات تجريبية:</p>
-              <p className="text-xs text-gray-500">اسم المستخدم: admin</p>
-              <p className="text-xs text-gray-500">كلمة المرور: admin123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

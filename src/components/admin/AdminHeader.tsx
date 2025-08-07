@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { Shield, LogOut, User } from 'lucide-react';
+import PasswordChangeDialog from './PasswordChangeDialog';
 
 const AdminHeader = () => {
   const { adminUser, logout } = useAdminAuth();
@@ -24,6 +25,8 @@ const AdminHeader = () => {
             <User className="h-4 w-4" />
             <span>مرحباً، {adminUser?.username}</span>
           </div>
+          
+          <PasswordChangeDialog />
           
           <Button 
             variant="outline" 
