@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ const AdminLogin = () => {
   useEffect(() => {
     console.log('AdminLogin - Auth state changed:', { authLoading, isAuthenticated });
     if (!authLoading && isAuthenticated) {
-      console.log('Redirecting to admin dashboard...');
+      console.log('User is authenticated, redirecting to admin dashboard...');
       navigate('/admin-dashboard', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -30,10 +30,10 @@ const AdminLogin = () => {
   // إظهار شاشة التحميل أثناء التحقق من الجلسة
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="flex flex-col items-center gap-4">
           <Shield className="h-8 w-8 animate-pulse text-primary" />
-          <p className="text-muted-foreground">جاري التحقق...</p>
+          <p className="text-muted-foreground">جاري التحقق من الجلسة...</p>
         </div>
       </div>
     );
@@ -44,7 +44,11 @@ const AdminLogin = () => {
     setError('');
     setLoading(true);
 
-    console.log('Form submitted with:', { username: username.trim(), passwordLength: password.length });
+    console.log('Form submitted with:', { 
+      username: username.trim(), 
+      passwordLength: password.length,
+      timestamp: new Date().toISOString()
+    });
 
     if (!username.trim() || !password.trim()) {
       setError('يرجى إدخال اسم المستخدم وكلمة المرور');
@@ -53,20 +57,19 @@ const AdminLogin = () => {
     }
 
     try {
-      console.log('Attempting login...');
+      console.log('Starting login process...');
       const result = await login(username.trim(), password);
-      console.log('Login result:', result);
+      console.log('Login process completed with result:', result);
       
       if (!result.success) {
-        console.error('Login failed:', result.error);
+        console.error('Login failed with error:', result.error);
         setError(result.error || 'فشل في تسجيل الدخول');
       } else {
-        console.log('Login successful, waiting for redirect...');
-        // سيتم التوجيه تلقائياً عبر useEffect أعلاه
-        return;
+        console.log('Login successful! Waiting for navigation...');
+        // التوجيه سيتم تلقائياً عبر useEffect
       }
     } catch (error) {
-      console.error('Unexpected error during login:', error);
+      console.error('Unexpected error during login process:', error);
       setError(`حدث خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);

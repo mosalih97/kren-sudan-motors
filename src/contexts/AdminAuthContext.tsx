@@ -66,12 +66,12 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       console.log('verify_admin_session response:', { data, error });
 
-      if (error || !data) {
+      if (error) {
         console.error('Error verifying session:', error);
         localStorage.removeItem('admin_session_token');
         setAdminUser(null);
-      } else {
-        const sessionData = data as unknown as VerifySessionResponse;
+      } else if (data) {
+        const sessionData = data as VerifySessionResponse;
         console.log('Session data:', sessionData);
         
         if (!sessionData.valid) {
@@ -85,9 +85,13 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             username: sessionData.username || ''
           });
         }
+      } else {
+        console.log('No data returned from verify_admin_session');
+        localStorage.removeItem('admin_session_token');
+        setAdminUser(null);
       }
     } catch (error) {
-      console.error('Error checking admin session:', error);
+      console.error('Unexpected error checking admin session:', error);
       localStorage.removeItem('admin_session_token');
       setAdminUser(null);
     } finally {
@@ -103,7 +107,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         username_input: username,
         password_input: password,
         ip_addr: '',
-        user_agent_input: navigator.userAgent
+        user_agent_input: navigator.userAgent || ''
       });
 
       console.log('create_admin_session response:', { data, error });
@@ -124,7 +128,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
       }
 
-      const sessionData = data as unknown as CreateSessionResponse;
+      const sessionData = data as CreateSessionResponse;
       console.log('Session creation data:', sessionData);
       
       if (!sessionData.success) {
@@ -138,8 +142,11 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (sessionData.session_token) {
         console.log('Session token received, saving to localStorage');
         localStorage.setItem('admin_session_token', sessionData.session_token);
+        
+        // التحقق من الجلسة الجديدة فوراً
         await checkAdminSession();
         console.log('Login successful');
+        return { success: true };
       } else {
         console.error('No session token in response');
         return { 
@@ -147,10 +154,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           error: 'لم يتم إنشاء رمز الجلسة' 
         };
       }
-
-      return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Unexpected login error:', error);
       return { 
         success: false, 
         error: `خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}` 
@@ -162,6 +167,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const token = localStorage.getItem('admin_session_token');
       if (token && adminUser) {
+        console.log('Logging out admin user:', adminUser.id);
         await supabase.rpc('logout_all_admin_sessions', {
           admin_id: adminUser.id
         });
