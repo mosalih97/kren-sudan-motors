@@ -20,7 +20,9 @@ const AdminLogin = () => {
 
   // التحقق من حالة المصادقة مرة واحدة فقط
   useEffect(() => {
+    console.log('AdminLogin - Auth state changed:', { authLoading, isAuthenticated });
     if (!authLoading && isAuthenticated) {
+      console.log('Redirecting to admin dashboard...');
       navigate('/admin-dashboard', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -42,6 +44,8 @@ const AdminLogin = () => {
     setError('');
     setLoading(true);
 
+    console.log('Form submitted with:', { username: username.trim(), passwordLength: password.length });
+
     if (!username.trim() || !password.trim()) {
       setError('يرجى إدخال اسم المستخدم وكلمة المرور');
       setLoading(false);
@@ -49,16 +53,21 @@ const AdminLogin = () => {
     }
 
     try {
+      console.log('Attempting login...');
       const result = await login(username.trim(), password);
+      console.log('Login result:', result);
       
       if (!result.success) {
+        console.error('Login failed:', result.error);
         setError(result.error || 'فشل في تسجيل الدخول');
       } else {
+        console.log('Login successful, waiting for redirect...');
         // سيتم التوجيه تلقائياً عبر useEffect أعلاه
         return;
       }
     } catch (error) {
-      setError('حدث خطأ غير متوقع');
+      console.error('Unexpected error during login:', error);
+      setError(`حدث خطأ غير متوقع: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     } finally {
       setLoading(false);
     }
@@ -81,7 +90,7 @@ const AdminLogin = () => {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className="text-right">{error}</AlertDescription>
               </Alert>
             )}
             
