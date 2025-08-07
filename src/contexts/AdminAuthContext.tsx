@@ -154,32 +154,56 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return { success: false, error: 'يجب تسجيل الدخول أولاً' };
       }
 
-      const { data, error } = await supabase.rpc('change_admin_password', {
-        admin_id: adminUser.id,
-        new_password: newPassword
-      });
+      console.log('Attempting to change password for admin:', adminUser.id);
 
-      if (error) {
-        console.error('Password change error:', error);
+      // استخدام استدعاء مباشر للدالة بدلاً من RPC
+      const { data, error } = await supabase
+        .from('admin_credentials')
+        .select('id')
+        .eq('id', adminUser.id)
+        .single();
+
+      if (error || !data) {
+        console.error('Admin not found:', error);
         return { 
           success: false, 
-          error: `خطأ في تغيير كلمة المرور: ${error.message}` 
+          error: 'المدير غير موجود' 
         };
       }
 
-      if (data && typeof data === 'object' && data !== null) {
-        const result = data as any;
-        if (result.success) {
-          return { success: true };
-        } else {
-          return { 
-            success: false, 
-            error: result.message || 'فشل في تغيير كلمة المرور' 
-          };
-        }
+      // التحقق من قوة كلمة المرور
+      if (newPassword.length < 8) {
+        return { 
+          success: false, 
+          error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' 
+        };
       }
 
-      return { success: false, error: 'استجابة غير متوقعة من الخادم' };
+      // تحديث كلمة المرور مباشرة
+      const { error: updateError } = await supabase
+        .from('admin_credentials')
+        .update({
+          password_hash: newPassword, // سيتم تشفيرها بواسطة trigger في قاعدة البيانات
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', adminUser.id);
+
+      if (updateError) {
+        console.error('Password update error:', updateError);
+        return { 
+          success: false, 
+          error: `خطأ في تحديث كلمة المرور: ${updateError.message}` 
+        };
+      }
+
+      // إلغاء جميع الجلسات النشطة للأمان
+      await supabase
+        .from('admin_sessions')
+        .update({ is_active: false })
+        .eq('admin_user_id', adminUser.id);
+
+      console.log('Password changed successfully');
+      return { success: true };
     } catch (error) {
       console.error('Unexpected password change error:', error);
       return { 

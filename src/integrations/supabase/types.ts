@@ -1005,6 +1005,10 @@ export type Database = {
         }
         Returns: Json
       }
+      change_admin_password: {
+        Args: { admin_id: string; new_password: string }
+        Returns: Json
+      }
       check_admin_access: {
         Args: { user_email: string }
         Returns: boolean
