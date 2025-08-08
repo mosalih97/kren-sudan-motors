@@ -143,8 +143,8 @@ export const useAdminDashboard = () => {
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + 30);
         updateData.premium_expires_at = expirationDate.toISOString();
-        // إضافة 100 رصيد إضافي للعضوية المميزة
-        updateData.credits = (currentUser.credits || 0) + 100;
+        // إضافة 130 نقطة (رصيد مميز) عند الترقية
+        updateData.credits = (currentUser.credits || 0) + 130;
       } else {
         // إذا كان تحويل إلى مجاني، إزالة تاريخ انتهاء الصلاحية
         updateData.premium_expires_at = null;

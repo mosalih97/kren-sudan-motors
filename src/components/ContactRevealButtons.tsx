@@ -9,7 +9,7 @@ import { PointsConfirmDialog } from './PointsConfirmDialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
+import { useNavigate } from 'react-router-dom';
 interface ContactRevealButtonsProps {
   adId: string;
   phone?: string;
@@ -34,6 +34,8 @@ export const ContactRevealButtons = ({
   const { pointsData, deductPoints } = useUserPoints();
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isOwner = user?.id === sellerId;
 
   const handleRevealContact = async (type: 'phone' | 'whatsapp') => {
     if (!pointsData) return;
