@@ -43,7 +43,9 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/cars" element={<Cars />} />
                 <Route path="/search" element={<SearchResults />} />
+                <Route path="/search-results" element={<SearchResults />} />
                 <Route path="/ad/:id" element={<AdDetails />} />
+                <Route path="/ads/:id" element={<AdDetails />} />
                 <Route path="/password-reset" element={<PasswordReset />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/admin-password-reset" element={<AdminPasswordReset />} />
