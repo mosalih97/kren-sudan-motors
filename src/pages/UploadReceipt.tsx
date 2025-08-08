@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,27 @@ const UploadReceipt = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // SEO: title, meta description, and canonical
+  useEffect(() => {
+    document.title = 'العضوية المميزة - 30 إعلان + 130 نقطة';
+    const description = 'اشترك في العضوية المميزة: 30 إعلاناً إضافياً + 130 نقطة إضافية لعرض وسائل التواصل ومزايا حصرية.';
+
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', description);
+
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute('href', window.location.href);
+  }, []);
   const handleWhatsAppSubscription = () => {
     const phoneNumber = "+249966960202";
     const message = "مرحباً، أريد الاشتراك في العضوية المميزة لتطبيق الكرين";
@@ -40,8 +61,8 @@ const UploadReceipt = () => {
     },
     {
       icon: <Star className="h-6 w-6" />,
-      title: "عدد إعلانات غير محدود",
-      description: "انشر عدد غير محدود من الإعلانات بدون قيود"
+      title: "30 إعلان إضافي + 130 نقطة إضافية",
+      description: "احصل على 30 إعلاناً إضافياً للنشر و130 نقطة لعرض وسائل التواصل"
     },
     {
       icon: <Zap className="h-6 w-6" />,
@@ -57,11 +78,6 @@ const UploadReceipt = () => {
       icon: <CheckCircle className="h-6 w-6" />,
       title: "شارة التحقق",
       description: "شارة تحقق مميزة تزيد من ثقة المشترين"
-    },
-    {
-      icon: <Phone className="h-6 w-6" />,
-      title: "إظهار بيانات الاتصال",
-      description: "إمكانية إظهار رقم الهاتف والواتساب مباشرة"
     }
   ];
 
