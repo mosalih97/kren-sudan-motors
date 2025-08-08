@@ -40,36 +40,31 @@ export const ContactRevealButtons = ({
   const handleRevealContact = async (type: 'phone' | 'whatsapp') => {
     if (!pointsData) return;
 
-    // Premium users don't need to spend points
-    if (pointsData.membershipType === 'premium') {
-      if (type === 'phone') {
-        setRevealedPhone(true);
-      } else {
-        setRevealedWhatsapp(true);
-      }
-      
-      // Record interaction for premium users (no points deducted)
+    // إذا كان هذا إعلان المستخدم نفسه: عرض مباشر بدون خصم نقاط
+    if (isOwner) {
+      if (type === 'phone') setRevealedPhone(true);
+      if (type === 'whatsapp') setRevealedWhatsapp(true);
+
       await supabase.from('ad_interactions').insert({
         ad_id: adId,
         user_id: user?.id,
         interaction_type: type === 'phone' ? 'phone_view' : 'whatsapp_view',
         points_spent: 0
       });
-      
       return;
     }
 
-    // Check if user has enough points
+    // تحقق من توفر النقاط (1 نقطة مطلوبة لكل كشف) للمميز والعادي
     if (pointsData.totalPoints < 1) {
       toast({
-        title: "نقاط غير كافية",
-        description: "تحتاج إلى نقطة واحدة على الأقل لعرض معلومات التواصل",
-        variant: "destructive"
+        title: 'نقاط غير كافية',
+        description: 'تحتاج إلى نقطة واحدة لعرض معلومات التواصل',
+        variant: 'destructive'
       });
       return;
     }
 
-    // Show confirmation dialog for free users
+    // عرض نافذة التأكيد قبل الخصم
     setPendingAction(type);
     setShowDialog(true);
   };
@@ -128,8 +123,11 @@ export const ContactRevealButtons = ({
   };
 
   const handleMessage = () => {
-    // Navigate to messages page or open messaging modal
-    console.log('Open messaging');
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    navigate(`/messages?seller=${sellerId}&ad=${adId}`);
   };
 
   const handleFavorite = async () => {
@@ -186,15 +184,20 @@ export const ContactRevealButtons = ({
     <>
       <Card className="card-gradient border-0 shadow-lg">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">معلومات البائع</h3>
-            {pointsData?.membershipType === 'premium' && (
-              <Badge variant="premium" className="gap-1">
-                <Crown className="h-3 w-3" />
-                مميز
-              </Badge>
-            )}
-          </div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold">معلومات البائع</h3>
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <Badge variant="secondary">هذا إعلانك</Badge>
+          )}
+          {pointsData?.membershipType === 'premium' && (
+            <Badge variant="premium" className="gap-1">
+              <Crown className="h-3 w-3" />
+              مميز
+            </Badge>
+          )}
+        </div>
+      </div>
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -206,7 +209,7 @@ export const ContactRevealButtons = ({
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">رقم الهاتف:</span>
               <div className="flex items-center gap-2">
-                {revealedPhone && phone ? (
+                {(isOwner && phone) || (revealedPhone && phone) ? (
                   <>
                     <span className="font-medium text-primary">{formatPhoneNumber(phone)}</span>
                     <Button
@@ -224,7 +227,7 @@ export const ContactRevealButtons = ({
                     className="bg-primary hover:bg-primary/90 text-white gap-2"
                   >
                     <Phone className="h-4 w-4" />
-                    {pointsData?.membershipType === 'premium' ? 'مجاني' : '1 نقطة'}
+                    1 نقطة
                   </Button>
                 )}
               </div>
