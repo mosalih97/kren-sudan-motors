@@ -22,7 +22,7 @@ import UploadReceipt from "./pages/UploadReceipt";
 import PasswordReset from "./pages/PasswordReset";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminPasswordReset from "./components/admin/AdminPasswordReset";
+
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
@@ -48,7 +48,7 @@ const App = () => (
                 <Route path="/ads/:id" element={<AdDetails />} />
                 <Route path="/password-reset" element={<PasswordReset />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
-                <Route path="/admin-password-reset" element={<AdminPasswordReset />} />
+                
                 
                 <Route
                   path="/profile"
