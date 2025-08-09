@@ -234,6 +234,8 @@ export type Database = {
       ads: {
         Row: {
           brand: string
+          broker_commission_amount: number
+          broker_commission_requested: boolean
           city: string
           condition: string | null
           created_at: string
@@ -247,9 +249,11 @@ export type Database = {
           last_top_spot_viewed: string | null
           mileage: string | null
           model: string
+          papers_type: string | null
           phone: string | null
           price: number
           priority_score: number | null
+          seller_role: string | null
           status: string | null
           times_shown_top: number | null
           title: string
@@ -264,6 +268,8 @@ export type Database = {
         }
         Insert: {
           brand: string
+          broker_commission_amount?: number
+          broker_commission_requested?: boolean
           city: string
           condition?: string | null
           created_at?: string
@@ -277,9 +283,11 @@ export type Database = {
           last_top_spot_viewed?: string | null
           mileage?: string | null
           model: string
+          papers_type?: string | null
           phone?: string | null
           price: number
           priority_score?: number | null
+          seller_role?: string | null
           status?: string | null
           times_shown_top?: number | null
           title: string
@@ -294,6 +302,8 @@ export type Database = {
         }
         Update: {
           brand?: string
+          broker_commission_amount?: number
+          broker_commission_requested?: boolean
           city?: string
           condition?: string | null
           created_at?: string
@@ -307,9 +317,11 @@ export type Database = {
           last_top_spot_viewed?: string | null
           mileage?: string | null
           model?: string
+          papers_type?: string | null
           phone?: string | null
           price?: number
           priority_score?: number | null
+          seller_role?: string | null
           status?: string | null
           times_shown_top?: number | null
           title?: string

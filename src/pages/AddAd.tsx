@@ -36,7 +36,11 @@ const AddAd = () => {
     mileage: "",
     fuelType: "بنزين",
     transmission: "أوتوماتيك",
-    condition: "مستعملة"
+    condition: "مستعملة",
+    papersType: "",
+    sellerRole: "مالك",
+    brokerCommissionRequested: false,
+    brokerCommissionAmount: ""
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -194,7 +198,11 @@ const AddAd = () => {
           transmission: adData.transmission,
           condition: adData.condition,
           images: images,
-          status: "active"
+          status: "active",
+          papers_type: adData.papersType || null,
+          seller_role: adData.sellerRole || null,
+          broker_commission_requested: adData.sellerRole === "وسيط" ? !!adData.brokerCommissionRequested : false,
+          broker_commission_amount: adData.sellerRole === "وسيط" && adData.brokerCommissionRequested ? parseInt(adData.brokerCommissionAmount || "0") : 0
         });
 
       if (error) throw error;
@@ -255,6 +263,9 @@ const AddAd = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              <div className="bg-primary/10 border border-primary/20 text-primary rounded-md p-3 text-sm">
+                لابد من توضيح حالة السيارة الحالية بالتفصيل وبمصداقية
+              </div>
               {/* معلومات العضوية والإعلانات */}
               {profile && (
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
@@ -446,6 +457,77 @@ const AddAd = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* معلومات قانونية وصفة البائع */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">معلومات قانونية وصفة البائع</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>نوع الأوراق المتوفرة</Label>
+                      <Select value={adData.papersType} onValueChange={(value) => setAdData({ ...adData, papersType: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر نوع الأوراق" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="شهادة بحث">شهادة بحث</SelectItem>
+                          <SelectItem value="توكيل">توكيل</SelectItem>
+                          <SelectItem value="قيد نقل ملكية">قيد نقل ملكية</SelectItem>
+                          <SelectItem value="أورنيك حكومي">أورنيك حكومي</SelectItem>
+                          <SelectItem value="أوراق أخرى">أوراق أخرى</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>ما هي صفتك بالنسبة للسيارة؟</Label>
+                      <Select value={adData.sellerRole} onValueChange={(value) => setAdData({ ...adData, sellerRole: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="مالك">مالك</SelectItem>
+                          <SelectItem value="وكيل">وكيل</SelectItem>
+                          <SelectItem value="وسيط">وسيط</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {adData.sellerRole === "وسيط" && (
+                    <div className="space-y-3 border rounded-md p-3">
+                      <div className="space-y-2">
+                        <Label>هل تطلب عمولة من المشتري؟</Label>
+                        <Select value={adData.brokerCommissionRequested ? "yes" : "no"} onValueChange={(v) => setAdData({ ...adData, brokerCommissionRequested: v === "yes", brokerCommissionAmount: v === "yes" ? adData.brokerCommissionAmount : "" })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="no">لا</SelectItem>
+                            <SelectItem value="yes">نعم</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {adData.brokerCommissionRequested && (
+                        <div className="space-y-2">
+                          <Label htmlFor="brokerCommissionAmount">قيمة العمولة النهائية (جنيه سوداني)</Label>
+                          <Input
+                            id="brokerCommissionAmount"
+                            type="number"
+                            placeholder="مثال: 50000"
+                            value={adData.brokerCommissionAmount}
+                            onChange={(e) => setAdData({ ...adData, brokerCommissionAmount: e.target.value })}
+                            min={0}
+                          />
+                        </div>
+                      )}
+
+                      <p className="text-xs text-warning">
+                        لا تطلب اكثر من العمولة المحددة في الإعلان وإلا سوف تعرض حسابك للحظر نهائياً
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* معلومات الاتصال */}

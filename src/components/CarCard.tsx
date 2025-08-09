@@ -33,6 +33,10 @@ interface CarCardProps {
   displayTier?: 'top_spot' | 'premium' | 'featured' | 'regular';
   showBoostButton?: boolean;
   userId?: string;
+  // New optional fields for broker commission display
+  brokerCommissionRequested?: boolean;
+  brokerCommissionAmount?: number;
+  sellerRole?: string;
 }
 
 export function CarCard({
@@ -56,7 +60,10 @@ export function CarCard({
   topSpotUntil,
   displayTier = 'regular',
   showBoostButton = false,
-  userId
+  userId,
+  brokerCommissionRequested,
+  brokerCommissionAmount,
+  sellerRole
 }: CarCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -143,6 +150,12 @@ export function CarCard({
               {price.toLocaleString('ar-SD')} جنيه
             </span>
           </div>
+
+          {sellerRole === 'وسيط' && brokerCommissionRequested && (brokerCommissionAmount || 0) > 0 && (
+            <Badge variant="outline" className="text-xs">
+              عمولة وسيط: {Number(brokerCommissionAmount).toLocaleString('ar-SD')} جنيه
+            </Badge>
+          )}
         </div>
 
         {/* تفاصيل السيارة */}

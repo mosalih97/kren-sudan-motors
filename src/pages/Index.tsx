@@ -189,6 +189,9 @@ const Index = () => {
                       avatar_url: car.profiles.avatar_url,
                       membership_type: car.profiles.membership_type
                     } : undefined}
+                    brokerCommissionRequested={car.broker_commission_requested}
+                    brokerCommissionAmount={car.broker_commission_amount}
+                    sellerRole={car.seller_role}
                     showSellerInfo={true}
                   />
                 ))

@@ -177,6 +177,26 @@ const AdDetails = () => {
             sellerName={sellerProfile?.display_name || "مستخدم"}
             adTitle={ad.title}
           />
+
+          {/* Broker commission (if applicable) */}
+          {ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0 && (
+            <div className="mt-4 border rounded-md p-3 bg-muted/30">
+              <h3 className="font-semibold mb-1">عمولة وسيط</h3>
+              <p className="text-sm">العمولة المطلوبة: <span className="font-medium text-primary">{ad.broker_commission_amount} جنيه سوداني</span></p>
+            </div>
+          )}
+
+          {/* Safety notices */}
+          <section className="mt-6">
+            <h2 className="text-lg font-semibold mb-2">تنويهات هامة قبل الشراء</h2>
+            <ul className="list-disc pr-5 space-y-1 text-sm text-muted-foreground">
+              <li>قم بمقابلة البائع في مكان عام</li>
+              <li>عملية الدفع والتسليم والتسلم تتم على مسؤولية الطرفين الشخصية (البائع/المشتري) والتطبيق غير مسؤول عنها تماماً</li>
+              <li>قم بمراجعة المستندات بعناية وتأكد من صحتها</li>
+              <li>قم بفحص السيارة بعناية ضمن الفترات النهارية</li>
+              <li>لا تقم بدفع عمولة غير التي تم تحديدها من البائع الوسيط أو السمسار إذا كان الإعلان لا يخص المالك</li>
+            </ul>
+          </section>
         </div>
 
         {/* Seller's Other Ads */}
