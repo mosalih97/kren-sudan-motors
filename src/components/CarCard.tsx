@@ -37,6 +37,7 @@ interface CarCardProps {
   brokerCommissionRequested?: boolean;
   brokerCommissionAmount?: number;
   sellerRole?: string;
+  papersType?: string;
 }
 
 export function CarCard({
@@ -63,7 +64,8 @@ export function CarCard({
   userId,
   brokerCommissionRequested,
   brokerCommissionAmount,
-  sellerRole
+  sellerRole,
+  papersType
 }: CarCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -151,11 +153,23 @@ export function CarCard({
             </span>
           </div>
 
-          {sellerRole === 'وسيط' && brokerCommissionRequested && (brokerCommissionAmount || 0) > 0 && (
-            <Badge variant="outline" className="text-xs">
-              عمولة وسيط: {Number(brokerCommissionAmount).toLocaleString('ar-SD')} جنيه
-            </Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {sellerRole === 'وسيط' && brokerCommissionRequested && (brokerCommissionAmount || 0) > 0 && (
+              <Badge variant="outline" className="text-xs">
+                عمولة وسيط: {Number(brokerCommissionAmount).toLocaleString('ar-SD')} جنيه
+              </Badge>
+            )}
+            {sellerRole === 'مالك' && (
+              <Badge variant="outline" className="text-xs">
+                من المالك
+              </Badge>
+            )}
+            {papersType && (
+              <Badge variant="secondary" className="text-xs">
+                {papersType}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* تفاصيل السيارة */}

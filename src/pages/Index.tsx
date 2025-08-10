@@ -192,6 +192,7 @@ const Index = () => {
                     brokerCommissionRequested={car.broker_commission_requested}
                     brokerCommissionAmount={car.broker_commission_amount}
                     sellerRole={car.seller_role}
+                    papersType={car.papers_type}
                     showSellerInfo={true}
                   />
                 ))

@@ -99,6 +99,10 @@ const SellerAds = () => {
                   isFeatured={ad.is_featured}
                   viewCount={ad.view_count}
                   creditsRequired={1}
+                  brokerCommissionRequested={ad.broker_commission_requested}
+                  brokerCommissionAmount={ad.broker_commission_amount}
+                  sellerRole={ad.seller_role}
+                  papersType={ad.papers_type}
                 />
               ))}
             </div>

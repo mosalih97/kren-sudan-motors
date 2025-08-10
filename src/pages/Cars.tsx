@@ -204,13 +204,17 @@ const Cars = () => {
                     displayTier={car.display_tier}
                     userId={car.user_id}
                     showBoostButton={true}
-                    seller={car.profiles ? {
-                      id: car.profiles.user_id,
-                      display_name: car.profiles.display_name,
-                      avatar_url: car.profiles.avatar_url,
-                      membership_type: car.profiles.membership_type
-                    } : undefined}
-                  />
+                     seller={car.profiles ? {
+                       id: car.profiles.user_id,
+                       display_name: car.profiles.display_name,
+                       avatar_url: car.profiles.avatar_url,
+                       membership_type: car.profiles.membership_type
+                     } : undefined}
+                     brokerCommissionRequested={car.broker_commission_requested}
+                     brokerCommissionAmount={car.broker_commission_amount}
+                     sellerRole={car.seller_role}
+                     papersType={car.papers_type}
+                   />
                 ))}
               </div>
             )}

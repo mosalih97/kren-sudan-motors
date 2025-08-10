@@ -178,11 +178,18 @@ const AdDetails = () => {
             adTitle={ad.title}
           />
 
-          {/* Broker commission (if applicable) */}
-          {ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0 && (
-            <div className="mt-4 border rounded-md p-3 bg-muted/30">
-              <h3 className="font-semibold mb-1">عمولة وسيط</h3>
-              <p className="text-sm">العمولة المطلوبة: <span className="font-medium text-primary">{ad.broker_commission_amount} جنيه سوداني</span></p>
+          {/* Owner/Broker and Papers info */}
+          {(ad.seller_role === 'مالك' || (ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0) || ad.papers_type) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0 && (
+                <Badge variant="outline" className="text-xs">عمولة وسيط: {ad.broker_commission_amount} جنيه سوداني</Badge>
+              )}
+              {ad.seller_role === 'مالك' && (
+                <Badge variant="outline" className="text-xs">من المالك</Badge>
+              )}
+              {ad.papers_type && (
+                <Badge variant="secondary" className="text-xs">{ad.papers_type}</Badge>
+              )}
             </div>
           )}
 

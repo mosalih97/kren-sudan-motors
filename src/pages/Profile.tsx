@@ -379,6 +379,10 @@ const Profile = () => {
                         isFeatured={ad.is_featured}
                         viewCount={ad.view_count}
                         creditsRequired={1}
+                        brokerCommissionRequested={ad.broker_commission_requested}
+                        brokerCommissionAmount={ad.broker_commission_amount}
+                        sellerRole={ad.seller_role}
+                        papersType={ad.papers_type}
                       />
                     ))}
                   </div>
@@ -404,22 +408,26 @@ const Profile = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {favorites.map((favorite) => (
-                      <CarCard
-                        key={favorite.ads.id}
-                        id={favorite.ads.id}
-                        title={favorite.ads.title}
-                        price={favorite.ads.price}
-                        location={favorite.ads.city}
-                        year={favorite.ads.year}
-                        mileage={favorite.ads.mileage}
-                        fuelType={favorite.ads.fuel_type}
-                        transmission={favorite.ads.transmission}
-                        image={favorite.ads.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
-                        isPremium={favorite.ads.is_premium}
-                        isFeatured={favorite.ads.is_featured}
-                        viewCount={favorite.ads.view_count}
-                        creditsRequired={1}
-                      />
+                       <CarCard
+                         key={favorite.ads.id}
+                         id={favorite.ads.id}
+                         title={favorite.ads.title}
+                         price={favorite.ads.price}
+                         location={favorite.ads.city}
+                         year={favorite.ads.year}
+                         mileage={favorite.ads.mileage}
+                         fuelType={favorite.ads.fuel_type}
+                         transmission={favorite.ads.transmission}
+                         image={favorite.ads.images?.[0] || "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=300&fit=crop"}
+                         isPremium={favorite.ads.is_premium}
+                         isFeatured={favorite.ads.is_featured}
+                         viewCount={favorite.ads.view_count}
+                         creditsRequired={1}
+                         brokerCommissionRequested={favorite.ads.broker_commission_requested}
+                         brokerCommissionAmount={favorite.ads.broker_commission_amount}
+                         sellerRole={favorite.ads.seller_role}
+                         papersType={favorite.ads.papers_type}
+                       />
                     ))}
                   </div>
                 )}
