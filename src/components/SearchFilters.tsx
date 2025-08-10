@@ -95,10 +95,11 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
           </Button>
           <Button 
             variant="outline" 
-            size="lg" 
-            className="px-8"
+            size="default"
+            className="h-12 px-6 rounded-lg"
             onClick={clearFilters}
             disabled={loading}
+            aria-label="مسح الفلاتر"
           >
             <Filter className="h-5 w-5 ml-2" />
             مسح الفلاتر
