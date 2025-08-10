@@ -126,7 +126,7 @@ const SearchResults = () => {
     if (price && price.trim()) {
       const priceNum = parseInt(price);
       if (!isNaN(priceNum) && priceNum > 0) {
-        parts.push(`بسعر أقل من ${priceNum.toLocaleString('ar-SD')} جنيه`);
+        parts.push(`بسعر حتى ${priceNum.toLocaleString('ar-SD')} جنيه`);
       }
     }
     

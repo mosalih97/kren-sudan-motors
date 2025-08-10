@@ -68,11 +68,11 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-success" />
-              السعر الأعلى (جنيه سوداني)
+              السعر (جنيه سوداني)
             </label>
             <Input
               type="number"
-              placeholder="السعر الأعلى (جنيه سوداني)"
+              placeholder="السعر (جنيه سوداني)"
               className="h-12 rounded-lg border-2 border-border/50 hover:border-success/30 focus:border-success/50 transition-smooth"
               value={filters.price}
               onChange={(e) => handleFilterChange('price', e.target.value)}
