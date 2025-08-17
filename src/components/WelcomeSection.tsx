@@ -15,9 +15,19 @@ import {
   TrendingUp,
   Eye,
   MessageCircle,
-  Phone
+  Phone,
+  ChevronLeft,
+  ChevronRight,
+  Gift
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 const WelcomeSection = () => {
   const [selectedPlan, setSelectedPlan] = useState<"free" | "premium">("premium");
@@ -46,18 +56,19 @@ const WelcomeSection = () => {
   ];
 
   const freePlanFeatures = [
+    "20 نقطة للتواصل مع البائعين",
     "تصفح الإعلانات الأساسية",
     "البحث العادي",
-    "التواصل المحدود",
     "5 إعلانات شهرياً",
     "الدعم الأساسي"
   ];
 
   const premiumPlanFeatures = [
+    "135 نقطة (115 + 20 إضافية)",
+    "40 إعلان شهرياً",
     "تصفح جميع الإعلانات",
     "البحث المتقدم والفلاتر الذكية", 
     "معلومات البائع كاملة",
-    "إعلانات غير محدودة",
     "إعلانات مميزة ومعززة",
     "أولوية في الظهور",
     "دعم فني 24/7",
@@ -119,42 +130,28 @@ const WelcomeSection = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <Card key={index} className="card-gradient border-0 shadow-lg hover:shadow-xl transition-smooth group">
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-xl primary-gradient flex items-center justify-center text-white group-hover:scale-110 transition-smooth">
-                    {feature.icon}
-                  </div>
-                  <h4 className="font-bold text-lg mb-2">{feature.title}</h4>
-                  <p className="text-muted-foreground text-sm">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* قسم الإحصائيات */}
-      <section className="py-16 primary-gradient">
-        <div className="container mx-auto px-4 text-center text-white">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            <div className="space-y-2">
-              <div className="text-4xl font-bold">15K+</div>
-              <div className="text-white/80">سيارة متاحة</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold">8K+</div>
-              <div className="text-white/80">مستخدم نشط</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold">12K+</div>
-              <div className="text-white/80">عملية بيع ناجحة</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold">95%</div>
-              <div className="text-white/80">رضا العملاء</div>
-            </div>
+          <div className="max-w-4xl mx-auto">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {features.map((feature, index) => (
+                  <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/2">
+                    <div className="p-2">
+                      <Card className="card-gradient border-0 shadow-lg hover:shadow-xl transition-smooth group aspect-square">
+                        <CardContent className="flex flex-col items-center justify-center p-8 h-full text-center">
+                          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl primary-gradient flex items-center justify-center text-white group-hover:scale-110 transition-smooth">
+                            {feature.icon}
+                          </div>
+                          <h4 className="font-bold text-xl mb-3">{feature.title}</h4>
+                          <p className="text-muted-foreground text-base leading-relaxed">{feature.description}</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="hidden md:flex" />
+              <CarouselNext className="hidden md:flex" />
+            </Carousel>
           </div>
         </div>
       </section>
@@ -225,8 +222,8 @@ const WelcomeSection = () => {
                   </div>
                   <CardTitle className="text-2xl">العضوية المميزة</CardTitle>
                   <div className="text-3xl font-bold text-premium">
-                    49$
-                    <span className="text-lg text-muted-foreground">/شهر</span>
+                    25,000
+                    <span className="text-lg text-muted-foreground"> جنيه سوداني/شهر</span>
                   </div>
                   <p className="text-muted-foreground">للمحترفين والتجار</p>
                 </CardHeader>
@@ -253,6 +250,54 @@ const WelcomeSection = () => {
               </Card>
             </div>
 
+            {/* العرض الحصري */}
+            <div className="text-center mt-12">
+              <Card className="max-w-3xl mx-auto p-8 border-2 border-premium bg-gradient-to-br from-premium/5 to-premium/10 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-premium to-orange-500"></div>
+                <div className="space-y-6">
+                  <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-premium to-orange-500 flex items-center justify-center animate-pulse">
+                    <Gift className="h-12 w-12 text-white" />
+                  </div>
+                  <Badge className="bg-premium text-white border-0 text-lg px-6 py-2">
+                    <Crown className="h-4 w-4 ml-2" />
+                    عرض حصري محدود
+                  </Badge>
+                  <div>
+                    <h4 className="text-3xl font-bold text-foreground mb-3">
+                      50 عضوية مميزة مجانية
+                    </h4>
+                    <p className="text-xl text-premium font-semibold mb-2">
+                      لأول 50 مستخدم مسجل فقط!
+                    </p>
+                    <p className="text-muted-foreground text-lg">
+                      احصل على جميع مميزات العضوية المميزة مجاناً لمدة شهر كامل
+                    </p>
+                  </div>
+                  <div className="bg-white/80 rounded-2xl p-6 border border-premium/20">
+                    <h5 className="font-bold text-lg mb-3">ماذا ستحصل عليه مجاناً:</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-premium" />
+                        <span>135 نقطة للتواصل</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-premium" />
+                        <span>40 إعلان شهرياً</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-premium" />
+                        <span>إعلانات مميزة ومعززة</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-premium" />
+                        <span>دعم فني متميز</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {/* دعوة للتسجيل */}
             <div className="text-center mt-12">
               <Card className="max-w-2xl mx-auto p-8 card-gradient border-0 shadow-xl">
@@ -265,14 +310,14 @@ const WelcomeSection = () => {
                       سجل الآن للمتابعة
                     </h4>
                     <p className="text-muted-foreground">
-                      التسجيل مطلوب للوصول إلى جميع الإعلانات والتفاعل مع البائعين
+                      التسجيل مطلوب للوصول إلى جميع خدمات المنصة واستلام العرض الحصري
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link to="/auth?mode=signup">
-                      <Button size="lg" className="min-w-[200px] btn-hero">
-                        <Award className="h-5 w-5 ml-2" />
-                        إنشاء حساب جديد
+                      <Button size="lg" className="min-w-[200px] btn-premium animate-pulse">
+                        <Gift className="h-5 w-5 ml-2" />
+                        احصل على العرض الحصري
                       </Button>
                     </Link>
                     <Link to="/auth?mode=login">
@@ -282,7 +327,7 @@ const WelcomeSection = () => {
                     </Link>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    بالتسجيل، تحصل على {selectedPlan === "premium" ? "العضوية المميزة" : "العضوية المجانية"} فوراً
+                    بالتسجيل، تحصل على {selectedPlan === "premium" ? "العضوية المميزة مجاناً" : "العضوية المجانية"} فوراً
                   </div>
                 </div>
               </Card>
@@ -325,7 +370,7 @@ const WelcomeSection = () => {
                 <h4 className="font-bold mb-2">الإعلانات</h4>
                 <div className="space-y-2 text-sm">
                   <div className="text-muted-foreground">مجاني: 5 شهرياً</div>
-                  <div className="text-premium font-semibold">مميز: غير محدود</div>
+                  <div className="text-premium font-semibold">مميز: 40 شهرياً</div>
                 </div>
               </Card>
             </div>
