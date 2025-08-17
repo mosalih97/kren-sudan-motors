@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Session } from "@supabase/supabase-js";
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Phone, MapPin } from "lucide-react";
@@ -17,6 +17,8 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode') || 'login';
 
   // Form states
   const [loginData, setLoginData] = useState({ email: "", password: "" });
@@ -188,7 +190,7 @@ const Auth = () => {
             <CardTitle className="text-center text-2xl">مرحباً بك</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs defaultValue={mode} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">تسجيل الدخول</TabsTrigger>
                 <TabsTrigger value="signup">إنشاء حساب</TabsTrigger>

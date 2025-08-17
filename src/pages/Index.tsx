@@ -10,11 +10,14 @@ import { TrendingUp, Users, Shield, Star, ArrowLeft, Zap, Target, Award } from "
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchFilters } from "@/hooks/useSearchFilters";
+import { useAuth } from "@/contexts/AuthContext";
+import WelcomeSection from "@/components/WelcomeSection";
 
 const Index = () => {
   const [featuredCars, setFeaturedCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { searchResults, loading: searchLoading, hasSearched, filters } = useSearchFilters();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     fetchFeaturedCars();
@@ -48,6 +51,26 @@ const Index = () => {
     }
   };
 
+  // عرض loading أثناء التحقق من المصادقة
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl primary-gradient flex items-center justify-center animate-pulse">
+            <span className="text-white text-2xl font-bold font-amiri">ك</span>
+          </div>
+          <p className="text-muted-foreground">جاري تحميل...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // إذا لم يكن المستخدم مسجل دخول، عرض قسم الترحيب
+  if (!user) {
+    return <WelcomeSection />;
+  }
+
+  // إذا كان المستخدم مسجل دخول، عرض المحتوى الرئيسي
   return (
     <div className="min-h-screen bg-background">
       <Header />
