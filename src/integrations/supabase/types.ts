@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -247,6 +247,7 @@ export type Database = {
           is_new: boolean | null
           is_premium: boolean | null
           last_top_spot_viewed: string | null
+          license_status: string | null
           mileage: string | null
           model: string
           papers_type: string | null
@@ -281,6 +282,7 @@ export type Database = {
           is_new?: boolean | null
           is_premium?: boolean | null
           last_top_spot_viewed?: string | null
+          license_status?: string | null
           mileage?: string | null
           model: string
           papers_type?: string | null
@@ -315,6 +317,7 @@ export type Database = {
           is_new?: boolean | null
           is_premium?: boolean | null
           last_top_spot_viewed?: string | null
+          license_status?: string | null
           mileage?: string | null
           model?: string
           papers_type?: string | null
@@ -957,47 +960,47 @@ export type Database = {
     Functions: {
       admin_search_users: {
         Args: {
-          search_term?: string
-          membership_filter?: string
           limit_count?: number
+          membership_filter?: string
+          search_term?: string
         }
         Returns: {
-          user_id: string
-          display_name: string
-          phone: string
-          city: string
-          membership_type: string
-          is_premium: boolean
-          points: number
-          credits: number
-          created_at: string
-          premium_expires_at: string
-          days_remaining: number
           ads_count: number
+          city: string
+          created_at: string
+          credits: number
+          days_remaining: number
+          display_name: string
+          is_premium: boolean
+          membership_type: string
+          phone: string
+          points: number
+          premium_expires_at: string
+          user_id: string
           user_id_display: string
         }[]
       }
       boost_ad: {
         Args: {
           ad_id_param: string
-          user_id_param: string
           boost_type_id_param: string
+          user_id_param: string
         }
         Returns: Json
       }
       boost_ad_enhanced: {
         Args: {
           ad_id_param: string
-          user_id_param: string
           boost_plan?: string
+          user_id_param: string
         }
         Returns: Json
       }
       boost_ad_to_top_spot: {
         Args: {
           ad_id_param: string
-          user_id_param: string
           hours_duration?: number
+          user_id_param: string
         }
         Returns: Json
       }
@@ -1012,8 +1015,8 @@ export type Database = {
       can_boost_ad_enhanced: {
         Args: {
           ad_id_param: string
-          user_id_param: string
           boost_plan?: string
+          user_id_param: string
         }
         Returns: Json
       }
@@ -1043,10 +1046,10 @@ export type Database = {
       }
       create_admin_session: {
         Args: {
-          username_input: string
-          password_input: string
           ip_addr?: string
+          password_input: string
           user_agent_input?: string
+          username_input: string
         }
         Returns: Json
       }
@@ -1055,7 +1058,7 @@ export type Database = {
         Returns: Json
       }
       deduct_points: {
-        Args: { user_id_param: string; points_to_deduct: number }
+        Args: { points_to_deduct: number; user_id_param: string }
         Returns: boolean
       }
       delete_ad_permanently: {
@@ -1063,7 +1066,7 @@ export type Database = {
         Returns: Json
       }
       downgrade_user_to_free: {
-        Args: { target_user_id: string; admin_user_id: string }
+        Args: { admin_user_id: string; target_user_id: string }
         Returns: Json
       }
       generate_unique_user_id: {
@@ -1081,19 +1084,19 @@ export type Database = {
       get_admin_users_list: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
-          display_name: string
-          phone: string
-          city: string
-          membership_type: string
-          is_premium: boolean
-          points: number
-          credits: number
-          created_at: string
-          upgraded_at: string
-          premium_expires_at: string
-          days_remaining: number
           ads_count: number
+          city: string
+          created_at: string
+          credits: number
+          days_remaining: number
+          display_name: string
+          is_premium: boolean
+          membership_type: string
+          phone: string
+          points: number
+          premium_expires_at: string
+          upgraded_at: string
+          user_id: string
         }[]
       }
       get_boost_stats: {
@@ -1111,14 +1114,14 @@ export type Database = {
       get_users_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
-          total_users: number
-          premium_users: number
-          free_users: number
-          total_ads: number
           active_ads: number
-          total_boosts: number
+          free_users: number
           new_users_this_month: number
           premium_expiring_soon: number
+          premium_users: number
+          total_ads: number
+          total_boosts: number
+          total_users: number
         }[]
       }
       is_admin: {
@@ -1130,7 +1133,7 @@ export type Database = {
         Returns: boolean
       }
       log_security_event: {
-        Args: { event_type: string; event_data?: Json }
+        Args: { event_data?: Json; event_type: string }
         Returns: undefined
       }
       logout_all_admin_sessions: {
@@ -1146,25 +1149,25 @@ export type Database = {
         Returns: Json
       }
       reset_password_with_token: {
-        Args: { reset_token: string; new_password: string }
+        Args: { new_password: string; reset_token: string }
         Returns: Json
       }
       search_users: {
         Args: { search_term: string }
         Returns: {
-          user_id: string
-          display_name: string
-          phone: string
-          city: string
-          membership_type: string
-          is_premium: boolean
-          points: number
-          credits: number
-          created_at: string
-          upgraded_at: string
-          premium_expires_at: string
-          days_remaining: number
           ads_count: number
+          city: string
+          created_at: string
+          credits: number
+          days_remaining: number
+          display_name: string
+          is_premium: boolean
+          membership_type: string
+          phone: string
+          points: number
+          premium_expires_at: string
+          upgraded_at: string
+          user_id: string
         }[]
       }
       set_default_admin_password: {
@@ -1174,13 +1177,13 @@ export type Database = {
       update_admin_credentials: {
         Args: {
           admin_user_id: string
-          new_username: string
           new_password_hash: string
+          new_username: string
         }
         Returns: Json
       }
       upgrade_user_to_premium: {
-        Args: { target_user_id: string; admin_user_id: string }
+        Args: { admin_user_id: string; target_user_id: string }
         Returns: Json
       }
       verify_admin_session: {
