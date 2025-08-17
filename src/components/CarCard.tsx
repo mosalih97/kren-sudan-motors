@@ -38,6 +38,7 @@ interface CarCardProps {
   brokerCommissionAmount?: number;
   sellerRole?: string;
   papersType?: string;
+  licenseStatus?: string;
 }
 
 export function CarCard({
@@ -65,7 +66,8 @@ export function CarCard({
   brokerCommissionRequested,
   brokerCommissionAmount,
   sellerRole,
-  papersType
+  papersType,
+  licenseStatus
 }: CarCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -167,6 +169,11 @@ export function CarCard({
             {papersType && (
               <Badge variant="secondary" className="text-xs">
                 {papersType}
+              </Badge>
+            )}
+            {licenseStatus && (
+              <Badge variant="outline" className="text-xs">
+                {licenseStatus}
               </Badge>
             )}
           </div>

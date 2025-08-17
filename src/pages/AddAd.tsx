@@ -40,7 +40,8 @@ const AddAd = () => {
     papersType: "",
     sellerRole: "مالك",
     brokerCommissionRequested: false,
-    brokerCommissionAmount: ""
+    brokerCommissionAmount: "",
+    licenseStatus: ""
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -201,6 +202,7 @@ const AddAd = () => {
           status: "active",
           papers_type: adData.papersType || null,
           seller_role: adData.sellerRole || null,
+          license_status: adData.licenseStatus || null,
           broker_commission_requested: adData.sellerRole === "وسيط" ? !!adData.brokerCommissionRequested : false,
           broker_commission_amount: adData.sellerRole === "وسيط" && adData.brokerCommissionRequested ? parseInt(adData.brokerCommissionAmount || "0") : 0
         });
@@ -263,8 +265,22 @@ const AddAd = () => {
             </CardHeader>
             
             <CardContent className="space-y-6">
+              {/* التنويهات المهمة */}
+              <div className="space-y-3">
+                <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-md p-3 text-sm">
+                  <strong>تأكد من التفاصيل بعناية لأنه لا يمكن تعديل الإعلان لاحقاً</strong>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-md p-3 text-sm">
+                  <strong>يجب ملء جميع الحقول الإجبارية والمميزة بعلامة *</strong>
+                </div>
+              </div>
+              
               <div className="bg-primary/10 border border-primary/20 text-primary rounded-md p-3 text-sm">
                 لابد من توضيح حالة السيارة الحالية بالتفصيل وبمصداقية
+              </div>
+              
+              <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-md p-3 text-sm">
+                <strong>تأكد من التفاصيل بعناية لأنه لا يمكن تعديل الإعلان لاحقاً</strong>
               </div>
               {/* معلومات العضوية والإعلانات */}
               {profile && (
@@ -464,8 +480,8 @@ const AddAd = () => {
                   <h3 className="text-lg font-semibold">معلومات قانونية وصفة البائع</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>نوع الأوراق المتوفرة</Label>
-                      <Select value={adData.papersType} onValueChange={(value) => setAdData({ ...adData, papersType: value })}>
+                      <Label>نوع الأوراق المتوفرة *</Label>
+                      <Select value={adData.papersType} onValueChange={(value) => setAdData({ ...adData, papersType: value })} required>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر نوع الأوراق" />
                         </SelectTrigger>
@@ -480,8 +496,21 @@ const AddAd = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>ما هي صفتك بالنسبة للسيارة؟</Label>
-                      <Select value={adData.sellerRole} onValueChange={(value) => setAdData({ ...adData, sellerRole: value })}>
+                      <Label>حالة الترخيص *</Label>
+                      <Select value={adData.licenseStatus} onValueChange={(value) => setAdData({ ...adData, licenseStatus: value })} required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر حالة الترخيص" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ترخيص ساري">ترخيص ساري</SelectItem>
+                          <SelectItem value="ترخيص غير ساري">ترخيص غير ساري</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>ما هي صفتك بالنسبة للسيارة؟ *</Label>
+                      <Select value={adData.sellerRole} onValueChange={(value) => setAdData({ ...adData, sellerRole: value })} required>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -590,7 +619,7 @@ const AddAd = () => {
 
                 {/* الصور */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">صور السيارة</h3>
+                  <h3 className="text-lg font-semibold">صور السيارة *</h3>
                   
                   <div className="space-y-4">
                     <Button
@@ -628,7 +657,12 @@ const AddAd = () => {
                   </div>
                 </div>
 
-                <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="w-full" 
+                  disabled={loading || !adData.papersType || !adData.sellerRole || !adData.licenseStatus || images.length === 0}
+                >
                   {loading ? "جاري النشر..." : "نشر الإعلان"}
                 </Button>
               </form>

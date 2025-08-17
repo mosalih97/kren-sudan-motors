@@ -7,7 +7,7 @@ import { ContactRevealButtons } from "@/components/ContactRevealButtons";
 import { ImageGallery } from "@/components/ImageGallery";
 import { CarCard } from "@/components/CarCard";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Gauge, Fuel, Settings, MapPin } from "lucide-react";
+import { Calendar, Gauge, Fuel, Settings, MapPin, Phone, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -169,17 +169,34 @@ const AdDetails = () => {
         
         {/* Contact Information */}
         <div className="mt-8">
-          <ContactRevealButtons
-            adId={ad.id}
-            phone={ad.phone}
-            whatsapp={ad.whatsapp}
-            sellerId={ad.user_id}
-            sellerName={sellerProfile?.display_name || "مستخدم"}
-            adTitle={ad.title}
-          />
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">معلومات البائع</h3>
+            <div className="flex flex-wrap gap-3">
+              {ad.phone && (
+                <a 
+                  href={`tel:${ad.phone}`}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  <Phone className="h-4 w-4" />
+                  الهاتف
+                </a>
+              )}
+              {ad.whatsapp && (
+                <a 
+                  href={`https://wa.me/${ad.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  واتساب
+                </a>
+              )}
+            </div>
+          </div>
 
-          {/* Owner/Broker and Papers info */}
-          {(ad.seller_role === 'مالك' || (ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0) || ad.papers_type) && (
+          {/* Owner/Broker, Papers and License info */}
+          {(ad.seller_role === 'مالك' || (ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0) || ad.papers_type || ad.license_status) && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {ad.seller_role === 'وسيط' && ad.broker_commission_requested && (ad.broker_commission_amount || 0) > 0 && (
                 <Badge variant="outline" className="text-xs">عمولة وسيط: {ad.broker_commission_amount} جنيه سوداني</Badge>
@@ -189,6 +206,9 @@ const AdDetails = () => {
               )}
               {ad.papers_type && (
                 <Badge variant="secondary" className="text-xs">{ad.papers_type}</Badge>
+              )}
+              {ad.license_status && (
+                <Badge variant="outline" className="text-xs">{ad.license_status}</Badge>
               )}
             </div>
           )}
